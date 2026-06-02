@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { IconHome, IconScissors, IconMessageCircle, IconUser } from '@tabler/icons-react';
+import { IconHome, IconMessageCircle, IconUser } from '@tabler/icons-react';
 
 const LINKS = [
-  { href: '/',         label: 'Hem',      Icon: IconHome },
-  { href: '/tjanster', label: 'Tjänster', Icon: IconScissors },
-  { href: '/chatt',    label: 'Chatt',    Icon: IconMessageCircle },
-  { href: '/profil',   label: 'Profil',   Icon: IconUser },
+  { href: '/',      label: 'Hem',    Icon: IconHome },
+  { href: '/chatt', label: 'Chatt',  Icon: IconMessageCircle },
+  { href: '/profil', label: 'Profil', Icon: IconUser },
 ];
 
 export default function MobileNav() {
