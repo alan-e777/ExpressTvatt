@@ -130,6 +130,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   // Map refs
   const mapDivRef = useRef<HTMLDivElement>(null);
@@ -189,20 +190,38 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 
   // Initialize Google Maps once settings are loaded
   useEffect(() => {
-    if (loading || mapReady.current || !mapDivRef.current || !mapsKey) return;
+    if (loading || !mapDivRef.current) return;
+
+    if (!mapsKey) {
+      setMapError("GOOGLE_MAPS_API_KEY saknas — lägg till den i Vercel Environment Variables.");
+      return;
+    }
+
+    if (mapReady.current) return;
     mapReady.current = true;
+
+    // Detect API key / billing errors (Google fires this on the window)
+    (window as any).gm_authFailure = () => {
+      setMapError("Google Maps auth misslyckades — kontrollera att Maps JavaScript API är aktiverat och att API-nyckeln är korrekt.");
+      mapReady.current = false;
+    };
 
     function initMap() {
       if (!mapDivRef.current) return;
-      const map = new google.maps.Map(mapDivRef.current, {
-        center: { lat: settings.serviceArea.lat, lng: settings.serviceArea.lng },
-        zoom: 11,
-        disableDefaultUI: true,
-        zoomControl: true,
-        streetViewControl: false,
-      });
-      mapRef.current = map;
-      syncCircle(settings.serviceArea);
+      try {
+        const map = new google.maps.Map(mapDivRef.current, {
+          center: { lat: settings.serviceArea.lat, lng: settings.serviceArea.lng },
+          zoom: 11,
+          disableDefaultUI: true,
+          zoomControl: true,
+          streetViewControl: false,
+        });
+        mapRef.current = map;
+        syncCircle(settings.serviceArea);
+      } catch (err) {
+        setMapError(`Kartfel: ${String(err)}`);
+        mapReady.current = false;
+      }
     }
 
     if (typeof google !== "undefined" && google.maps) {
@@ -210,11 +229,28 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
       return;
     }
 
+    // Use callback parameter — more reliable than onload for Maps JS API
+    const callbackName = "__mapsInit_" + Date.now();
+    (window as any)[callbackName] = () => {
+      delete (window as any)[callbackName];
+      initMap();
+    };
+
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=geometry&callback=${callbackName}`;
     script.async = true;
-    script.onload = initMap;
+    script.onerror = () => {
+      setMapError("Kunde inte ladda Google Maps — kontrollera nätverksanslutning och API-nyckel.");
+      mapReady.current = false;
+    };
     document.head.appendChild(script);
+
+    return () => {
+      // Reset on unmount so map reinitialises if user navigates away and back
+      mapReady.current = false;
+      mapRef.current = null;
+      circleRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
@@ -353,7 +389,14 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
             <p style={labelStyle}>Karta — tjänsteområde</p>
             <p style={{ fontSize: "0.78rem", color: "#aaa", margin: 0 }}>Dra i cirkelns kant för att ändra radien · Dra i mitten för att flytta centrum</p>
           </div>
-          <div ref={mapDivRef} style={{ width: "100%", height: "440px" }} />
+          {mapError ? (
+            <div style={{ height: "440px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", background: "#fff9f9" }}>
+              <p style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600, marginBottom: "0.5rem" }}>Kartan kunde inte laddas</p>
+              <p style={{ fontSize: "0.78rem", color: "#888", maxWidth: "320px" }}>{mapError}</p>
+            </div>
+          ) : (
+            <div ref={mapDivRef} style={{ width: "100%", height: "440px" }} />
+          )}
         </section>
       </div>
     </div>
