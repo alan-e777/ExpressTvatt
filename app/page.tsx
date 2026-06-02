@@ -540,8 +540,8 @@ export default function HomePage() {
                     borderBottom: i < allStrukenProducts.length - 1 ? '0.5px solid rgba(30,46,36,0.08)' : 'none',
                   }}>
                     <div className="icon-circle"><Icon size={16} stroke={1.5} /></div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div className="body">{p.name}</div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div className="body" style={{ overflowWrap: 'break-word', minWidth: 0 }}>{p.name}</div>
                       <button
                         title="Mer information tillkommer."
                         aria-label={`Mer information om ${p.name}`}
@@ -592,8 +592,8 @@ export default function HomePage() {
                     borderBottom: i < services.length - 1 ? '0.5px solid rgba(30,46,36,0.08)' : 'none',
                   }}>
                     <div className="icon-circle"><Icon size={16} stroke={1.5} /></div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div className="body">{svc.name}</div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div className="body" style={{ overflowWrap: 'break-word', minWidth: 0 }}>{svc.name}</div>
                       <button
                         title="Mer information tillkommer."
                         aria-label={`Mer information om ${svc.name}`}
