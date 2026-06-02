@@ -704,6 +704,10 @@ input, textarea, select { font-family: inherit; }
   gap: var(--sp-xxl);
 }
 
+.home-main {
+  min-width: 0;  /* prevent grid child from expanding beyond its track */
+}
+
 @media (min-width: 900px) {
   .home-grid {
     grid-template-columns: 1fr 320px;
