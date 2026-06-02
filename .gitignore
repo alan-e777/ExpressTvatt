@@ -5,6 +5,9 @@ node_modules/
 firebase-service-account.json
 firebase-service-account.json.bak
 
+# Claude local settings (machine-specific)
+.claude/settings.local.json
+
 # Claude scratch files
 firebaseConfig
 memory.md
