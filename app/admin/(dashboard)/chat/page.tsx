@@ -22,6 +22,7 @@ type Message = {
 
 export default function AdminChatPage() {
   const [ready, setReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -31,10 +32,19 @@ export default function AdminChatPage() {
   // Sign in admin with custom Firebase token so RTDB rules are satisfied
   useEffect(() => {
     fetch('/api/admin/firebase-token')
-      .then(r => r.json())
-      .then(({ token }) => signInWithCustomToken(auth, token))
+      .then(r => {
+        if (!r.ok) throw new Error(`Token request failed: ${r.status}`);
+        return r.json();
+      })
+      .then(({ token }) => {
+        if (!token) throw new Error('No token returned');
+        return signInWithCustomToken(auth, token);
+      })
       .then(() => setReady(true))
-      .catch(console.error);
+      .catch(err => {
+        console.error('Firebase auth error:', err);
+        setAuthError(String(err?.message ?? err));
+      });
   }, []);
 
   // Listen to all conversations
@@ -102,6 +112,25 @@ export default function AdminChatPage() {
   }
 
   const selected = conversations.find(c => c.uid === selectedUid);
+
+  if (authError) {
+    return (
+      <div style={{ padding: '2rem', color: '#dc2626', background: '#fff', borderRadius: '10px', border: '1px solid #eee' }}>
+        <strong>Firebase auth error:</strong> {authError}
+        <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+          Check that ADMIN_UID is set in .env.local and that the Firebase service account is valid.
+        </p>
+      </div>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div style={{ padding: '2rem', color: '#888', fontSize: '0.9rem' }}>
+        Ansluter till Firebase…
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: '1.5rem' }}>
