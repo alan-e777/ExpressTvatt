@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admin can do everything
+    match /{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == "kAT4ZuSCzGgTZ1RR85scNheVRrE3";
+    }
+
+    // Anyone can read services (public catalogue)
+    match /services/{serviceId} {
+      allow read: if true;
+    }
+
+    // Orders — all writes go through Admin SDK; customers can read their own
+    match /orders/{orderId} {
+      allow write: if false;
+      allow read: if request.auth != null
+                  && (request.auth.uid == "kAT4ZuSCzGgTZ1RR85scNheVRrE3"
+                      || resource.data.customerId == request.auth.uid);
+    }
+
+    // Customers can read and write their own profile (registration writes from client SDK)
+    match /customers/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

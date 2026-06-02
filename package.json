@@ -1,0 +1,26 @@
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@stripe/react-stripe-js": "^6.4.0",
+    "@stripe/stripe-js": "^9.7.0",
+    "@tabler/icons-react": "^3.44.0",
+    "expo": "^56.0.7",
+    "firebase": "^12.13.0",
+    "firebase-admin": "^13.10.0",
+    "next": "^16.2.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "stripe": "^22.1.1"
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.65.0",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

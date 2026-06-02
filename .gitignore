@@ -1,0 +1,13 @@
+.env.local
+.env*.local
+node_modules/
+.next/
+firebase-service-account.json
+firebase-service-account.json.bak
+
+# Claude scratch files
+firebaseConfig
+memory.md
+PROMPT.md
+promptHomeScreen.md
+prompts/
