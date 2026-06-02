@@ -42,10 +42,10 @@ export default function DashboardMapClient() {
     const id = setInterval(() => {
       if (document.hidden) return;
       fetchRun();
-    }, run ? 15_000 : 60_000);
+    }, 30_000);
 
     return () => clearInterval(id);
-  }, [fetchRun, run]);
+  }, [fetchRun]);
 
   const deliveredCount = run?.orders.filter(o => o.status === "delivered").length ?? 0;
   const total = run?.orders.length ?? 0;
