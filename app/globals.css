@@ -961,6 +961,29 @@ input, textarea, select { font-family: inherit; }
 .time-left  { color: var(--text-muted); }
 .time-right { color: rgba(200, 230, 201, 0.6); text-align: right; }
 
+.chat-gate {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-md) var(--sp-lg);
+  background: var(--linen);
+  border-top: 0.5px solid rgba(74, 124, 89, 0.12);
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.chat-gate-btn {
+  margin-left: auto;
+  background: var(--forest-dark);
+  color: #c8e6c9;
+  border-radius: var(--radius-md);
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .chat-input-row {
   display: flex;
   gap: var(--sp-sm);
