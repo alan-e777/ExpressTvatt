@@ -389,14 +389,21 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
             <p style={labelStyle}>Karta — tjänsteområde</p>
             <p style={{ fontSize: "0.78rem", color: "#aaa", margin: 0 }}>Dra i cirkelns kant för att ändra radien · Dra i mitten för att flytta centrum</p>
           </div>
-          {mapError ? (
-            <div style={{ height: "440px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", background: "#fff9f9" }}>
-              <p style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600, marginBottom: "0.5rem" }}>Kartan kunde inte laddas</p>
-              <p style={{ fontSize: "0.78rem", color: "#888", maxWidth: "320px" }}>{mapError}</p>
-            </div>
-          ) : (
+          {/* Map div stays mounted at all times — swapping it out causes the blink */}
+          <div style={{ position: "relative" }}>
             <div ref={mapDivRef} style={{ width: "100%", height: "440px" }} />
-          )}
+            {mapError && (
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                padding: "2rem", textAlign: "center",
+                background: "rgba(255,249,249,0.97)",
+              }}>
+                <p style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600, marginBottom: "0.5rem" }}>Kartan kunde inte laddas</p>
+                <p style={{ fontSize: "0.78rem", color: "#888", maxWidth: "320px" }}>{mapError}</p>
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>
