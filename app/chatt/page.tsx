@@ -38,7 +38,7 @@ export default function ChattPage() {
     );
     const unsub = onValue(msgQuery, snap => {
       const msgs: Message[] = [];
-      snap.forEach(child => msgs.push({ id: child.key!, ...child.val() }));
+      snap.forEach(child => { msgs.push({ id: child.key!, ...child.val() }); });
       setMessages(msgs);
     });
     return unsub;
