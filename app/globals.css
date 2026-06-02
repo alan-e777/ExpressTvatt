@@ -45,7 +45,11 @@
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────── */
-html, body { height: 100%; }
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'DM Sans', -apple-system, sans-serif;
