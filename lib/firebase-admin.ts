@@ -27,7 +27,7 @@ if (!admin.apps.length) {
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    projectId: serviceAccount.project_id,
+    projectId: (serviceAccount as Record<string, any>).project_id,
   });
 }
 
