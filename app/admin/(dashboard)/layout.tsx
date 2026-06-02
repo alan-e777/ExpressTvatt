@@ -22,6 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <NavLink href="/admin/orders">Orders</NavLink>
         <NavLink href="/admin/customers">Customers</NavLink>
         <NavLink href="/admin/calendar">Calendar</NavLink>
+        <NavLink href="/admin/chat">Chat</NavLink>
         <NavLink href="/admin/services">Services</NavLink>
         <NavLink href="/admin/driver">Driver</NavLink>
         <NavLink href="/admin/settings">Inställningar</NavLink>

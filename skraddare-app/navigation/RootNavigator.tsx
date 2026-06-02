@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { IconHome, IconUser, IconCalendar, IconPackage } from '@tabler/icons-react-native';
+import { IconHome, IconUser, IconCalendar, IconPackage, IconMessage } from '@tabler/icons-react-native';
 
 import HomeScreen from '../screens/HomeScreen';
 import StrukenTvattScreen from '../screens/StrukenTvattScreen';
@@ -12,6 +12,7 @@ import ProductsScreen from '../screens/ProductsScreen';
 import BookScreen from '../screens/BookScreen';
 import PaymentScreen from '../screens/PaymentScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ChatScreen from '../screens/ChatScreen';
 import { colors } from '../theme/colors';
 import { type Service, type CartItem } from '../types';
 
@@ -74,6 +75,7 @@ function ProductsStackNavigator() {
 type TabParamList = {
   Hem: undefined;
   Products: undefined;
+  Chatt: undefined;
   Ärenden: undefined;
   Profil: undefined;
 };
@@ -111,6 +113,15 @@ export default function RootNavigator() {
           options={{
             tabBarIcon: ({ color, size }) => (
               <IconCalendar size={size} color={color} strokeWidth={1.5} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Chatt"
+          component={ChatScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <IconMessage size={size} color={color} strokeWidth={1.5} />
             ),
           }}
         />
