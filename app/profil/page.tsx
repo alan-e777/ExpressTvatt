@@ -16,7 +16,7 @@ import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'collected' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
-type SavedAddress = { address: string; postalCode: string; careOf?: string };
+type SavedAddress = { address: string; postalCode: string; deliveryNote?: string };
 type Order = { id: string; serviceName: string; status: OrderStatus; createdAt: Date };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -93,7 +93,7 @@ export default function ProfilPage() {
   const [addresses,   setAddresses]   = useState<SavedAddress[]>([]);
   const [newAddr,          setNewAddr]          = useState('');
   const [newZip,           setNewZip]           = useState('');
-  const [newCareOf,        setNewCareOf]        = useState('');
+  const [newDeliveryNote,        setNewDeliveryNote]        = useState('');
   const [newAddrConfirmed, setNewAddrConfirmed] = useState(false);
   const [addrError,        setAddrError]        = useState('');
   const [savingAddr,  setSavingAddr]  = useState(false);
@@ -147,9 +147,9 @@ export default function ProfilPage() {
     setSavingAddr(true);
     try {
       await setDoc(doc(db, 'customers', user!.uid), {
-        addresses: arrayUnion({ address: newAddr.trim(), postalCode: newZip.trim(), careOf: newCareOf.trim() }),
+        addresses: arrayUnion({ address: newAddr.trim(), postalCode: newZip.trim(), deliveryNote: newDeliveryNote.trim() }),
       }, { merge: true });
-      setNewAddr(''); setNewZip(''); setNewCareOf(''); setNewAddrConfirmed(false); setShowAddForm(false);
+      setNewAddr(''); setNewZip(''); setNewDeliveryNote(''); setNewAddrConfirmed(false); setShowAddForm(false);
     } catch {
       setAddrError('Kunde inte spara. Försök igen.');
     } finally {
@@ -407,9 +407,9 @@ export default function ProfilPage() {
             <div key={i} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-md)', display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
               <div style={{ flex: 1 }}>
                 <div className="body-bold">{a.address}</div>
-                {(a.postalCode || a.careOf) && (
+                {(a.postalCode || a.deliveryNote) && (
                   <div className="small" style={{ marginTop: 2 }}>
-                    {[a.postalCode, a.careOf ? `c/o ${a.careOf}` : ''].filter(Boolean).join(' · ')}
+                    {[a.postalCode, a.deliveryNote || ''].filter(Boolean).join(' · ')}
                   </div>
                 )}
               </div>
@@ -436,8 +436,8 @@ export default function ProfilPage() {
                 />
               </div>
               <div className="input-group">
-                <label className="field-label">C/O (valfritt)</label>
-                <input className="input" placeholder="t.ex. Andersson" value={newCareOf} onChange={e => setNewCareOf(e.target.value)} />
+                <label className="field-label">Delivery notes</label>
+                <input className="input" placeholder="C/O Andersson" value={newDeliveryNote} onChange={e => setNewDeliveryNote(e.target.value)} />
               </div>
               {addrError && <p className="error-msg">{addrError}</p>}
               <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4, width: '100%', maxWidth: 'none' }}>
