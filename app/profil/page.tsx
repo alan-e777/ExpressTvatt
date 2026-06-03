@@ -431,7 +431,7 @@ export default function ProfilPage() {
                 />
               </div>
               {addrError && <p className="error-msg">{addrError}</p>}
-              <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4 }}>
+              <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4, width: '100%' }}>
                 {savingAddr ? 'Sparar…' : 'Spara adress'}
               </button>
             </form>
