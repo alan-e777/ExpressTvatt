@@ -13,6 +13,7 @@ import {
   IconUser, IconMail, IconLock, IconEye, IconEyeOff, IconPhone,
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'collected' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
 type SavedAddress = { address: string; postalCode: string };
@@ -90,9 +91,10 @@ export default function ProfilPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [addresses,   setAddresses]   = useState<SavedAddress[]>([]);
-  const [newAddr,     setNewAddr]     = useState('');
-  const [newZip,      setNewZip]      = useState('');
-  const [addrError,   setAddrError]   = useState('');
+  const [newAddr,          setNewAddr]          = useState('');
+  const [newZip,           setNewZip]           = useState('');
+  const [newAddrConfirmed, setNewAddrConfirmed] = useState(false);
+  const [addrError,        setAddrError]        = useState('');
   const [savingAddr,  setSavingAddr]  = useState(false);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -139,14 +141,14 @@ export default function ProfilPage() {
 
   async function handleAddAddress(e: React.FormEvent) {
     e.preventDefault();
-    if (!newAddr.trim()) { setAddrError('Ange en adress.'); return; }
+    if (!newAddrConfirmed || !newAddr.trim()) { setAddrError('Välj en adress från förslagslistan.'); return; }
     setAddrError('');
     setSavingAddr(true);
     try {
       await setDoc(doc(db, 'customers', user!.uid), {
         addresses: arrayUnion({ address: newAddr.trim(), postalCode: newZip.trim() }),
       }, { merge: true });
-      setNewAddr(''); setNewZip(''); setShowAddForm(false);
+      setNewAddr(''); setNewZip(''); setNewAddrConfirmed(false); setShowAddForm(false);
     } catch {
       setAddrError('Kunde inte spara. Försök igen.');
     } finally {
@@ -420,12 +422,13 @@ export default function ProfilPage() {
           {showAddForm && (
             <form onSubmit={handleAddAddress} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)', marginTop: addresses.length > 0 ? 'var(--sp-sm)' : 0 }}>
               <div className="input-group">
-                <label className="field-label">Gatuadress</label>
-                <input className="input" placeholder="t.ex. Storgatan 12" value={newAddr} onChange={e => setNewAddr(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label className="field-label">Postnummer</label>
-                <input className="input" placeholder="t.ex. 123 45" value={newZip} onChange={e => setNewZip(e.target.value)} />
+                <label className="field-label">Adress</label>
+                <AddressAutocomplete
+                  value={newAddr}
+                  onChange={v => { setNewAddr(v); setNewAddrConfirmed(false); }}
+                  onSelect={(addr, zip) => { setNewAddr(addr); setNewZip(zip); }}
+                  onConfirmChange={setNewAddrConfirmed}
+                />
               </div>
               {addrError && <p className="error-msg">{addrError}</p>}
               <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4 }}>
