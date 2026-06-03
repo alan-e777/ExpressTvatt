@@ -16,6 +16,7 @@ type RunOrder = {
 type RunData = {
   type: "dropoff" | "pickup";
   orders: RunOrder[];
+  expiresAt: string | null;
 };
 
 export default function DriverRunPage() {
@@ -27,6 +28,11 @@ export default function DriverRunPage() {
 
   const fetchRun = useCallback(async () => {
     const resp = await fetch(`/api/driver/${token}`);
+    if (resp.status === 410) {
+      setError("Den här körningslänken har gått ut.");
+      setLoading(false);
+      return;
+    }
     if (!resp.ok) {
       setError("Körningen hittades inte.");
       setLoading(false);
@@ -93,6 +99,11 @@ export default function DriverRunPage() {
         <p style={{ fontSize: "0.8rem", color: allDone ? "#4ade80" : "#aaa" }}>
           {allDone ? "✓ Alla levererade!" : `${deliveredCount} av ${total} klara`}
         </p>
+        {run.expiresAt && (
+          <p style={{ fontSize: "0.7rem", color: "#555", marginTop: "0.5rem" }}>
+            Länken går ut {new Date(run.expiresAt).toLocaleString("sv-SE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+          </p>
+        )}
       </div>
 
       {/* Order list */}

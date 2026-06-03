@@ -11,6 +11,11 @@ export async function GET(
   if (!runSnap.exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const run = runSnap.data()!;
+  const expiresAt: Date | null = run.expiresAt?.toDate?.() ?? null;
+  if (expiresAt && expiresAt < new Date()) {
+    return NextResponse.json({ error: "Körningslänken har gått ut." }, { status: 410 });
+  }
+
   const orderIds: string[] = run.orderIds ?? [];
 
   const orders = await Promise.all(
@@ -33,6 +38,7 @@ export async function GET(
   return NextResponse.json({
     type: run.type as string,
     orders: orders.filter(Boolean),
+    expiresAt: expiresAt ? expiresAt.toISOString() : null,
   });
 }
 
@@ -46,6 +52,11 @@ export async function PATCH(
   if (!runSnap.exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const run = runSnap.data()!;
+  const expiresAt: Date | null = run.expiresAt?.toDate?.() ?? null;
+  if (expiresAt && expiresAt < new Date()) {
+    return NextResponse.json({ error: "Körningslänken har gått ut." }, { status: 410 });
+  }
+
   const body = await req.json();
   const { orderId, delivered }: { orderId: string; delivered: boolean } = body;
 

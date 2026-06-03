@@ -161,7 +161,7 @@ will show zero completed orders even though customers were charged.
 
 ---
 
-### 4. Driver run tokens never expire
+### ✅ 4. Driver run tokens never expire — FIXED
 
 **File:** `app/api/driver/[token]/route.ts`
 

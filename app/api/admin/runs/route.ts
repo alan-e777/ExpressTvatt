@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     orderIds,
     type,
     createdAt: new Date(),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 
   return NextResponse.json({ token });
