@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
   const {
     items,
     customerId,
+    name,
+    careOf,
     address,
     postalCode,
     date,
@@ -23,6 +25,8 @@ export async function POST(request: NextRequest) {
   }: {
     items: CartItem[];
     customerId?: string;
+    name: string;
+    careOf?: string;
     address: string;
     postalCode: string;
     date: string;
@@ -107,6 +111,8 @@ export async function POST(request: NextRequest) {
     amount:          totalOre,
     currency:        'sek',
     status:          'pending_payment',
+    customerName:    name ?? '',
+    careOf:          careOf ?? '',
     address,
     postalCode,
     dropoffDate:     date,

@@ -6,7 +6,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IconShieldCheck, IconLock, IconCalendar, IconMapPin, IconClock } from '@tabler/icons-react';
+import { IconShieldCheck, IconLock, IconCalendar, IconMapPin, IconClock, IconUser } from '@tabler/icons-react';
 import { auth } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 
@@ -85,6 +85,8 @@ function CheckoutForm() {
   const [loadError,    setLoadError]    = useState<string | null>(null);
   const [submitting,   setSubmitting]   = useState(false);
 
+  const [name,             setName]             = useState('');
+  const [careOf,           setCareOf]           = useState('');
   const [address,          setAddress]          = useState('');
   const [postalCode,       setPostalCode]       = useState('');
   const [addressConfirmed, setAddressConfirmed] = useState(false);
@@ -109,6 +111,10 @@ function CheckoutForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!name.trim()) {
+      setFormError('Namn krävs.');
+      return;
+    }
     if (!addressConfirmed || !address.trim()) {
       setFormError('Välj en adress från förslagslistan.');
       return;
@@ -123,7 +129,7 @@ function CheckoutForm() {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, address, postalCode, date, time, notes, items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), address, postalCode, date, time, notes, items }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -180,6 +186,34 @@ function CheckoutForm() {
   return (
     <form onSubmit={handleSubmit} className="form-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
       <Summary />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
+        <div className="input-group">
+          <label className="field-label">
+            <IconUser size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+            Namn
+          </label>
+          <input
+            className="input"
+            type="text"
+            placeholder="För- och efternamn"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoComplete="name"
+          />
+        </div>
+        <div className="input-group">
+          <label className="field-label">C/O (valfritt)</label>
+          <input
+            className="input"
+            type="text"
+            placeholder="c/o Andersson"
+            value={careOf}
+            onChange={e => setCareOf(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
+      </div>
 
       <div className="input-group">
         <label className="field-label">
