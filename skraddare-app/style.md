@@ -1,4 +1,4 @@
-# Tyg & Mark — Design System
+# Tvättio — Design System
 
 > Läs denna fil innan du skapar eller redigerar någon skärm eller komponent.
 > Den är den enda källan för färger, typografi, spacing och komponentmönster.
@@ -83,7 +83,7 @@ export const radius  = { sm:8, md:10, lg:14, xl:20, pill:999 }      as const;
 ```tsx
 // forestDark bakgrund. Alltid SafeAreaView-medveten.
 // Titel: PlayfairDisplay_500, 13px, color '#c8e6c9'
-// Vänster: ti-arrow-left (tillbaka) ELLER logotyptext "Tyg & Mark"
+// Vänster: ti-arrow-left (tillbaka) ELLER logotyptext "Tvättio"
 // Höger: kontextuella ikoner (ti-bell, ti-x, ti-settings) i rgba(200,230,201,0.6)
 <View style={{ backgroundColor: colors.forestDark, paddingHorizontal: 16, paddingVertical: 12,
                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

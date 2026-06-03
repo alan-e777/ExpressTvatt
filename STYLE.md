@@ -1,4 +1,4 @@
-# Tyg & Mark — Design System
+# Tvättio — Design System
 
 > Referensdokument för alla UI-komponenter, färger, typografi och mönster i appen.
 > Claude Code ska alltid läsa denna fil innan ny skärm eller komponent skapas.
@@ -116,11 +116,11 @@ export const spacing = {
                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
   <Text style={{ fontFamily: 'DMSans_300', fontSize: 11, color: colors.moss,
                  opacity: 0.6, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-    Tyg &{'\n'}Mark
+    Tvättio
   </Text>
   <Text style={{ fontFamily: 'PlayfairDisplay_500', fontSize: 17, color: colors.moss,
                  fontStyle: 'italic' }}>
-    Amos Skrädderi
+    Tvättio
   </Text>
   <TouchableOpacity style={{
     width: 36, height: 36, borderRadius: radius.circle,

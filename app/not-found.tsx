@@ -25,7 +25,7 @@ export default function NotFound() {
           letterSpacing: '2px',
           textTransform: 'uppercase',
         }}>
-          Amos Skrädderi
+          Tvättio
         </p>
 
         <p style={{

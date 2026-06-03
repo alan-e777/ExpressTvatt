@@ -100,7 +100,7 @@ export default function ProductsScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Amos Skrädderi" />
+      <TopBar title="Tvättio" />
 
       <ScrollView
         style={{ flex: 1 }}

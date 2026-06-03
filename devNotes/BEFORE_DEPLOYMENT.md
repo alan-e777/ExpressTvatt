@@ -138,7 +138,7 @@ The local Stripe CLI listener (used in development) forwards all events automati
 A production webhook endpoint does NOT — you must register it manually.
 
 **Steps:**
-1. Deploy to Vercel (or your host) and confirm your URL, e.g. `https://amoskradderi.se`
+1. Deploy to Vercel (or your host) and confirm your URL, e.g. `https://tvättio.se`
 2. Go to [dashboard.stripe.com](https://dashboard.stripe.com) → Developers → Webhooks
 3. Click **"+ Add endpoint"**
 4. Set endpoint URL to: `https://YOUR-DOMAIN/api/webhook`

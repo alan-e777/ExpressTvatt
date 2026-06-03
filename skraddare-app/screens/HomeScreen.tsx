@@ -308,7 +308,7 @@ export default function HomeScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <TopBar title="Amos Skrädderi" />
+      <TopBar title="Tvättio" />
 
       <ScrollView
         style={{ flex: 1 }}

@@ -20,7 +20,7 @@ const BACK_ROUTES: Record<string, string> = {
 export default function TopBar() {
   const pathname = usePathname();
 
-  const title    = TITLED_ROUTES[pathname] ?? 'Amos Skrädderi';
+  const title    = TITLED_ROUTES[pathname] ?? 'Tvättio';
   const backHref = BACK_ROUTES[pathname];
 
   return (
@@ -31,7 +31,7 @@ export default function TopBar() {
             <IconArrowLeft size={20} stroke={1.5} />
           </Link>
         ) : (
-          <span className="topbar-logo">{'Tyg &\nMark'}</span>
+          <span className="topbar-logo">Tvättio</span>
         )}
       </div>
 

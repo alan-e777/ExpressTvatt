@@ -11,7 +11,7 @@ const NAV_LINKS = [
 ];
 
 const TITLES: Record<string, string> = {
-  '/':                    'Amos Skrädderi',
+  '/':                    'Tvättio',
   '/tjanster':            'Tjänster',
   '/boka':                'Boka tjänst',
   '/checkout':            'Betala',
@@ -30,7 +30,7 @@ const BACK_TO: Record<string, string> = {
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const title   = TITLES[pathname] ?? 'Amos Skrädderi';
+  const title   = TITLES[pathname] ?? 'Tvättio';
   const backHref = BACK_TO[pathname];
 
   return (

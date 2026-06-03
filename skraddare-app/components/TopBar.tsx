@@ -32,7 +32,7 @@ export default function TopBar({ title, onBack, right }: Props) {
             <IconArrowLeft size={20} color={colors.moss} strokeWidth={1.5} />
           </TouchableOpacity>
         ) : (
-          <Text style={styles.logo}>{'Tyg &\nMark'}</Text>
+          <Text style={styles.logo}>Tvättio</Text>
         )}
       </View>
 

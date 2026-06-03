@@ -21,7 +21,7 @@ export async function registerPushToken(uid: string): Promise<void> {
   // Create a default Android channel (required on Android 8+)
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'Amos Skrädderi',
+      name: 'Tvättio',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#2d5a3d',
