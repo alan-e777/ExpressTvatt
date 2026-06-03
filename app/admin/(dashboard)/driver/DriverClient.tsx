@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase-client";
 
 export type DriverOrder = {
   id: string;
@@ -50,6 +52,31 @@ const emptyEndpoints = (): Endpoints => ({
 });
 
 export default function DriverClient({ initialOrders }: { initialOrders: DriverOrder[] }) {
+  const [orders, setOrders] = useState<DriverOrder[]>(initialOrders);
+
+  // Real-time listener — only fetch statuses relevant to the driver view
+  useEffect(() => {
+    const q = query(
+      collection(db, "orders"),
+      where("status", "in", ["ready_for_pickup", "paid"])
+    );
+    return onSnapshot(q, snap => {
+      setOrders(snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id:          data.id ?? d.id,
+          serviceName: data.serviceName ?? "—",
+          address:     data.address ?? "",
+          postalCode:  data.postalCode ?? "",
+          status:      data.status ?? "paid",
+          dropoffDate: data.dropoffDate ?? "",
+          dropoffTime: data.dropoffTime ?? "",
+          notes:       data.notes ?? "",
+        };
+      }));
+    });
+  }, []);
+
   const [tab, setTab] = useState<Tab>("dropoff");
 
   // Per-tab queues
@@ -96,10 +123,10 @@ export default function DriverClient({ initialOrders }: { initialOrders: DriverO
   const activeResult  = tab === "dropoff" ? dropoffResult  : pickupResult;
   const activeMapsUrl = tab === "dropoff" ? mapsUrlDropoff : mapsUrlPickup;
 
-  const readyOrders = initialOrders.filter(
+  const readyOrders = orders.filter(
     o => o.status === "ready_for_pickup" && !otwList.find(r => r.id === o.id)
   );
-  const paidOrders = initialOrders.filter(
+  const paidOrders = orders.filter(
     o => o.status === "paid" && !pickupList.find(r => r.id === o.id)
   );
   const available = tab === "dropoff" ? readyOrders : paidOrders;
