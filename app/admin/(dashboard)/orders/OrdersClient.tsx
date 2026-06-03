@@ -3,6 +3,7 @@
 import { useState, useRef, Fragment, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
+import * as XLSX from "xlsx";
 
 export type BasketItem = { id: string; name: string; price: number; qty: number };
 
@@ -60,6 +61,13 @@ const _now           = new Date();
 const DEFAULT_DATE_FROM = toDateInput(new Date(_now.getFullYear(), _now.getMonth(), 1));
 const DEFAULT_DATE_TO   = toDateInput(_now);
 
+const SWEDISH_MONTHS = ["januari","februari","mars","april","maj","juni","juli","augusti","september","oktober","november","december"];
+
+function formatItemsSummary(items: BasketItem[], serviceName: string): string {
+  if (!items || items.length === 0) return serviceName;
+  return items.map(item => `${item.name} ×${item.qty}`).join(", ");
+}
+
 export default function OrdersClient({ initialOrders }: { initialOrders: Order[] }) {
   const [orders, setOrders]           = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery]         = useState("");
@@ -68,6 +76,52 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
   const [dateFrom, setDateFrom]               = useState(DEFAULT_DATE_FROM);
   const [dateTo,   setDateTo]                 = useState(DEFAULT_DATE_TO);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [exportMonth, setExportMonth] = useState(_now.getMonth());
+  const [exportYear,  setExportYear]  = useState(_now.getFullYear());
+
+  function exportXLSX() {
+    const monthStart = new Date(exportYear, exportMonth, 1, 0, 0, 0, 0).getTime();
+    const monthEnd   = new Date(exportYear, exportMonth + 1, 0, 23, 59, 59, 999).getTime();
+
+    const monthOrders = orders.filter(o => {
+      if (!o.createdAt) return false;
+      const t = new Date(o.createdAt).getTime();
+      return t >= monthStart && t <= monthEnd;
+    });
+
+    const rows = monthOrders.map(o => ({
+      "Datum":         o.createdAt ? o.createdAt.slice(0, 10) : "",
+      "Betalnings-ID": o.paymentIntentId ?? "",
+      "Tjänst":        o.serviceName ?? "",
+      "Artiklar":      formatItemsSummary(o.items, o.serviceName),
+      "Adress":        o.address ?? "",
+      "Postnummer":    o.postalCode ?? "",
+      "Belopp (kr)":   parseFloat(((o.amount ?? 0) / 100).toFixed(2)),
+      "Status":        o.status ?? "",
+      "Anteckningar":  o.notes ?? "",
+    }));
+
+    const total = rows.reduce((s, r) => s + r["Belopp (kr)"], 0);
+    rows.push({
+      "Datum":         "",
+      "Betalnings-ID": "",
+      "Tjänst":        "TOTALT",
+      "Artiklar":      "",
+      "Adress":        "",
+      "Postnummer":    "",
+      "Belopp (kr)":   parseFloat(total.toFixed(2)),
+      "Status":        "",
+      "Anteckningar":  "",
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Orders");
+
+    const mm = String(exportMonth + 1).padStart(2, "0");
+    XLSX.writeFile(wb, `tvattio-orders-${exportYear}-${mm}.xlsx`);
+  }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -251,20 +305,57 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
               {visible.length} of {orders.length} shown
             </p>
           </div>
-          {orders.some(o => o.status === "completed") && (
-            <button
-              onClick={() => setDeleteModalOpen(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: "0.4rem",
-                padding: "0.45rem 0.9rem",
-                background: "#fff", border: "1px solid #fca5a5",
-                borderRadius: "7px", cursor: "pointer",
-                fontSize: "0.8rem", fontWeight: 600, color: "#dc2626",
-              }}
-            >
-              🗑 Delete Completed ({orders.filter(o => o.status === "completed").length})
-            </button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+            {/* XLSX export */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+              <select
+                value={exportMonth}
+                onChange={e => setExportMonth(Number(e.target.value))}
+                style={{ padding: "0.35rem 0.5rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.78rem", color: "#333", background: "#fff", cursor: "pointer" }}
+              >
+                {SWEDISH_MONTHS.map((m, i) => (
+                  <option key={i} value={i}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                ))}
+              </select>
+              <select
+                value={exportYear}
+                onChange={e => setExportYear(Number(e.target.value))}
+                style={{ padding: "0.35rem 0.5rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.78rem", color: "#333", background: "#fff", cursor: "pointer" }}
+              >
+                {[_now.getFullYear() - 1, _now.getFullYear()].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <button
+                onClick={exportXLSX}
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.4rem",
+                  padding: "0.45rem 0.9rem",
+                  background: "#fff", border: "1px solid #d1fae5",
+                  borderRadius: "7px", cursor: "pointer",
+                  fontSize: "0.8rem", fontWeight: 600, color: "#065f46",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ↓ Exportera {SWEDISH_MONTHS[exportMonth]} {exportYear}
+              </button>
+            </div>
+
+            {orders.some(o => o.status === "completed") && (
+              <button
+                onClick={() => setDeleteModalOpen(true)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "0.4rem",
+                  padding: "0.45rem 0.9rem",
+                  background: "#fff", border: "1px solid #fca5a5",
+                  borderRadius: "7px", cursor: "pointer",
+                  fontSize: "0.8rem", fontWeight: 600, color: "#dc2626",
+                }}
+              >
+                🗑 Delete Completed ({orders.filter(o => o.status === "completed").length})
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Delete Completed modal */}
