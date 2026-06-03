@@ -89,9 +89,9 @@ function CheckoutForm() {
   const [submitting,   setSubmitting]   = useState(false);
 
   const [name,             setName]             = useState('');
-  const [careOf,           setCareOf]           = useState('');
   const [email,            setEmail]            = useState('');
   const [phone,            setPhone]            = useState('');
+  const [careOf,           setCareOf]           = useState('');
   const [address,          setAddress]          = useState('');
   const [postalCode,       setPostalCode]       = useState('');
   const [addressConfirmed, setAddressConfirmed] = useState(false);
@@ -101,6 +101,7 @@ function CheckoutForm() {
   const [formError,        setFormError]        = useState('');
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
+  const [profileCard,      setProfileCard]      = useState<{ name: string; email: string; phone: string } | null>(null);
 
   useEffect(() => {
     try {
@@ -115,9 +116,20 @@ function CheckoutForm() {
   }, []);
 
   useEffect(() => {
-    if (!userId) { setSavedAddresses([]); return; }
+    if (!userId) { setSavedAddresses([]); setProfileCard(null); return; }
+    const u = auth.currentUser;
     getDoc(doc(db, 'customers', userId)).then(snap => {
-      if (snap.exists()) setSavedAddresses((snap.data().addresses ?? []) as SavedAddress[]);
+      const data = snap.exists() ? snap.data() : {};
+      setSavedAddresses((data.addresses ?? []) as SavedAddress[]);
+      const n = u?.displayName || data.name || '';
+      const e = u?.email       || data.email || '';
+      const p = data.phone     || '';
+      if (n || e || p) {
+        setProfileCard({ name: n, email: e, phone: p });
+        if (n) setName(n);
+        if (e) setEmail(e);
+        if (p) setPhone(p);
+      }
     }).catch(() => {});
   }, [userId]);
 
@@ -214,64 +226,89 @@ function CheckoutForm() {
     <form onSubmit={handleSubmit} className="form-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
       <Summary />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
-        <div className="input-group">
-          <label className="field-label">
-            <IconUser size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            Namn
-          </label>
-          <input
-            className="input"
-            type="text"
-            placeholder="För- och efternamn"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            autoComplete="name"
-          />
+      {profileCard ? (
+        <div style={{
+          background: 'var(--linen)',
+          borderRadius: 'var(--radius-md)',
+          border: '0.5px solid rgba(74,124,89,0.12)',
+          padding: 'var(--sp-md) var(--sp-lg)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--sp-md)',
+          marginBottom: 'var(--sp-md)',
+        }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            borderRadius: '50%',
+            background: 'var(--forest-dark)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, color: 'var(--moss)', fontWeight: 500 }}>
+              {profileCard.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'}
+            </span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span className="section-label" style={{ marginBottom: 4 }}>Dina uppgifter</span>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 500, color: 'var(--text-dark)', margin: 0 }}>
+              {profileCard.name}
+            </p>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
+              {profileCard.email}{profileCard.phone ? ` · ${profileCard.phone}` : ''}
+            </p>
+          </div>
         </div>
-        <div className="input-group">
-          <label className="field-label">C/O (valfritt)</label>
-          <input
-            className="input"
-            type="text"
-            placeholder="c/o Andersson"
-            value={careOf}
-            onChange={e => setCareOf(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
-        <div className="input-group">
-          <label className="field-label">
-            <IconMail size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            E-post
-          </label>
-          <input
-            className="input"
-            type="email"
-            placeholder="din@mail.se"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-        </div>
-        <div className="input-group">
-          <label className="field-label">
-            <IconPhone size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            Telefon
-          </label>
-          <input
-            className="input"
-            type="tel"
-            placeholder="070 000 00 00"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            autoComplete="tel"
-          />
-        </div>
-      </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
+            <div className="input-group">
+              <label className="field-label">
+                <IconUser size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+                Namn
+              </label>
+              <input
+                className="input"
+                type="text"
+                placeholder="För- och efternamn"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                autoComplete="name"
+              />
+            </div>
+            <div className="input-group">
+              <label className="field-label">
+                <IconMail size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+                E-post
+              </label>
+              <input
+                className="input"
+                type="email"
+                placeholder="din@mail.se"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="field-label">
+              <IconPhone size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+              Telefon
+            </label>
+            <input
+              className="input"
+              type="tel"
+              placeholder="070 000 00 00"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              autoComplete="tel"
+            />
+          </div>
+        </>
+      )}
 
       <div className="input-group">
         <label className="field-label">
@@ -305,7 +342,7 @@ function CheckoutForm() {
         {savedPick ? (
           <div className="input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 15, fontFamily: 'DM Sans, sans-serif', color: 'var(--text-dark)' }}>
-              {savedPick.address}{savedPick.postalCode ? `, ${savedPick.postalCode}` : ''}{savedPick.deliveryNote ? ` · ${savedPick.deliveryNote}` : ''}
+              {savedPick.address}{savedPick.postalCode ? `, ${savedPick.postalCode}` : ''}
             </span>
             <button
               type="button"
@@ -323,6 +360,17 @@ function CheckoutForm() {
             onConfirmChange={setAddressConfirmed}
           />
         )}
+        <div className="input-group" style={{ marginTop: 'var(--sp-sm)', marginBottom: 0 }}>
+          <label className="field-label">C/O (valfritt)</label>
+          <input
+            className="input"
+            type="text"
+            placeholder="c/o Andersson"
+            value={careOf}
+            onChange={e => setCareOf(e.target.value)}
+            autoComplete="off"
+          />
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
