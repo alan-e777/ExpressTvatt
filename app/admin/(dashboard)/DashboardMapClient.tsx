@@ -22,6 +22,7 @@ export default function DashboardMapClient() {
   const [run, setRun] = useState<ActiveRun | null>(null);
   const [imgKey, setImgKey] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const fetchRun = useCallback(async () => {
     try {
@@ -70,59 +71,81 @@ export default function DashboardMapClient() {
             <p style={{ fontSize: "0.75rem", color: "#ccc" }}>Ingen aktiv körning</p>
           )}
         </div>
-        {run && (
-          <a
-            href={`/driver/${run.token}`}
-            target="_blank"
-            rel="noopener noreferrer"
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          {run && (
+            <a
+              href={`/driver/${run.token}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: "0.72rem",
+                color: "#4b8c5c",
+                textDecoration: "none",
+                border: "1px solid #cde3d3",
+                borderRadius: "6px",
+                padding: "0.28rem 0.65rem",
+                fontWeight: 500,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Öppna körning →
+            </a>
+          )}
+          <button
+            onClick={() => setExpanded(e => !e)}
             style={{
               fontSize: "0.72rem",
-              color: "#4b8c5c",
-              textDecoration: "none",
-              border: "1px solid #cde3d3",
+              color: "#888",
+              background: "none",
+              border: "1px solid #e5e5e5",
               borderRadius: "6px",
               padding: "0.28rem 0.65rem",
               fontWeight: 500,
+              cursor: "pointer",
               whiteSpace: "nowrap",
             }}
           >
-            Öppna körning →
-          </a>
-        )}
+            {expanded ? "Dölj karta" : "Visa karta"}
+          </button>
+        </div>
       </div>
 
       {/* Map */}
-      <div style={{
-        border: "1px solid #eee",
-        borderRadius: "10px",
-        overflow: "hidden",
-        background: "#f5f5f4",
-        minHeight: "120px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        {!run ? (
-          <p style={{ color: "#ccc", fontSize: "0.82rem" }}>Generera en körningslänk i Driver-sidan för att se progress här</p>
-        ) : imgError ? (
-          <p style={{ color: "#ccc", fontSize: "0.82rem" }}>Kartan kunde inte laddas</p>
-        ) : (
-          <img
-            key={imgKey}
-            src={`/api/admin/maps/run?t=${imgKey}`}
-            alt="Körningskarta"
-            onError={() => setImgError(true)}
-            style={{ width: "100%", height: "auto", display: "block" }}
-          />
-        )}
-      </div>
+      {expanded && (
+        <>
+          <div style={{
+            border: "1px solid #eee",
+            borderRadius: "10px",
+            overflow: "hidden",
+            background: "#f5f5f4",
+            minHeight: "120px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            {!run ? (
+              <p style={{ color: "#ccc", fontSize: "0.82rem" }}>Generera en körningslänk i Driver-sidan för att se progress här</p>
+            ) : imgError ? (
+              <p style={{ color: "#ccc", fontSize: "0.82rem" }}>Kartan kunde inte laddas</p>
+            ) : (
+              <img
+                key={imgKey}
+                src={`/api/admin/maps/run?t=${imgKey}`}
+                alt="Körningskarta"
+                onError={() => setImgError(true)}
+                style={{ width: "100%", height: "auto", display: "block" }}
+              />
+            )}
+          </div>
 
-      {/* Legend */}
-      {run && (
-        <div style={{ display: "flex", gap: "1.25rem", marginTop: "0.6rem" }}>
-          <LegendDot color="#16a34a" label="Levererad" />
-          <LegendDot color="#1a1a1a" label="Väntar" />
-        </div>
+          {/* Legend */}
+          {run && (
+            <div style={{ display: "flex", gap: "1.25rem", marginTop: "0.6rem" }}>
+              <LegendDot color="#16a34a" label="Levererad" />
+              <LegendDot color="#1a1a1a" label="Väntar" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

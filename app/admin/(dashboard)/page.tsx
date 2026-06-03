@@ -1,5 +1,6 @@
 import { db } from "@/lib/firebase-admin";
 import DashboardMapClient from "./DashboardMapClient";
+import DashboardOrdersClient from "./DashboardOrdersClient";
 
 export default async function AdminDashboard() {
   const [ordersSnap, servicesSnap] = await Promise.all([
@@ -23,6 +24,7 @@ export default async function AdminDashboard() {
         <StatCard label="Services" value={String(servicesSnap.size)} />
       </div>
 
+      <DashboardOrdersClient />
       <DashboardMapClient />
     </div>
   );
