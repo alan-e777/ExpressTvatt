@@ -26,8 +26,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <ChatNavLink />
         <NavLink href="/admin/services">Services</NavLink>
         <NavLink href="/admin/driver">Driver</NavLink>
-        <NavLink href="/admin/settings">Inställningar</NavLink>
-        <div style={{ marginTop: "auto" }}>
+        <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <NavLink href="/admin/settings">Inställningar</NavLink>
           <LogoutButton />
         </div>
       </aside>

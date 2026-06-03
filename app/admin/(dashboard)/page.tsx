@@ -10,7 +10,7 @@ export default async function AdminDashboard() {
 
   const orders = ordersSnap.docs.map(d => d.data());
   const inProgressCount = orders.filter(o => o.status === "in_progress").length;
-  const totalRevenue = orders.filter(o => o.status === "paid" || o.status === "completed").reduce((sum, o) => sum + (o.amount ?? 0), 0);
+  const totalRevenue = orders.filter(o => o.status === "completed" || o.status === "delivered").reduce((sum, o) => sum + (o.amount ?? 0), 0);
 
   return (
     <div>
