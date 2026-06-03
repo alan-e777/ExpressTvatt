@@ -16,7 +16,7 @@ import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'collected' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
-type SavedAddress = { address: string; postalCode: string };
+type SavedAddress = { address: string; postalCode: string; careOf?: string };
 type Order = { id: string; serviceName: string; status: OrderStatus; createdAt: Date };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -93,6 +93,7 @@ export default function ProfilPage() {
   const [addresses,   setAddresses]   = useState<SavedAddress[]>([]);
   const [newAddr,          setNewAddr]          = useState('');
   const [newZip,           setNewZip]           = useState('');
+  const [newCareOf,        setNewCareOf]        = useState('');
   const [newAddrConfirmed, setNewAddrConfirmed] = useState(false);
   const [addrError,        setAddrError]        = useState('');
   const [savingAddr,  setSavingAddr]  = useState(false);
@@ -146,9 +147,9 @@ export default function ProfilPage() {
     setSavingAddr(true);
     try {
       await setDoc(doc(db, 'customers', user!.uid), {
-        addresses: arrayUnion({ address: newAddr.trim(), postalCode: newZip.trim() }),
+        addresses: arrayUnion({ address: newAddr.trim(), postalCode: newZip.trim(), careOf: newCareOf.trim() }),
       }, { merge: true });
-      setNewAddr(''); setNewZip(''); setNewAddrConfirmed(false); setShowAddForm(false);
+      setNewAddr(''); setNewZip(''); setNewCareOf(''); setNewAddrConfirmed(false); setShowAddForm(false);
     } catch {
       setAddrError('Kunde inte spara. Försök igen.');
     } finally {
@@ -406,7 +407,11 @@ export default function ProfilPage() {
             <div key={i} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-md)', display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
               <div style={{ flex: 1 }}>
                 <div className="body-bold">{a.address}</div>
-                {a.postalCode && <div className="small" style={{ marginTop: 2 }}>{a.postalCode}</div>}
+                {(a.postalCode || a.careOf) && (
+                  <div className="small" style={{ marginTop: 2 }}>
+                    {[a.postalCode, a.careOf ? `c/o ${a.careOf}` : ''].filter(Boolean).join(' · ')}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -429,6 +434,10 @@ export default function ProfilPage() {
                   onSelect={(addr, zip) => { setNewAddr(addr); setNewZip(zip); }}
                   onConfirmChange={setNewAddrConfirmed}
                 />
+              </div>
+              <div className="input-group">
+                <label className="field-label">C/O (valfritt)</label>
+                <input className="input" placeholder="t.ex. Andersson" value={newCareOf} onChange={e => setNewCareOf(e.target.value)} />
               </div>
               {addrError && <p className="error-msg">{addrError}</p>}
               <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4, width: '100%', maxWidth: 'none' }}>

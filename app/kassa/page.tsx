@@ -15,7 +15,7 @@ import DatePicker from '@/components/DatePicker';
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type CartItem = { id: string; name: string; price: number; qty: number; type: string };
-type SavedAddress = { address: string; postalCode: string };
+type SavedAddress = { address: string; postalCode: string; careOf?: string };
 
 function formatPrice(kr: number) { return `${kr} kr`; }
 
@@ -151,7 +151,7 @@ function CheckoutForm() {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes, items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes: [notes.trim(), savedPick?.careOf ? `Adress C/O: ${savedPick.careOf}` : ''].filter(Boolean).join('\n'), items }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -159,7 +159,7 @@ function CheckoutForm() {
       setStep('payment');
       if (userId) {
         setDoc(doc(db, 'customers', userId), {
-          addresses: arrayUnion({ address, postalCode }),
+          addresses: arrayUnion({ address, postalCode, careOf: savedPick?.careOf ?? '' }),
         }, { merge: true }).catch(() => {});
       }
     } catch (err: unknown) {
@@ -297,7 +297,7 @@ function CheckoutForm() {
                   cursor: 'pointer',
                 }}
               >
-                {sa.address}
+                {sa.address}{sa.careOf ? ` · c/o ${sa.careOf}` : ''}
               </button>
             ))}
           </div>
@@ -305,7 +305,7 @@ function CheckoutForm() {
         {savedPick ? (
           <div className="input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 15, fontFamily: 'DM Sans, sans-serif', color: 'var(--text-dark)' }}>
-              {savedPick.address}{savedPick.postalCode ? `, ${savedPick.postalCode}` : ''}
+              {savedPick.address}{savedPick.postalCode ? `, ${savedPick.postalCode}` : ''}{savedPick.careOf ? ` · c/o ${savedPick.careOf}` : ''}
             </span>
             <button
               type="button"
