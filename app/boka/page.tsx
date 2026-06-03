@@ -3,9 +3,10 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IconLeaf, IconCalendar, IconMapPin, IconClock, IconAlignLeft } from '@tabler/icons-react';
+import { IconLeaf, IconMapPin, IconClock, IconAlignLeft } from '@tabler/icons-react';
 import { auth } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import DatePicker from '@/components/DatePicker';
 
 type CustomField = {
   name: string; label: string; type: string; placeholder?: string;
@@ -185,12 +186,8 @@ function BookForm() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
         <div className="input-group">
-          <label className="field-label">
-            <IconCalendar size={12} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            Datum
-          </label>
-          <input className="input" type="date" value={date}
-            onChange={e => setDate(e.target.value)} />
+          <label className="field-label">Datum</label>
+          <DatePicker value={date} onChange={setDate} placeholder="Välj datum" />
         </div>
         <div className="input-group">
           <label className="field-label">

@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     customerId,
     name,
     careOf,
+    email,
+    phone,
     address,
     postalCode,
     date,
@@ -27,6 +29,8 @@ export async function POST(request: NextRequest) {
     customerId?: string;
     name: string;
     careOf?: string;
+    email?: string;
+    phone?: string;
     address: string;
     postalCode: string;
     date: string;
@@ -113,6 +117,8 @@ export async function POST(request: NextRequest) {
     status:          'pending_payment',
     customerName:    name ?? '',
     careOf:          careOf ?? '',
+    customerEmail:   email ?? '',
+    customerPhone:   phone ?? '',
     address,
     postalCode,
     dropoffDate:     date,

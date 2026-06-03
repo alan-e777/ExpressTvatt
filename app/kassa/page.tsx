@@ -6,9 +6,10 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IconShieldCheck, IconLock, IconCalendar, IconMapPin, IconClock, IconUser } from '@tabler/icons-react';
+import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone } from '@tabler/icons-react';
 import { auth } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import DatePicker from '@/components/DatePicker';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -87,6 +88,8 @@ function CheckoutForm() {
 
   const [name,             setName]             = useState('');
   const [careOf,           setCareOf]           = useState('');
+  const [email,            setEmail]            = useState('');
+  const [phone,            setPhone]            = useState('');
   const [address,          setAddress]          = useState('');
   const [postalCode,       setPostalCode]       = useState('');
   const [addressConfirmed, setAddressConfirmed] = useState(false);
@@ -115,6 +118,14 @@ function CheckoutForm() {
       setFormError('Namn krävs.');
       return;
     }
+    if (!email.trim() || !email.includes('@')) {
+      setFormError('Ange en giltig e-postadress.');
+      return;
+    }
+    if (!phone.trim()) {
+      setFormError('Telefonnummer krävs.');
+      return;
+    }
     if (!addressConfirmed || !address.trim()) {
       setFormError('Välj en adress från förslagslistan.');
       return;
@@ -129,7 +140,7 @@ function CheckoutForm() {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), address, postalCode, date, time, notes, items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes, items }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -215,6 +226,37 @@ function CheckoutForm() {
         </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
+        <div className="input-group">
+          <label className="field-label">
+            <IconMail size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+            E-post
+          </label>
+          <input
+            className="input"
+            type="email"
+            placeholder="din@mail.se"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </div>
+        <div className="input-group">
+          <label className="field-label">
+            <IconPhone size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+            Telefon
+          </label>
+          <input
+            className="input"
+            type="tel"
+            placeholder="070 000 00 00"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            autoComplete="tel"
+          />
+        </div>
+      </div>
+
       <div className="input-group">
         <label className="field-label">
           <IconMapPin size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
@@ -230,11 +272,8 @@ function CheckoutForm() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
         <div className="input-group">
-          <label className="field-label">
-            <IconCalendar size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            Datum
-          </label>
-          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <label className="field-label">Datum</label>
+          <DatePicker value={date} onChange={setDate} placeholder="Välj datum" />
         </div>
         <div className="input-group">
           <label className="field-label">
