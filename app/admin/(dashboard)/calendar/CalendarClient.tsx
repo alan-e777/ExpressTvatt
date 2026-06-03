@@ -26,7 +26,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 const STATUS_LABEL: Record<string, string> = {
   paid:             "New",
   in_progress:      "In progress",
-  ready_for_pickup: "Ready",
+  ready_for_pickup: "Ready for delivery",
   completed:        "Completed",
   collected:        "Collected",
   cancelled:        "Cancelled",

@@ -29,7 +29,7 @@ const STATUS_OPTIONS = [
   { value: "paid",             label: "New" },
   { value: "collected",        label: "Collected" },
   { value: "in_progress",      label: "In progress" },
-  { value: "ready_for_pickup", label: "Ready for pickup" },
+  { value: "ready_for_pickup", label: "Ready for delivery" },
   { value: "delivered",        label: "Delivered" },
   { value: "completed",        label: "Completed" },
   { value: "cancelled",        label: "Cancelled" },
@@ -435,8 +435,12 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                   const s  = STATUS_STYLE[opt.value] ?? { bg: "#f3f4f6", color: "#374151" };
                   const count = orders.filter(o => o.status === opt.value).length;
                   return (
+                    <Fragment key={opt.value}>
+                      {/* Divider before secondary statuses */}
+                      {opt.value === "completed" && (
+                        <div style={{ borderTop: "1px solid #f0f0f0", margin: "0.3rem 0" }} />
+                      )}
                     <button
-                      key={opt.value}
                       onClick={() => toggleFilter(opt.value)}
                       style={{
                         display: "flex", alignItems: "center", gap: "0.6rem",
@@ -467,6 +471,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                         {count}
                       </span>
                     </button>
+                    </Fragment>
                   );
                 })}
 

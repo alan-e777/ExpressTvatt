@@ -60,7 +60,7 @@ function customerTag(c: CustomerRow) {
 
 const STATUS_LABEL: Record<string, string> = {
   paid: "New", collected: "Collected", in_progress: "In progress",
-  ready_for_pickup: "Ready", completed: "Completed", cancelled: "Cancelled",
+  ready_for_pickup: "Ready for delivery", completed: "Completed", cancelled: "Cancelled",
   pending_payment: "Pending",
 };
 const STATUS_COLOR: Record<string, { bg: string; color: string }> = {

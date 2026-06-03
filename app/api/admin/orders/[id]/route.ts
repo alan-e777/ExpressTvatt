@@ -71,7 +71,7 @@ async function sendReadyForPickupNotification(customerId: string, serviceName: s
     to: token,
     sound: "default",
     title: "Din order är klar! 🎉",
-    body: `${serviceName} är redo för upphämtning.`,
+    body: `${serviceName} är redo för leverans.`,
     data: { type: "ready_for_pickup" },
   }));
 

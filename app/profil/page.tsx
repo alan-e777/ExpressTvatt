@@ -20,7 +20,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending_payment:  'Väntar på betalning',
   paid:             'Betald',
   in_progress:      'Pågår',
-  ready_for_pickup: 'Redo för hämtning',
+  ready_for_pickup: 'Redo för leverans',
   completed:        'Klar',
   collected:        'Hämtad',
   cancelled:        'Avbokad',
