@@ -6,7 +6,8 @@ import {
   updateProfile, signOut, User,
 } from 'firebase/auth';
 import {
-  doc, setDoc, collection, query, where, onSnapshot, Timestamp, serverTimestamp,
+  doc, setDoc, updateDoc, collection, query, where, onSnapshot, Timestamp, serverTimestamp,
+  arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import {
   IconUser, IconMail, IconLock, IconEye, IconEyeOff, IconPhone,
@@ -14,6 +15,7 @@ import {
 import { auth, db } from '@/lib/firebase-client';
 
 type OrderStatus = 'pending_payment' | 'paid' | 'collected' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
+type SavedAddress = { address: string; postalCode: string };
 type Order = { id: string; serviceName: string; status: OrderStatus; createdAt: Date };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -87,6 +89,14 @@ export default function ProfilPage() {
   const [formError,  setFormError]  = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const [addresses,   setAddresses]   = useState<SavedAddress[]>([]);
+  const [newAddr,     setNewAddr]     = useState('');
+  const [newZip,      setNewZip]      = useState('');
+  const [addrError,   setAddrError]   = useState('');
+  const [savingAddr,  setSavingAddr]  = useState(false);
+  const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(currentUser => {
       setUser(currentUser);
@@ -114,9 +124,44 @@ export default function ProfilPage() {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    if (!user) { setAddresses([]); return; }
+    const unsub = onSnapshot(doc(db, 'customers', user.uid), snap => {
+      setAddresses((snap.data()?.addresses ?? []) as SavedAddress[]);
+    });
+    return unsub;
+  }, [user]);
+
   function clearForm() {
     setName(''); setEmail(''); setPhone(''); setPassword('');
     setFormError(''); setShowPass(false);
+  }
+
+  async function handleAddAddress(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newAddr.trim()) { setAddrError('Ange en adress.'); return; }
+    setAddrError('');
+    setSavingAddr(true);
+    try {
+      await setDoc(doc(db, 'customers', user!.uid), {
+        addresses: arrayUnion({ address: newAddr.trim(), postalCode: newZip.trim() }),
+      }, { merge: true });
+      setNewAddr(''); setNewZip(''); setShowAddForm(false);
+    } catch {
+      setAddrError('Kunde inte spara. Försök igen.');
+    } finally {
+      setSavingAddr(false);
+    }
+  }
+
+  async function handleDeleteAddress(a: SavedAddress, idx: number) {
+    if (!user) return;
+    setDeletingIdx(idx);
+    try {
+      await updateDoc(doc(db, 'customers', user.uid), { addresses: arrayRemove(a) });
+    } catch { /* ignore */ } finally {
+      setDeletingIdx(null);
+    }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -305,7 +350,7 @@ export default function ProfilPage() {
         </button>
       </div>
 
-      {/* Main: orders list */}
+      {/* Main: orders + addresses */}
       <div>
         <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>Mina ordrar</div>
 
@@ -334,6 +379,61 @@ export default function ProfilPage() {
             </div>
           ))
         )}
+
+        {/* Addresses */}
+        <div style={{ marginTop: 'var(--sp-xl)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-md)' }}>
+            <div className="h3">Mina adresser</div>
+            <button
+              type="button"
+              onClick={() => { setShowAddForm(v => !v); setAddrError(''); }}
+              style={{ background: 'none', border: 'none', color: 'var(--forest-dark)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, cursor: 'pointer' }}
+            >
+              {showAddForm ? 'Avbryt' : '+ Lägg till'}
+            </button>
+          </div>
+
+          {addresses.length === 0 && !showAddForm && (
+            <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
+              <div className="small">Inga sparade adresser.</div>
+              <div className="small" style={{ marginTop: 4 }}>Adresser sparas automatiskt när du genomför en bokning.</div>
+            </div>
+          )}
+
+          {addresses.map((a, i) => (
+            <div key={i} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-md)', display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
+              <div style={{ flex: 1 }}>
+                <div className="body-bold">{a.address}</div>
+                {a.postalCode && <div className="small" style={{ marginTop: 2 }}>{a.postalCode}</div>}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteAddress(a, i)}
+                disabled={deletingIdx === i}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer', padding: '2px 6px', lineHeight: 1 }}
+              >
+                {deletingIdx === i ? '…' : '×'}
+              </button>
+            </div>
+          ))}
+
+          {showAddForm && (
+            <form onSubmit={handleAddAddress} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)', marginTop: addresses.length > 0 ? 'var(--sp-sm)' : 0 }}>
+              <div className="input-group">
+                <label className="field-label">Gatuadress</label>
+                <input className="input" placeholder="t.ex. Storgatan 12" value={newAddr} onChange={e => setNewAddr(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label className="field-label">Postnummer</label>
+                <input className="input" placeholder="t.ex. 123 45" value={newZip} onChange={e => setNewZip(e.target.value)} />
+              </div>
+              {addrError && <p className="error-msg">{addrError}</p>}
+              <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4 }}>
+                {savingAddr ? 'Sparar…' : 'Spara adress'}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

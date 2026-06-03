@@ -6,14 +6,16 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone } from '@tabler/icons-react';
-import { auth } from '@/lib/firebase-client';
+import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type CartItem = { id: string; name: string; price: number; qty: number; type: string };
+type SavedAddress = { address: string; postalCode: string };
 
 function formatPrice(kr: number) { return `${kr} kr`; }
 
@@ -97,6 +99,8 @@ function CheckoutForm() {
   const [time,             setTime]             = useState('');
   const [notes,            setNotes]            = useState('');
   const [formError,        setFormError]        = useState('');
+  const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
+  const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
 
   useEffect(() => {
     try {
@@ -109,6 +113,13 @@ function CheckoutForm() {
     const unsub = onAuthStateChanged(auth, u => setUserId(u?.uid));
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (!userId) { setSavedAddresses([]); return; }
+    getDoc(doc(db, 'customers', userId)).then(snap => {
+      if (snap.exists()) setSavedAddresses((snap.data().addresses ?? []) as SavedAddress[]);
+    }).catch(() => {});
+  }, [userId]);
 
   const totalKr = items.reduce((s, i) => s + i.price * i.qty, 0);
 
@@ -146,6 +157,11 @@ function CheckoutForm() {
       const data = await res.json();
       setClientSecret(data.clientSecret);
       setStep('payment');
+      if (userId) {
+        setDoc(doc(db, 'customers', userId), {
+          addresses: arrayUnion({ address, postalCode }),
+        }, { merge: true }).catch(() => {});
+      }
     } catch (err: unknown) {
       setLoadError(err instanceof Error ? err.message : 'Något gick fel.');
     } finally {
@@ -262,12 +278,51 @@ function CheckoutForm() {
           <IconMapPin size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
           Adress
         </label>
-        <AddressAutocomplete
-          value={address}
-          onChange={setAddress}
-          onSelect={(addr, zip) => { setAddress(addr); setPostalCode(zip); }}
-          onConfirmChange={setAddressConfirmed}
-        />
+        {savedAddresses.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'DM Sans, sans-serif' }}>Sparade:</span>
+            {savedAddresses.map((sa, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setSavedPick(sa); setAddress(sa.address); setPostalCode(sa.postalCode); setAddressConfirmed(true); }}
+                style={{
+                  background: savedPick?.address === sa.address ? 'var(--forest-dark)' : 'var(--linen)',
+                  color: savedPick?.address === sa.address ? 'var(--moss)' : 'var(--text-dark)',
+                  border: '0.5px solid transparent',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '3px 10px',
+                  fontSize: 12,
+                  fontFamily: 'DM Sans, sans-serif',
+                  cursor: 'pointer',
+                }}
+              >
+                {sa.address}
+              </button>
+            ))}
+          </div>
+        )}
+        {savedPick ? (
+          <div className="input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 15, fontFamily: 'DM Sans, sans-serif', color: 'var(--text-dark)' }}>
+              {savedPick.address}{savedPick.postalCode ? `, ${savedPick.postalCode}` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => { setSavedPick(null); setAddress(''); setPostalCode(''); setAddressConfirmed(false); }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif', flexShrink: 0, marginLeft: 8 }}
+            >
+              Ändra
+            </button>
+          </div>
+        ) : (
+          <AddressAutocomplete
+            value={address}
+            onChange={setAddress}
+            onSelect={(addr, zip) => { setAddress(addr); setPostalCode(zip); }}
+            onConfirmChange={setAddressConfirmed}
+          />
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
