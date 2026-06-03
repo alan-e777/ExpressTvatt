@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import { isAdmin } from "@/lib/admin-auth";
 
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
+  const { id } = await params;
+  try {
+    await db.collection("orders").doc(id).delete();
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[orders DELETE] Firestore error:", err);
+    return NextResponse.json({ error: "Database delete failed." }, { status: 500 });
+  }
+}
+
 const VALID_STATUSES = ["paid", "in_progress", "ready_for_pickup", "completed", "collected", "cancelled", "delivered", "payment_failed", "refunded"];
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

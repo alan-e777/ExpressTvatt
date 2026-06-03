@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, Fragment, useEffect } from "react";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase-client";
 
 export type BasketItem = { id: string; name: string; price: number; qty: number };
 
@@ -78,6 +80,58 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [statusDropdownOpen]);
+  // Real-time listener — keeps orders in sync with Firestore (handles deletes, edits)
+  useEffect(() => {
+    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, snap => {
+      setOrders(snap.docs.map(d => {
+        const data = d.data();
+        const uid  = data.customerId ?? "—";
+        return {
+          id:              data.id ?? d.id,
+          paymentIntentId: data.paymentIntentId ?? "",
+          serviceName:     data.serviceName ?? "—",
+          amount:          data.amount ?? 0,
+          status:          data.status ?? "paid",
+          customerId:      uid,
+          customerEmail:   data.customerEmail ?? null,
+          createdAt:       data.createdAt?.toDate?.()?.toISOString() ?? null,
+          notes:           data.notes ?? "",
+          adminNotes:      data.adminNotes ?? "",
+          address:         data.address ?? "",
+          postalCode:      data.postalCode ?? "",
+          dropoffDate:     data.dropoffDate ?? "",
+          dropoffTime:     data.dropoffTime ?? "",
+          customFields:    data.customFields ?? {},
+          items:           data.items ?? [],
+        } as Order;
+      }));
+    });
+    return unsub;
+  }, []);
+
+  const [deletingCompleted, setDeletingCompleted] = useState(false);
+  const [deleteModalOpen,   setDeleteModalOpen]   = useState(false);
+
+  async function deleteCompleted() {
+    const completedOrders = orders.filter(o => o.status === "completed");
+    if (completedOrders.length === 0) return;
+    setDeletingCompleted(true);
+    try {
+      await Promise.all(
+        completedOrders.map(o =>
+          fetch(`/api/admin/orders/${o.id}`, { method: "DELETE" })
+        )
+      );
+      // onSnapshot will remove them automatically
+      setDeleteModalOpen(false);
+    } catch {
+      alert("Some deletes failed. Refresh and try again.");
+    } finally {
+      setDeletingCompleted(false);
+    }
+  }
+
   const [updating, setUpdating]       = useState<string | null>(null);
   const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
   const [savingNotes, setSavingNotes] = useState<string | null>(null);
@@ -197,7 +251,97 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
               {visible.length} of {orders.length} shown
             </p>
           </div>
+          {orders.some(o => o.status === "completed") && (
+            <button
+              onClick={() => setDeleteModalOpen(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: "0.4rem",
+                padding: "0.45rem 0.9rem",
+                background: "#fff", border: "1px solid #fca5a5",
+                borderRadius: "7px", cursor: "pointer",
+                fontSize: "0.8rem", fontWeight: 600, color: "#dc2626",
+              }}
+            >
+              🗑 Delete Completed ({orders.filter(o => o.status === "completed").length})
+            </button>
+          )}
         </div>
+
+        {/* Delete Completed modal */}
+        {deleteModalOpen && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 200,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "1rem",
+          }}>
+            <div style={{
+              background: "#fff", borderRadius: "12px",
+              padding: "1.5rem", width: "100%", maxWidth: "480px",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+            }}>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }}>
+                Delete completed orders
+              </h2>
+              <p style={{ fontSize: "0.85rem", color: "#666", marginBottom: "1rem" }}>
+                The following orders will be permanently deleted. This cannot be undone.
+              </p>
+
+              {/* List of completed orders */}
+              <div style={{
+                border: "1px solid #fca5a5", borderRadius: "8px",
+                overflow: "hidden", marginBottom: "1.25rem",
+                maxHeight: "260px", overflowY: "auto",
+              }}>
+                {orders.filter(o => o.status === "completed").map((o, i, arr) => (
+                  <div key={o.id} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "0.65rem 0.9rem",
+                    borderBottom: i < arr.length - 1 ? "1px solid #fef2f2" : "none",
+                    background: i % 2 === 0 ? "#fff" : "#fff9f9",
+                    fontSize: "0.825rem",
+                  }}>
+                    <div>
+                      <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{o.serviceName}</span>
+                      <span style={{ color: "#aaa", marginLeft: "0.5rem", fontSize: "0.75rem" }}>
+                        #{o.paymentIntentId.slice(-7).toUpperCase()}
+                      </span>
+                    </div>
+                    <span style={{ color: "#888", fontSize: "0.75rem" }}>
+                      {o.createdAt ? new Date(o.createdAt).toLocaleDateString("sv-SE") : "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: "0.65rem", justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  disabled={deletingCompleted}
+                  style={{
+                    padding: "0.5rem 1.1rem", background: "#f3f4f6",
+                    border: "none", borderRadius: "7px",
+                    fontSize: "0.875rem", fontWeight: 500, cursor: "pointer", color: "#333",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteCompleted}
+                  disabled={deletingCompleted}
+                  style={{
+                    padding: "0.5rem 1.25rem", background: "#dc2626",
+                    border: "none", borderRadius: "7px",
+                    fontSize: "0.875rem", fontWeight: 600, cursor: "pointer", color: "#fff",
+                    opacity: deletingCompleted ? 0.6 : 1,
+                  }}
+                >
+                  {deletingCompleted ? "Deleting…" : `Delete ${orders.filter(o => o.status === "completed").length} orders`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Order number search */}
         <div style={{ marginBottom: "0.65rem" }}>
