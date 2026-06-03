@@ -25,6 +25,7 @@ export default async function OrdersPage() {
     const uid  = data.customerId ?? "—";
     return {
       id:            data.id ?? d.id,
+      paymentIntentId: data.paymentIntentId ?? "",
       serviceName:   data.serviceName ?? "—",
       amount:        data.amount ?? 0,
       status:        data.status ?? "paid",

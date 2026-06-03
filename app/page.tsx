@@ -95,52 +95,96 @@ function strukenIcon(name: string) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function ActiveOrderCard({ order }: { order: Order }) {
+function ActiveOrderCard({ orders }: { orders: Order[] }) {
+  const [displayIdx, setDisplayIdx] = useState(0);
+  const [animClass, setAnimClass]   = useState('');
+
+  // Keep index in bounds if an order disappears
+  useEffect(() => {
+    setDisplayIdx(prev => Math.min(prev, Math.max(0, orders.length - 1)));
+  }, [orders.length]);
+
+  const order  = orders[displayIdx];
+  const extra  = orders.length - 1;
   const states = stateFor(order.status);
   const badge  = BADGE_LABEL[order.status] ?? 'Pågår';
+
+  function handleClick() {
+    if (orders.length <= 1) return;
+    setAnimClass('card-swap-exit');
+    setTimeout(() => {
+      setDisplayIdx(i => (i + 1) % orders.length);
+      setAnimClass('card-swap-enter');
+    }, 200);
+  }
+
   return (
-    <div className="active-order-card section">
-      <div className="section-label">PÅGÅENDE RENGÖRINGAR</div>
-      <div className="order-row">
-        <div className="order-icon"><IconWashMachine size={16} stroke={1.5} /></div>
-        <div style={{ flex: 1 }}>
-          <div className="order-name">{order.serviceName}</div>
-          <div className="order-id">#{order.id.slice(-7).toUpperCase()}</div>
+    <div style={{ position: 'relative' }}>
+
+      {/* +X notification bubble */}
+      {extra > 0 && (
+        <div style={{
+          position: 'absolute', top: -8, right: -8, zIndex: 1,
+          minWidth: 22, height: 22, borderRadius: 9999,
+          padding: '0 5px',
+          background: 'var(--forest-light)', color: 'var(--forest-dark)',
+          fontFamily: 'DM Sans, sans-serif', fontSize: 10, fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          +{extra}
         </div>
-        <div className="order-badge">{badge}</div>
-      </div>
-      <div className="stepper">
-        <div className="nodes-row">
-          {STEPS.map((_, i) => {
-            const s = states[i];
-            const circle = (
-              <div className={`step-circle step-${s}`}>
-                {s === 'done' ? (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#fafaf7' }}>
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <span className="step-num" style={{ color: s === 'active' ? '#2d5a3d' : 'rgba(200,223,192,0.35)' }}>{i + 1}</span>
-                )}
-              </div>
-            );
-            return (
-              <div key={i} style={{ display: 'contents' }}>
-                {i > 0 && <div className={`connector ${states[i-1] === 'done' ? 'connector-done' : 'connector-future'}`} />}
-                <div className="node-wrap">
-                  {s === 'active' ? <div className="active-ring">{circle}</div> : circle}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="labels-row">
-          {STEPS.map((label, i) => (
-            <div key={label} style={{ display: 'contents' }}>
-              {i > 0 && <div className="label-gap" />}
-              <span className={`step-label step-label-${states[i]}`}>{label}</span>
+      )}
+
+      <div
+        className="active-order-card section"
+        style={{ cursor: orders.length > 1 ? 'pointer' : 'default', overflow: 'hidden' }}
+        onClick={handleClick}
+      >
+        <div className={animClass} onAnimationEnd={() => setAnimClass('')}>
+          <div className="section-label">PÅGÅENDE RENGÖRINGAR</div>
+          <div className="order-row">
+            <div className="order-icon"><IconWashMachine size={16} stroke={1.5} /></div>
+            <div style={{ flex: 1 }}>
+              <div className="order-name">{order.serviceName}</div>
+              <div className="order-id">#{order.id.slice(-7).toUpperCase()}</div>
             </div>
-          ))}
+            <div className="order-badge">{badge}</div>
+          </div>
+          <div className="stepper">
+            <div className="nodes-row">
+              {STEPS.map((_, i) => {
+                const s = states[i];
+                const circle = (
+                  <div className={`step-circle step-${s}`}>
+                    {s === 'done' ? (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#fafaf7' }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      <span className="step-num" style={{ color: s === 'active' ? '#2d5a3d' : 'rgba(200,223,192,0.35)' }}>{i + 1}</span>
+                    )}
+                  </div>
+                );
+                return (
+                  <div key={i} style={{ display: 'contents' }}>
+                    {i > 0 && <div className={`connector ${states[i-1] === 'done' ? 'connector-done' : 'connector-future'}`} />}
+                    <div className="node-wrap">
+                      {s === 'active' ? <div className="active-ring">{circle}</div> : circle}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="labels-row">
+              {STEPS.map((label, i) => (
+                <div key={label} style={{ display: 'contents' }}>
+                  {i > 0 && <div className="label-gap" />}
+                  <span className={`step-label step-label-${states[i]}`}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -285,7 +329,7 @@ export default function HomePage() {
   const router = useRouter();
 
   const [user, setUser]               = useState<User | null>(null);
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [strukenCatalog, setStrukenCatalog] = useState<Partial<Record<StrukenCat, StrukenProduct[]>>>({});
   const [services, setServices]       = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
@@ -297,7 +341,7 @@ export default function HomePage() {
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, currentUser => {
       setUser(currentUser);
-      if (!currentUser) { setActiveOrder(null); return; }
+      if (!currentUser) { setActiveOrders([]); return; }
       const q = query(collection(db, 'orders'), where('customerId', '==', currentUser.uid));
       const unsubOrders = onSnapshot(q, snap => {
         const all = snap.docs.map(d => {
@@ -305,9 +349,10 @@ export default function HomePage() {
           return { id: d.id, serviceName: data.serviceName, status: data.status as OrderStatus,
                    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date() };
         });
+        // newest → oldest; cycle order matches "latest first"
         const active = all.filter(o => ACTIVE_STATUSES.includes(o.status))
                           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        setActiveOrder(active[0] ?? null);
+        setActiveOrders(active);
       });
       return unsubOrders;
     });
@@ -627,9 +672,9 @@ export default function HomePage() {
           onCheckout={handleCheckout}
         />
 
-        {activeOrder && (
+        {activeOrders.length > 0 && (
           <div style={{ marginTop: 'var(--sp-xl)' }}>
-            <ActiveOrderCard order={activeOrder} />
+            <ActiveOrderCard orders={activeOrders} />
           </div>
         )}
       </div>

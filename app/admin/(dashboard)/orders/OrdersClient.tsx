@@ -6,6 +6,7 @@ export type BasketItem = { id: string; name: string; price: number; qty: number 
 
 export type Order = {
   id: string;
+  paymentIntentId: string;
   serviceName: string;
   amount: number;
   status: string;
@@ -59,6 +60,7 @@ const DEFAULT_DATE_TO   = toDateInput(_now);
 
 export default function OrdersClient({ initialOrders }: { initialOrders: Order[] }) {
   const [orders, setOrders]           = useState<Order[]>(initialOrders);
+  const [searchQuery, setSearchQuery]         = useState("");
   const [activeFilter, setActiveFilter]       = useState<Set<string>>(DEFAULT_FILTER);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [dateFrom, setDateFrom]               = useState(DEFAULT_DATE_FROM);
@@ -97,6 +99,10 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
   const toMs   = dateTo   ? new Date(dateTo).setHours(23, 59, 59, 999) : null;
 
   const visible = orders.filter(o => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toUpperCase();
+      return o.paymentIntentId.toUpperCase().includes(q);
+    }
     if (activeFilter.size > 0 && !activeFilter.has(o.status)) return false;
     if (o.createdAt) {
       const t = new Date(o.createdAt).getTime();
@@ -191,6 +197,34 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
               {visible.length} of {orders.length} shown
             </p>
           </div>
+        </div>
+
+        {/* Order number search */}
+        <div style={{ marginBottom: "0.65rem" }}>
+          <input
+            type="text"
+            placeholder="Search order number (e.g. VZE3AEA)…"
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); setSelected(new Set()); }}
+            style={{
+              padding: "0.35rem 0.75rem",
+              border: "1px solid #e5e5e5",
+              borderRadius: "6px",
+              fontSize: "0.8rem",
+              color: "#333",
+              background: "#fff",
+              width: "280px",
+              outline: "none",
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(""); setSelected(new Set()); }}
+              style={{ marginLeft: "0.4rem", background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: "0.75rem" }}
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Date range */}
@@ -366,6 +400,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                     style={{ cursor: "pointer", accentColor: "#1a1a1a" }}
                   />
                 </th>
+                <Th>Order #</Th>
                 <Th>Date</Th>
                 <Th>Service</Th>
                 <Th>Amount</Th>
@@ -395,6 +430,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                           style={{ cursor: "pointer", accentColor: "#1a1a1a" }}
                         />
                       </td>
+                      <Td style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#555", whiteSpace: "nowrap" }}>
+                        {order.paymentIntentId ? `#${order.paymentIntentId.slice(-7).toUpperCase()}` : "—"}
+                      </Td>
                       <Td>{order.createdAt ? formatDate(order.createdAt) : "—"}</Td>
                       <Td>{order.serviceName}</Td>
                       <Td style={{ fontWeight: 600 }}>{formatAmount(order.amount)}</Td>
@@ -439,11 +477,14 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
 
                     {isExpanded && (
                       <tr style={{ borderBottom: isLast ? "none" : "1px solid #f0f0f0" }}>
-                        <td colSpan={7} style={{ padding: "0.25rem 1.25rem 1.25rem 1.25rem", background: "#fafafa" }}>
+                        <td colSpan={8} style={{ padding: "0.25rem 1.25rem 1.25rem 1.25rem", background: "#fafafa" }}>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                             {/* Booking details */}
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                               <p style={detailHeading}>Booking details</p>
+                              {order.paymentIntentId && (
+                                <DetailRow label="Order #" value={`#${order.paymentIntentId.slice(-7).toUpperCase()}`} />
+                              )}
                               {order.address && (
                                 <DetailRow label="Address" value={`${order.address}${order.postalCode ? ", " + order.postalCode : ""}`} />
                               )}

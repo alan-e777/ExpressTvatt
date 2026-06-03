@@ -1034,6 +1034,18 @@ input, textarea, select { font-family: inherit; }
   background: var(--linen) !important;
 }
 
+/* ── Active-order card swap animation ────────────────────────────────── */
+@keyframes card-swap-enter {
+  from { transform: translateX(28px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes card-swap-exit {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-28px); opacity: 0; }
+}
+.card-swap-enter { animation: card-swap-enter 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+.card-swap-exit  { animation: card-swap-exit  0.18s cubic-bezier(0.55, 0, 1, 0.45)        both; }
+
 /* ── Skeleton ─────────────────────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { opacity: 0.4; }
