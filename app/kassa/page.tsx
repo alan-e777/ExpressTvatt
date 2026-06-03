@@ -297,7 +297,7 @@ function CheckoutForm() {
                   cursor: 'pointer',
                 }}
               >
-                {sa.address}{sa.deliveryNote ? ` · ${sa.deliveryNote}` : ''}
+                {sa.address}
               </button>
             ))}
           </div>
