@@ -272,8 +272,8 @@ function CheckoutForm() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
         <div className="input-group">
-          <label className="field-label">Datum</label>
-          <DatePicker value={date} onChange={setDate} placeholder="Välj datum" />
+          <label className="field-label">Önskad tid för hämtning</label>
+          <DatePicker value={date} onChange={setDate} placeholder="Välj datum" minDate={new Date().toISOString().slice(0, 10)} />
         </div>
         <div className="input-group">
           <label className="field-label">
