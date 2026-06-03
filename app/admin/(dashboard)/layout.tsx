@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         flexShrink: 0,
       }}>
         <p style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1.5rem", color: "#fff" }}>
-          Tailor Admin
+          Tvättio Admin
         </p>
         <NavLink href="/admin">Dashboard</NavLink>
         <NavLink href="/admin/orders">Orders</NavLink>

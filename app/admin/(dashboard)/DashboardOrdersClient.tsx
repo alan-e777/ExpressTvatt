@@ -33,7 +33,7 @@ export default function DashboardOrdersClient() {
   }, []);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginTop: "3rem", marginBottom: "1.5rem" }}>
       {COLUMNS.map(col => {
         const colOrders = orders.filter(o => o.status === col.status);
         return (
@@ -62,7 +62,7 @@ export default function DashboardOrdersClient() {
               </span>
             </div>
 
-            <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", gap: "0.35rem", minHeight: "72px" }}>
+            <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", gap: "0.35rem", minHeight: "560px" }}>
               {colOrders.length === 0 ? (
                 <p style={{ color: "#ccc", fontSize: "0.72rem", textAlign: "center", padding: "0.85rem 0", margin: 0 }}>
                   —
