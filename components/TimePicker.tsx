@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { IconClock } from '@tabler/icons-react';
 
-const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const HOURS   = Array.from({ length: 11 }, (_, i) => String(i + 8).padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 function ScrollColumn({
