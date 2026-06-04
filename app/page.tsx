@@ -336,6 +336,7 @@ export default function HomePage() {
   const [activeCat, setActiveCat]     = useState<StrukenCat>('Herr');
   const [mattKvm, setMattKvm]         = useState(5);
   const [cart, setCart]               = useState<CartItem[]>([]);
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
 
   // Auth + live order
   useEffect(() => {
@@ -393,6 +394,13 @@ export default function HomePage() {
     });
   }
   function cartQty(id: string) { return cart.find(i => i.id === id)?.quantity ?? 0; }
+  function toggleSection(id: string) {
+    setOpenSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   function handleCheckout() {
     if (cart.length === 0) return;
@@ -464,15 +472,51 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Jump nav */}
-        <div className="chips-row" style={{ marginBottom: 'var(--sp-lg)' }}>
-          <a href="#mattvätt" className="chip" style={{ textDecoration: 'none' }}>Mattvätt</a>
-          <a href="#struken"  className="chip" style={{ textDecoration: 'none' }}>Struken tvätt</a>
-          <a href="#kladavard" className="chip" style={{ textDecoration: 'none' }}>Klädvård</a>
+        {/* Service toggle cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-md)', marginBottom: 'var(--sp-lg)' }}>
+          {([
+            { id: 'mattvätt',  label: 'Mattvätt',      Icon: IconSpray, desc: 'Djuptvätt av mattor' },
+            { id: 'struken',   label: 'Struken tvätt', Icon: IconSteam, desc: 'Skjortor, kostym & festklädsel' },
+            { id: 'kladavard', label: 'Klädvård',      Icon: IconNeedle, desc: 'Lagning, ändring & rengöring' },
+          ] as const).map(({ id, label, Icon, desc }) => {
+            const open = openSections.has(id);
+            return (
+              <button
+                key={id}
+                onClick={() => toggleSection(id)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center', gap: 'var(--sp-md)',
+                  padding: '28px 16px',
+                  background: open ? 'var(--forest-dark)' : 'var(--white)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: open ? '0.5px solid var(--forest-dark)' : '0.5px solid rgba(74,124,89,0.15)',
+                  boxShadow: '0 1px 4px rgba(30,46,36,0.06)',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                  color: open ? 'var(--moss)' : 'var(--text-dark)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: open ? 'rgba(200,223,192,0.15)' : 'var(--linen)',
+                  border: open ? '0.5px solid rgba(200,223,192,0.25)' : '0.5px solid rgba(74,124,89,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  color: open ? 'var(--moss)' : 'var(--forest-mid)',
+                }}>
+                  <Icon size={18} stroke={1.5} />
+                </div>
+                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
+                <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: open ? 'rgba(200,223,192,0.65)' : 'var(--text-muted)', lineHeight: 1.5 }}>{desc}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Mattvätt ───────────────────────────────────────────────── */}
-        <div id="mattvätt" className="section service-card">
+        {openSections.has('mattvätt') && <div id="mattvätt" className="section service-card">
           <div style={sectionHeaderStyle}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -589,10 +633,10 @@ export default function HomePage() {
               </div>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* ── Struken tvätt ─────────────────────────────────────────── */}
-        <div id="struken" className="section service-card">
+        {openSections.has('struken') && <div id="struken" className="section service-card">
           <div style={sectionHeaderStyle}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -640,10 +684,10 @@ export default function HomePage() {
               })}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* ── Klädvård & textil ─────────────────────────────────────── */}
-        <div id="kladavard" className="section service-card">
+        {openSections.has('kladavard') && <div id="kladavard" className="section service-card">
           <div style={sectionHeaderStyle}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -692,7 +736,7 @@ export default function HomePage() {
               })}
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* ── Sidebar ───────────────────────────────────────────────────── */}
