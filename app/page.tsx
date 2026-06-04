@@ -336,7 +336,7 @@ export default function HomePage() {
   const [activeCat, setActiveCat]     = useState<StrukenCat>('Herr');
   const [mattKvm, setMattKvm]         = useState(5);
   const [cart, setCart]               = useState<CartItem[]>([]);
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
   // Auth + live order
   useEffect(() => {
@@ -395,11 +395,7 @@ export default function HomePage() {
   }
   function cartQty(id: string) { return cart.find(i => i.id === id)?.quantity ?? 0; }
   function toggleSection(id: string) {
-    setOpenSections(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setOpenSection(prev => prev === id ? null : id);
   }
 
   function handleCheckout() {
@@ -479,7 +475,7 @@ export default function HomePage() {
             { id: 'struken',   label: 'Struken tvätt', Icon: IconSteam, desc: 'Skjortor, kostym & festklädsel' },
             { id: 'kladavard', label: 'Klädvård',      Icon: IconNeedle, desc: 'Lagning, ändring & rengöring' },
           ] as const).map(({ id, label, Icon, desc }) => {
-            const open = openSections.has(id);
+            const open = openSection === (id);
             return (
               <button
                 key={id}
@@ -516,7 +512,7 @@ export default function HomePage() {
         </div>
 
         {/* ── Mattvätt ───────────────────────────────────────────────── */}
-        {openSections.has('mattvätt') && <div id="mattvätt" className="section service-card">
+        {openSection === ('mattvätt') && <div id="mattvätt" className="section service-card">
           <div style={sectionHeaderStyle}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -636,7 +632,7 @@ export default function HomePage() {
         </div>}
 
         {/* ── Struken tvätt ─────────────────────────────────────────── */}
-        {openSections.has('struken') && <div id="struken" className="section service-card">
+        {openSection === ('struken') && <div id="struken" className="section service-card">
           <div style={sectionHeaderStyle}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -687,7 +683,7 @@ export default function HomePage() {
         </div>}
 
         {/* ── Klädvård & textil ─────────────────────────────────────── */}
-        {openSections.has('kladavard') && <div id="kladavard" className="section service-card">
+        {openSection === ('kladavard') && <div id="kladavard" className="section service-card">
           <div style={sectionHeaderStyle}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
