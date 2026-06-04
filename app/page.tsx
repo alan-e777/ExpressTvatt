@@ -458,6 +458,10 @@ export default function HomePage() {
           <p className="small" style={{ color: 'var(--text-mid)', marginTop: 8 }}>
             Välj tjänster nedan — mattvätt, struken tvätt och klädvård kan kombineras i samma bokning.
           </p>
+          <div className="eco-trust-banner" style={{ marginTop: 'var(--sp-lg)' }}>
+            <IconLeaf size={12} stroke={1.5} />
+            <span>Miljövänliga metoder sedan 1987</span>
+          </div>
         </div>
 
         {/* Jump nav */}
@@ -465,12 +469,6 @@ export default function HomePage() {
           <a href="#mattvätt" className="chip" style={{ textDecoration: 'none' }}>Mattvätt</a>
           <a href="#struken"  className="chip" style={{ textDecoration: 'none' }}>Struken tvätt</a>
           <a href="#kladavard" className="chip" style={{ textDecoration: 'none' }}>Klädvård</a>
-        </div>
-
-        {/* Eco trust banner */}
-        <div className="eco-trust-banner section">
-          <IconLeaf size={12} stroke={1.5} />
-          <span>Miljövänliga metoder sedan 1987</span>
         </div>
 
         {/* ── Mattvätt ───────────────────────────────────────────────── */}
