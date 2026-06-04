@@ -163,7 +163,7 @@ function CheckoutForm() {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes: [notes.trim(), savedPick?.deliveryNote || ''].filter(Boolean).join('\n'), items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes: notes.trim(), items }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -322,7 +322,7 @@ function CheckoutForm() {
               <button
                 key={i}
                 type="button"
-                onClick={() => { setSavedPick(sa); setAddress(sa.address); setPostalCode(sa.postalCode); setAddressConfirmed(true); }}
+                onClick={() => { setSavedPick(sa); setAddress(sa.address); setPostalCode(sa.postalCode); setAddressConfirmed(true); setNotes(sa.deliveryNote || ''); }}
                 style={{
                   background: savedPick?.address === sa.address ? 'var(--forest-dark)' : 'var(--linen)',
                   color: savedPick?.address === sa.address ? 'var(--moss)' : 'var(--text-dark)',
@@ -346,7 +346,7 @@ function CheckoutForm() {
             </span>
             <button
               type="button"
-              onClick={() => { setSavedPick(null); setAddress(''); setPostalCode(''); setAddressConfirmed(false); }}
+              onClick={() => { setSavedPick(null); setAddress(''); setPostalCode(''); setAddressConfirmed(false); setNotes(''); }}
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif', flexShrink: 0, marginLeft: 8 }}
             >
               Ändra
