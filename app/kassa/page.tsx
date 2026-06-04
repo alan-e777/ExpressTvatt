@@ -11,6 +11,7 @@ import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, I
 import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
+import TimePicker from '@/components/TimePicker';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -372,7 +373,7 @@ function CheckoutForm() {
             <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
             Tid
           </label>
-          <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
+          <TimePicker value={time} onChange={setTime} placeholder="Välj tid" />
         </div>
       </div>
 
