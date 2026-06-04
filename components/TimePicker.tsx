@@ -4,22 +4,76 @@ import { useState, useEffect, useRef } from 'react';
 import { IconClock } from '@tabler/icons-react';
 
 const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
-const btnBase: React.CSSProperties = {
-  height: 34,
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid transparent',
-  background: 'transparent',
-  fontFamily: 'DM Sans, sans-serif',
-  fontSize: 13,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  transition: 'background 0.1s',
-  width: '100%',
-};
+function ScrollColumn({
+  items,
+  selected,
+  onSelect,
+}: {
+  items: string[];
+  selected: string;
+  onSelect: (v: string) => void;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const ITEM_H = 36;
+
+  // Scroll selected item into the middle on open / when selection changes
+  useEffect(() => {
+    const idx = items.indexOf(selected);
+    if (idx >= 0 && listRef.current) {
+      listRef.current.scrollTop = idx * ITEM_H - ITEM_H * 2;
+    }
+  }, [selected, items]);
+
+  return (
+    <div
+      ref={listRef}
+      style={{
+        flex: 1,
+        overflowY: 'auto',
+        maxHeight: ITEM_H * 5,
+        scrollbarWidth: 'none',
+      }}
+    >
+      {items.map(v => {
+        const isSel = v === selected;
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onSelect(v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: ITEM_H,
+              border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              background: isSel ? 'var(--forest-dark)' : 'transparent',
+              color: isSel ? 'var(--moss)' : 'var(--text-dark)',
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: 14,
+              fontWeight: isSel ? 500 : 400,
+              cursor: 'pointer',
+              transition: 'background 0.1s',
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => {
+              if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'var(--linen)';
+            }}
+            onMouseLeave={e => {
+              if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            }}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function TimePicker({
   value,
@@ -36,7 +90,6 @@ export default function TimePicker({
   const selH = value.split(':')[0] ?? '';
   const selM = value.split(':')[1] ?? '';
 
-  // Close on outside click
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -45,13 +98,8 @@ export default function TimePicker({
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  function pickHour(h: string) {
-    onChange(selM ? `${h}:${selM}` : `${h}:00`);
-  }
-
-  function pickMinute(m: string) {
-    onChange(selH ? `${selH}:${m}` : `08:${m}`);
-  }
+  function pickHour(h: string) { onChange(`${h}:${selM || '00'}`); }
+  function pickMinute(m: string) { onChange(`${selH || '08'}:${m}`); }
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -82,58 +130,33 @@ export default function TimePicker({
           borderRadius: 'var(--radius-lg)',
           boxShadow: '0 8px 32px rgba(30,46,36,0.12)',
           padding: '16px',
-          minWidth: '200px',
           width: '100%',
+          minWidth: '200px',
         }}>
-          {/* Hours */}
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 10, fontWeight: 400, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
-            Timme
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2, marginBottom: 14 }}>
-            {HOURS.map(h => {
-              const isSel = h === selH;
-              return (
-                <button
-                  key={h}
-                  type="button"
-                  onClick={() => pickHour(h)}
-                  style={{ ...btnBase, background: isSel ? 'var(--forest-dark)' : 'transparent', color: isSel ? 'var(--moss)' : 'var(--text-dark)', fontWeight: isSel ? 500 : 400 }}
-                  onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'var(--linen)'; }}
-                  onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-                >
-                  {h}
-                </button>
-              );
-            })}
+          {/* Column headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            {['Timme', 'Minut'].map(label => (
+              <div key={label} style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: 10,
+                color: 'var(--text-muted)',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+              }}>
+                {label}
+              </div>
+            ))}
           </div>
 
-          {/* Divider */}
-          <div style={{ height: '0.5px', background: 'rgba(74,124,89,0.1)', marginBottom: 14 }} />
-
-          {/* Minutes */}
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 10, fontWeight: 400, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
-            Minut
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2, marginBottom: 14 }}>
-            {MINUTES.map(m => {
-              const isSel = m === selM;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => pickMinute(m)}
-                  style={{ ...btnBase, background: isSel ? 'var(--forest-dark)' : 'transparent', color: isSel ? 'var(--moss)' : 'var(--text-dark)', fontWeight: isSel ? 500 : 400 }}
-                  onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'var(--linen)'; }}
-                  onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-                >
-                  {m}
-                </button>
-              );
-            })}
+          {/* Scrollable columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <ScrollColumn items={HOURS}   selected={selH} onSelect={pickHour}   />
+            <ScrollColumn items={MINUTES} selected={selM} onSelect={pickMinute} />
           </div>
 
           {/* Footer */}
-          <div style={{ borderTop: '0.5px solid rgba(74,124,89,0.1)', paddingTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ borderTop: '0.5px solid rgba(74,124,89,0.1)', marginTop: 12, paddingTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
               onClick={() => setOpen(false)}
