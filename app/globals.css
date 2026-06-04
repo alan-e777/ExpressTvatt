@@ -1033,6 +1033,11 @@ input, textarea, select { font-family: inherit; }
   background: var(--linen);
 }
 
+/* ── Matt kvm input — hide native spinner ─────────────────────────────── */
+.matt-kvm-input::-webkit-inner-spin-button,
+.matt-kvm-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.matt-kvm-input { -moz-appearance: textfield; }
+
 /* ── Address autocomplete ─────────────────────────────────────────────── */
 @keyframes addr-spin {
   to { transform: rotate(360deg); }

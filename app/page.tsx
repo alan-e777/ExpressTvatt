@@ -8,7 +8,7 @@ import {
   IconLeaf, IconWashMachine, IconSteam, IconNeedle,
   IconShirt, IconHanger, IconStar, IconWash, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconPlus, IconMinus, IconSpray, IconInfoCircle,
+  IconPlus, IconMinus, IconSpray, IconInfoCircle, IconChevronUp, IconChevronDown,
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 
@@ -495,21 +495,55 @@ export default function HomePage() {
 
             {/* kvm display — editable */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                <input
-                  type="number" min={1} max={30} step={1} value={mattKvm}
-                  onChange={e => {
-                    const v = Math.min(30, Math.max(1, Number(e.target.value)));
-                    if (!isNaN(v) && e.target.value !== '') setMattKvm(Math.round(v));
-                  }}
-                  style={{
-                    fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500,
-                    color: 'var(--text-dark)', background: 'none', border: 'none',
-                    borderBottom: '1.5px solid rgba(74,124,89,0.25)', outline: 'none',
-                    width: 88, padding: '0 2px', lineHeight: 1,
-                  }}
-                />
-                <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500, color: 'var(--text-dark)' }}>m²</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <input
+                    type="number" min={1} max={30} step={1} value={mattKvm}
+                    onChange={e => {
+                      const v = Math.min(30, Math.max(1, Number(e.target.value)));
+                      if (!isNaN(v) && e.target.value !== '') setMattKvm(Math.round(v));
+                    }}
+                    className="matt-kvm-input"
+                    style={{
+                      fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500,
+                      color: 'var(--text-dark)', background: 'none', border: 'none',
+                      borderBottom: '1.5px solid rgba(74,124,89,0.25)', outline: 'none',
+                      width: 52, padding: '0 2px', lineHeight: 1,
+                    }}
+                  />
+                  <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500, color: 'var(--text-dark)' }}>m²</span>
+                </div>
+                {/* Custom stepper arrows */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+                  <button
+                    onClick={() => setMattKvm(v => Math.min(30, v + 1))}
+                    style={{
+                      width: 24, height: 24, borderRadius: 6,
+                      border: '0.5px solid rgba(74,124,89,0.3)',
+                      background: 'var(--cream)', color: 'var(--forest-mid)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--moss)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--cream)')}
+                  >
+                    <IconChevronUp size={13} stroke={2} />
+                  </button>
+                  <button
+                    onClick={() => setMattKvm(v => Math.max(1, v - 1))}
+                    style={{
+                      width: 24, height: 24, borderRadius: 6,
+                      border: '0.5px solid rgba(74,124,89,0.3)',
+                      background: 'var(--cream)', color: 'var(--forest-mid)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--moss)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--cream)')}
+                  >
+                    <IconChevronDown size={13} stroke={2} />
+                  </button>
+                </div>
               </div>
               <span className="small">{mattLabel(mattKvm)}</span>
             </div>
