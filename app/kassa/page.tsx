@@ -91,7 +91,7 @@ function CheckoutForm() {
   const [name,             setName]             = useState('');
   const [email,            setEmail]            = useState('');
   const [phone,            setPhone]            = useState('');
-  const [careOf,           setCareOf]           = useState('');
+
   const [address,          setAddress]          = useState('');
   const [postalCode,       setPostalCode]       = useState('');
   const [addressConfirmed, setAddressConfirmed] = useState(false);
@@ -163,7 +163,7 @@ function CheckoutForm() {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), careOf: careOf.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes: notes.trim(), items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes: notes.trim(), items }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -360,17 +360,6 @@ function CheckoutForm() {
             onConfirmChange={setAddressConfirmed}
           />
         )}
-        <div className="input-group" style={{ marginTop: 'var(--sp-sm)', marginBottom: 0 }}>
-          <label className="field-label">C/O (valfritt)</label>
-          <input
-            className="input"
-            type="text"
-            placeholder="c/o Andersson"
-            value={careOf}
-            onChange={e => setCareOf(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
@@ -389,7 +378,7 @@ function CheckoutForm() {
 
       <div className="input-group">
         <label className="field-label">Anteckning (valfritt)</label>
-        <textarea className="input textarea" placeholder="Specialinstruktioner…"
+        <textarea className="input textarea" placeholder="t.ex. C/O, Specialinstruktioner mm..."
           value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
       </div>
 
