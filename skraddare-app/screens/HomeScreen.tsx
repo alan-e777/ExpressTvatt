@@ -316,7 +316,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Greeting */}
-        <View style={styles.section}>
+        <View style={styles.greetingCard}>
           <Text style={[typography.h1, { fontSize: 32 }]}>
             {userName ? `God dag, ${userName}.` : 'Välkommen.'}
           </Text>
@@ -472,6 +472,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content:   { padding: spacing.lg, paddingBottom: 100 },
   section:   { marginBottom: spacing.xl },
+
+  greetingCard: {
+    backgroundColor: colors.linen,
+    borderRadius:    radius.lg,
+    padding:         spacing.xl,
+    borderWidth:     0.5,
+    borderColor:     'rgba(74,124,89,0.12)',
+    shadowColor:     '#1e2e24',
+    shadowOffset:    { width: 0, height: 1 },
+    shadowOpacity:   0.06,
+    shadowRadius:    4,
+    elevation:       2,
+    marginBottom:    spacing.lg,
+  },
 
   // ─ Service section cards ─
   serviceCard: {
