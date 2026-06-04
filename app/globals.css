@@ -296,6 +296,13 @@ input, textarea, select { font-family: inherit; }
   color: var(--text-muted);
 }
 
+/* ── Home-page font overrides (+30%) ──────────────────────────────────── */
+.home-main .h1    { font-size: clamp(32px, 4vw, 47px); }
+.home-main .h3    { font-size: 21px; }
+.home-main .body  { font-size: 18px; line-height: 28px; }
+.home-main .small { font-size: 16px; }
+.home-main .micro { font-size: 12px; }
+
 /* ── Buttons ──────────────────────────────────────────────────────────── */
 .btn-primary {
   display: inline-flex;
@@ -1069,6 +1076,14 @@ input, textarea, select { font-family: inherit; }
 .section { margin-bottom: var(--sp-xl); }
 .service-card {
   background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-xl);
+  border: 0.5px solid rgba(74, 124, 89, 0.12);
+  box-shadow: 0 1px 4px rgba(30, 46, 36, 0.06);
+  margin-bottom: var(--sp-lg);
+}
+.greeting-card {
+  background: var(--linen);
   border-radius: var(--radius-lg);
   padding: var(--sp-xl);
   border: 0.5px solid rgba(74, 124, 89, 0.12);

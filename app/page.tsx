@@ -215,7 +215,7 @@ function QtyControl({ qty, onAdd, onRemove, price }: { qty: number; onAdd: () =>
   };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-mid)', minWidth: 48, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-mid)', minWidth: 60, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
         {qty > 0 ? `${price * qty} kr` : `${price} kr`}
       </span>
       <button
@@ -225,7 +225,7 @@ function QtyControl({ qty, onAdd, onRemove, price }: { qty: number; onAdd: () =>
       >
         <IconMinus size={11} stroke={2.5} />
       </button>
-      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-dark)', minWidth: 20, textAlign: 'center' }}>{qty}</span>
+      <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-dark)', minWidth: 24, textAlign: 'center' }}>{qty}</span>
       <button onClick={onAdd} style={btnStyle}><IconPlus size={11} stroke={2.5} /></button>
     </div>
   );
@@ -428,24 +428,24 @@ export default function HomePage() {
 
         {/* Progress indicator */}
         <div style={{ textAlign: 'center', marginBottom: 'var(--sp-lg)' }}>
-          <ol style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, listStyle: 'none', padding: 0, margin: 0 }}>
+          <ol style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 16, listStyle: 'none', padding: 0, margin: 0 }}>
             <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
-                width: 22, height: 22, borderRadius: '50%',
+                width: 26, height: 26, borderRadius: '50%',
                 background: 'var(--forest-dark)', color: 'var(--white)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 600, flexShrink: 0,
+                fontSize: 13, fontWeight: 600, flexShrink: 0,
               }}>1</span>
               <span style={{ color: 'var(--text-dark)', fontWeight: 500 }}>Välj tjänster</span>
             </li>
             <li style={{ color: 'var(--text-muted)', opacity: 0.4 }}>—</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
-                width: 22, height: 22, borderRadius: '50%',
+                width: 26, height: 26, borderRadius: '50%',
                 background: 'var(--linen)', color: 'var(--text-mid)',
                 border: '0.5px solid rgba(74,124,89,0.2)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 600, flexShrink: 0,
+                fontSize: 13, fontWeight: 600, flexShrink: 0,
               }}>2</span>
               <span style={{ color: 'var(--text-mid)' }}>Uppgifter &amp; datum</span>
             </li>
@@ -453,9 +453,9 @@ export default function HomePage() {
         </div>
 
         {/* Page heading */}
-        <div style={{ marginBottom: 'var(--sp-lg)' }}>
+        <div className="greeting-card">
           <div className="h1">Vad vill du lämna in?</div>
-          <p className="small" style={{ color: 'var(--text-mid)', marginTop: 6 }}>
+          <p className="small" style={{ color: 'var(--text-mid)', marginTop: 8 }}>
             Välj tjänster nedan — mattvätt, struken tvätt och klädvård kan kombineras i samma bokning.
           </p>
         </div>
@@ -505,13 +505,13 @@ export default function HomePage() {
                     if (!isNaN(v) && e.target.value !== '') setMattKvm(Math.round(v));
                   }}
                   style={{
-                    fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 500,
+                    fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500,
                     color: 'var(--text-dark)', background: 'none', border: 'none',
                     borderBottom: '1.5px solid rgba(74,124,89,0.25)', outline: 'none',
-                    width: 72, padding: '0 2px', lineHeight: 1,
+                    width: 88, padding: '0 2px', lineHeight: 1,
                   }}
                 />
-                <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 500, color: 'var(--text-dark)' }}>m²</span>
+                <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500, color: 'var(--text-dark)' }}>m²</span>
               </div>
               <span className="small">{mattLabel(mattKvm)}</span>
             </div>
@@ -530,7 +530,7 @@ export default function HomePage() {
             {/* Price row */}
             <div style={{ marginBottom: 'var(--sp-md)' }}>
               <div className="micro" style={{ marginBottom: 2, letterSpacing: '1px', textTransform: 'uppercase' }}>Pris</div>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, color: 'var(--text-dark)' }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 29, color: 'var(--text-dark)' }}>
                 {mattPrice} kr
               </div>
               <div className="micro">90 kr / m²</div>
