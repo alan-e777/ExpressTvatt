@@ -103,6 +103,7 @@ function CheckoutForm() {
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
   const [profileCard,      setProfileCard]      = useState<{ name: string; email: string; phone: string } | null>(null);
+  const [editingContact,   setEditingContact]   = useState(false);
 
   useEffect(() => {
     try {
@@ -227,7 +228,7 @@ function CheckoutForm() {
     <form onSubmit={handleSubmit} className="form-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
       <Summary />
 
-      {profileCard ? (
+      {profileCard && !editingContact ? (
         <div style={{
           background: 'var(--linen)',
           borderRadius: 'var(--radius-md)',
@@ -255,15 +256,34 @@ function CheckoutForm() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <span className="section-label" style={{ marginBottom: 4 }}>Dina uppgifter</span>
             <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 500, color: 'var(--text-dark)', margin: 0 }}>
-              {profileCard.name}
+              {name || profileCard.name}
             </p>
             <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
-              {profileCard.email}{profileCard.phone ? ` · ${profileCard.phone}` : ''}
+              {email || profileCard.email}{phone ? ` · ${phone}` : (profileCard.phone ? ` · ${profileCard.phone}` : '')}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setEditingContact(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}
+          >
+            Ändra
+          </button>
         </div>
       ) : (
         <>
+          {profileCard && editingContact && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-xs)' }}>
+              <span className="section-label" style={{ margin: 0 }}>Dina uppgifter</span>
+              <button
+                type="button"
+                onClick={() => setEditingContact(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans, sans-serif' }}
+              >
+                ← Avbryt
+              </button>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
             <div className="input-group">
               <label className="field-label">
