@@ -91,7 +91,7 @@ function ItemRow({
       <View style={subStyles.rowIcon}>
         <Icon size={15} color={colors.forestMid} strokeWidth={1.5} />
       </View>
-      <Text style={[typography.body, { flex: 1 }]}>{name}</Text>
+      <Text style={[typography.body, { flex: 1, fontSize: 19 }]}>{name}</Text>
       <View style={subStyles.stepper}>
         <Text style={subStyles.priceLabel}>{qty > 0 ? `${price * qty} kr` : `${price} kr`}</Text>
         <TouchableOpacity
@@ -127,8 +127,8 @@ const subStyles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink:     0,
   },
-  title:    { fontFamily: 'DMSans_500',     fontSize: 15, color: colors.textDark },
-  subtitle: { fontFamily: 'DMSans_400',     fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  title:    { fontFamily: 'DMSans_500',     fontSize: 20, color: colors.textDark },
+  subtitle: { fontFamily: 'DMSans_400',     fontSize: 16, color: colors.textMuted, marginTop: 2 },
 
   row: {
     flexDirection:     'row',
@@ -156,7 +156,7 @@ const subStyles = StyleSheet.create({
   },
   priceLabel: {
     fontFamily:        'DMSans_500',
-    fontSize:          13,
+    fontSize:          17,
     color:             colors.textMid,
     minWidth:          52,
     textAlign:         'right',
@@ -172,7 +172,7 @@ const subStyles = StyleSheet.create({
   },
   stepCount: {
     fontFamily: 'DMSans_500',
-    fontSize:   13,
+    fontSize:   17,
     color:      colors.textDark,
     minWidth:   18,
     textAlign:  'center',
@@ -317,10 +317,10 @@ export default function HomeScreen() {
       >
         {/* Greeting */}
         <View style={styles.section}>
-          <Text style={typography.h1}>
+          <Text style={[typography.h1, { fontSize: 32 }]}>
             {userName ? `God dag, ${userName}.` : 'Välkommen.'}
           </Text>
-          <Text style={[typography.small, { marginTop: 4 }]}>
+          <Text style={[typography.small, { marginTop: 4, fontSize: 16 }]}>
             Vad vill du lämna in idag?
           </Text>
         </View>
@@ -350,7 +350,7 @@ export default function HomeScreen() {
             <View>
               <Text style={styles.priceLabel}>PRIS</Text>
               <Text style={styles.priceValue}>{mattPrice} kr</Text>
-              <Text style={typography.micro}>90 kr / m²</Text>
+              <Text style={[typography.micro, { fontSize: 12 }]}>90 kr / m²</Text>
             </View>
           </View>
 
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontFamily:    'DMSans_400',
-    fontSize:      10,
+    fontSize:      13,
     color:         colors.textMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
   } as any,
   priceValue: {
     fontFamily: 'PlayfairDisplay_500',
-    fontSize:   22,
+    fontSize:   29,
     color:      colors.textDark,
   },
 
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     fontFamily: 'DMSans_500',
-    fontSize:   14,
+    fontSize:   18,
     color:      colors.moss,
   },
 
@@ -544,14 +544,14 @@ const styles = StyleSheet.create({
   },
   mattStepCount: {
     fontFamily: 'DMSans_500',
-    fontSize:   15,
+    fontSize:   20,
     color:      colors.textDark,
     minWidth:   20,
     textAlign:  'center',
   },
   mattInCartLabel: {
     fontFamily: 'DMSans_400',
-    fontSize:   12,
+    fontSize:   16,
     color:      colors.textMuted,
   },
 
@@ -571,12 +571,12 @@ const styles = StyleSheet.create({
   },
   cartCount: {
     fontFamily: 'DMSans_400',
-    fontSize:   11,
+    fontSize:   15,
     color:      'rgba(200,223,192,0.6)',
   },
   cartTotal: {
     fontFamily: 'PlayfairDisplay_500',
-    fontSize:   22,
+    fontSize:   29,
     color:      colors.moss,
   },
   cartBtn: {
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   } as any,
   cartBtnText: {
     fontFamily: 'DMSans_500',
-    fontSize:   13,
+    fontSize:   17,
     color:      colors.forestDark,
   },
 });
