@@ -442,7 +442,7 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Eco components ───────────────────────────────────────────────────── */
 .eco-trust-banner {
-  background: var(--white);
+  background: var(--tan);
   border-radius: var(--radius-md);
   border: 1.5px solid var(--earth);
   padding: 9px 12px;
