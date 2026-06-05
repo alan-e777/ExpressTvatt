@@ -196,8 +196,8 @@ input, textarea, select { font-family: inherit; }
   gap: 0;
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
-  font-size: 15px;
-  letter-spacing: 3px;
+  font-size: 25px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   user-select: none;
   white-space: nowrap;

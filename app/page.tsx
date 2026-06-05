@@ -269,14 +269,14 @@ function CartPanel({ cart, onAdd, onRemove, onCheckout }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 <button
                   onClick={() => onRemove(item.id)}
-                  style={{ width: 22, height: 22, borderRadius: 9999, border: '0.5px solid rgba(74,124,89,0.3)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 22, height: 22, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <IconMinus size={9} stroke={2.5} />
                 </button>
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dark)', minWidth: 16, textAlign: 'center' }}>{item.quantity}</span>
                 <button
                   onClick={() => onAdd({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId })}
-                  style={{ width: 22, height: 22, borderRadius: 9999, border: '0.5px solid rgba(74,124,89,0.3)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 22, height: 22, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <IconPlus size={9} stroke={2.5} />
                 </button>
@@ -484,9 +484,9 @@ export default function HomePage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'center', gap: 'var(--sp-md)',
                   padding: '28px 16px',
-                  background: open ? 'var(--forest-dark)' : 'var(--white)',
+                  background: open ? 'var(--forest-mid)' : 'var(--white)',
                   borderRadius: 'var(--radius-lg)',
-                  border: open ? '0.5px solid var(--forest-dark)' : '0.5px solid rgba(74,124,89,0.15)',
+                  border: open ? '0.5px solid var(--forest-mid)' : '0.5px solid rgba(14,92,91,0.15)',
                   boxShadow: '0 1px 4px rgba(30,46,36,0.06)',
                   cursor: 'pointer',
                   transition: 'background 0.15s',
@@ -496,16 +496,16 @@ export default function HomePage() {
               >
                 <div style={{
                   width: 40, height: 40, borderRadius: '50%',
-                  background: open ? 'rgba(200,223,192,0.15)' : 'var(--linen)',
-                  border: open ? '0.5px solid rgba(200,223,192,0.25)' : '0.5px solid rgba(74,124,89,0.2)',
+                  background: open ? 'rgba(183,220,215,0.15)' : 'var(--linen)',
+                  border: open ? '0.5px solid rgba(183,220,215,0.25)' : '0.5px solid rgba(14,92,91,0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                   color: open ? 'var(--moss)' : 'var(--forest-mid)',
                 }}>
                   <Icon size={18} stroke={1.5} />
                 </div>
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 500, lineHeight: 1.2 }}>{label}</div>
-                <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: open ? 'rgba(200,223,192,0.65)' : 'var(--text-muted)', lineHeight: 1.5 }}>{desc}</div>
+                <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 16, fontWeight: 600, lineHeight: 1.2 }}>{label}</div>
+                <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 11, color: open ? 'rgba(183,220,215,0.65)' : 'var(--text-muted)', lineHeight: 1.5 }}>{desc}</div>
               </button>
             );
           })}
@@ -526,8 +526,8 @@ export default function HomePage() {
           </div>
 
           <div style={{
-            background: 'var(--cream)', borderRadius: 'var(--radius-lg)',
-            padding: 'var(--sp-xl)', border: '0.5px solid rgba(74,124,89,0.1)',
+            background: 'var(--linen)', borderRadius: 'var(--radius-lg)',
+            padding: 'var(--sp-xl)', border: '0.5px solid rgba(14,92,91,0.1)',
           }}>
             <div className="small" style={{ marginBottom: 'var(--sp-md)', color: 'var(--text-mid)' }}>
               Välj storlek på mattan
@@ -545,13 +545,13 @@ export default function HomePage() {
                     }}
                     className="matt-kvm-input"
                     style={{
-                      fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500,
+                      fontFamily: 'Poppins, sans-serif', fontSize: 36, fontWeight: 600,
                       color: 'var(--text-dark)', background: 'none', border: 'none',
-                      borderBottom: '1.5px solid rgba(74,124,89,0.25)', outline: 'none',
+                      borderBottom: '1.5px solid rgba(14,92,91,0.25)', outline: 'none',
                       width: 52, padding: '0 2px', lineHeight: 1,
                     }}
                   />
-                  <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 500, color: 'var(--text-dark)' }}>m²</span>
+                  <span style={{ fontFamily: 'Poppins, sans-serif', fontSize: 36, fontWeight: 600, color: 'var(--text-dark)' }}>m²</span>
                 </div>
                 {/* Custom stepper arrows */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
@@ -559,13 +559,13 @@ export default function HomePage() {
                     onClick={() => setMattKvm(v => Math.min(30, v + 1))}
                     style={{
                       width: 24, height: 24, borderRadius: 6,
-                      border: '0.5px solid rgba(74,124,89,0.3)',
-                      background: 'var(--cream)', color: 'var(--forest-mid)',
+                      border: '0.5px solid rgba(14,92,91,0.2)',
+                      background: 'var(--linen)', color: 'var(--forest-mid)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', transition: 'background 0.12s',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--moss)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--cream)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--linen)')}
                   >
                     <IconChevronUp size={13} stroke={2} />
                   </button>
@@ -573,13 +573,13 @@ export default function HomePage() {
                     onClick={() => setMattKvm(v => Math.max(1, v - 1))}
                     style={{
                       width: 24, height: 24, borderRadius: 6,
-                      border: '0.5px solid rgba(74,124,89,0.3)',
-                      background: 'var(--cream)', color: 'var(--forest-mid)',
+                      border: '0.5px solid rgba(14,92,91,0.2)',
+                      background: 'var(--linen)', color: 'var(--forest-mid)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', transition: 'background 0.12s',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--moss)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--cream)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--linen)')}
                   >
                     <IconChevronDown size={13} stroke={2} />
                   </button>
@@ -592,7 +592,7 @@ export default function HomePage() {
             <input
               type="range" min={1} max={30} step={1} value={mattKvm}
               onChange={e => setMattKvm(Number(e.target.value))}
-              style={{ width: '100%', accentColor: 'var(--forest-dark)', marginBottom: 4 }}
+              style={{ width: '100%', accentColor: 'var(--forest-mid)', marginBottom: 4 }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-lg)' }}>
               <span className="micro">1 m²</span>
@@ -602,7 +602,7 @@ export default function HomePage() {
             {/* Price row */}
             <div style={{ marginBottom: 'var(--sp-md)' }}>
               <div className="micro" style={{ marginBottom: 2, letterSpacing: '1px', textTransform: 'uppercase' }}>Pris</div>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 29, color: 'var(--text-dark)' }}>
+              <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 29, fontWeight: 600, color: 'var(--text-dark)' }}>
                 {mattPrice} kr
               </div>
               <div className="micro">90 kr / m²</div>
@@ -619,11 +619,11 @@ export default function HomePage() {
               </button>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                <button onClick={() => removeFromCart(mattId)} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(74,124,89,0.3)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => removeFromCart(mattId)} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <IconMinus size={13} stroke={2.5} />
                 </button>
                 <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-dark)', minWidth: 20, textAlign: 'center' }}>{cartQty(mattId)}</span>
-                <button onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(74,124,89,0.3)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <IconPlus size={13} stroke={2.5} />
                 </button>
               </div>
