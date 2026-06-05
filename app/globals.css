@@ -699,8 +699,8 @@ input, textarea, select { font-family: inherit; }
 .node-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
 .label-gap { flex: 0.8; }
 .connector { flex: 0.8; height: 2px; }
-.connector-done { background: var(--earth); }
-.connector-future { background: rgba(212, 175, 55, 0.2); }
+.connector-done { background: var(--forest-light); }
+.connector-future { background: rgba(183, 220, 215, 0.15); }
 
 .step-circle {
   width: 22px;
@@ -710,15 +710,42 @@ input, textarea, select { font-family: inherit; }
   align-items: center;
   justify-content: center;
 }
-.step-done { background: var(--earth); color: var(--white); }
-.step-active { background: rgba(212, 175, 55, 0.2); color: var(--forest-dark); }
-.step-future { background: rgba(212, 175, 55, 0.08); }
-.active-ring { background: rgba(212, 175, 55, 0.1); border-radius: var(--radius-pill); padding: 4px; }
+.step-done { background: var(--forest-light); color: var(--white); }
+.step-active { background: var(--moss); color: var(--forest-dark); }
+.step-future { background: rgba(183, 220, 215, 0.1); }
+.active-ring { background: rgba(183, 220, 215, 0.2); border-radius: var(--radius-pill); padding: 4px; }
 .step-num { font-family: 'Poppins', sans-serif; font-weight: 500; font-size: 10px; }
 .step-label { flex: 1; text-align: center; font-family: 'Poppins', sans-serif; font-weight: 400; font-size: 9px; }
-.step-label-done   { color: var(--earth); }
-.step-label-active { color: var(--forest-dark); font-weight: 500; }
-.step-label-future { color: rgba(212, 175, 55, 0.4); }
+.step-label-done   { color: rgba(183, 220, 215, 0.7); }
+.step-label-active { color: var(--moss); font-weight: 500; }
+.step-label-future { color: rgba(183, 220, 215, 0.3); }
+
+/* ── When order status is "Klar" (ready_for_pickup or completed) ──────────── */
+.active-order-card[data-status="ready_for_pickup"] .connector-done,
+.active-order-card[data-status="completed"] .connector-done {
+  background: var(--earth);
+}
+
+.active-order-card[data-status="ready_for_pickup"] .step-done,
+.active-order-card[data-status="completed"] .step-done {
+  background: var(--earth);
+}
+
+.active-order-card[data-status="ready_for_pickup"] .step-active,
+.active-order-card[data-status="completed"] .step-active {
+  background: rgba(212, 175, 55, 0.2);
+}
+
+.active-order-card[data-status="ready_for_pickup"] .step-label-done,
+.active-order-card[data-status="completed"] .step-label-done {
+  color: var(--earth);
+}
+
+.active-order-card[data-status="ready_for_pickup"] .step-label-active,
+.active-order-card[data-status="completed"] .step-label-active {
+  color: var(--earth);
+  font-weight: 600;
+}
 
 /* ── Greeting row ─────────────────────────────────────────────────────── */
 .greeting-row {

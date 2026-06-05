@@ -138,6 +138,7 @@ function ActiveOrderCard({ orders }: { orders: Order[] }) {
 
       <div
         className="active-order-card section"
+        data-status={order.status}
         style={{ cursor: orders.length > 1 ? 'pointer' : 'default', overflow: 'hidden' }}
         onClick={handleClick}
       >
