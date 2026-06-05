@@ -225,8 +225,9 @@ function CheckoutForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="form-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
-      <Summary />
+    <form onSubmit={handleSubmit} className="form-page">
+      <div className="checkout-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
+        <Summary />
 
       {profileCard && !editingContact ? (
         <div style={{
@@ -403,13 +404,14 @@ function CheckoutForm() {
           value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
       </div>
 
-      {formError && <p className="error-msg">{formError}</p>}
-      {loadError && <p className="error-msg">{loadError}</p>}
+        {formError && <p className="error-msg">{formError}</p>}
+        {loadError && <p className="error-msg">{loadError}</p>}
 
-      <button type="submit" className="btn-primary" disabled={submitting}>
-        <IconLock size={14} stroke={1.5} />
-        {submitting ? 'Förbereder betalning…' : `Betala ${formatPrice(totalKr)}`}
-      </button>
+        <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={submitting}>
+          <IconLock size={14} stroke={1.5} />
+          {submitting ? 'Förbereder betalning…' : `Betala ${formatPrice(totalKr)}`}
+        </button>
+      </div>
     </form>
   );
 }
