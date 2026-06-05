@@ -461,7 +461,8 @@ export default function HomePage() {
         <div className="greeting-card">
           <div className="h1">Vad vill du lämna in?</div>
           <p className="small" style={{ color: 'var(--text-mid)', marginTop: 8 }}>
-            Välj tjänster nedan — mattvätt, struken tvätt och klädvård kan kombineras i samma bokning.
+Boka på några minuter. Vi hämtar din tvätt direkt vid dörren, rengör den med högsta omsorg och levererar tillbaka den fräsch, ren och redo att användas – utan att du behöver lyfta ett finger.
+
           </p>
           <div className="eco-trust-banner" style={{ marginTop: 'var(--sp-lg)' }}>
             <IconLeaf size={12} stroke={1.5} />

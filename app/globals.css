@@ -108,8 +108,8 @@ input, textarea, select { font-family: inherit; }
   left: 0;
   right: 0;
   height: var(--header-h);
-  background: #ECE6DC;
-  border-bottom: 0.5px solid rgba(14, 92, 91, 0.12);
+  background: #F5F0E8;
+  border-bottom: 0px solid rgba(14, 92, 91, 0.12); /* adjust*/
   display: flex;
   align-items: center;
   padding: 0 var(--page-px);
@@ -217,11 +217,11 @@ input, textarea, select { font-family: inherit; }
 }
 .header-wordmark-express {
   color: var(--forest-dark);
-  margin-right: -70px;
+  margin-right: -60px;
 }
 .header-wordmark-tvatt {
   color: var(--forest-light);
-  margin-left: -70px;
+  margin-left: -60px;
 }
 
 /* Settings button — mobile only */
