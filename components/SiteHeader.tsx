@@ -53,7 +53,7 @@ export default function SiteHeader() {
           alt=""
           height={188}
           width={188}
-          style={{ objectFit: 'contain' }}
+          style={{ objectFit: 'contain', marginTop: '8px' }}
           priority
         />
         <span className="header-wordmark-tvatt">TVÄTT</span>
