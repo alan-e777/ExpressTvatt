@@ -18,19 +18,19 @@ export default function NotFound() {
         gap:           '12px',
       }}>
         <p style={{
-          fontFamily:    "'DM Sans', sans-serif",
+          fontFamily:    "'Poppins', sans-serif",
           fontWeight:    300,
           fontSize:      '10px',
           color:         'var(--text-muted)',
           letterSpacing: '2px',
           textTransform: 'uppercase',
         }}>
-          Tvättio
+          Express Tvätt
         </p>
 
         <p style={{
-          fontFamily: "'Playfair Display', serif",
-          fontWeight: 500,
+          fontFamily: "'Poppins', sans-serif",
+          fontWeight: 600,
           fontSize:   'clamp(72px, 20vw, 120px)',
           color:      'var(--forest-dark)',
           lineHeight: 1,
@@ -39,9 +39,8 @@ export default function NotFound() {
         </p>
 
         <p style={{
-          fontFamily: "'Playfair Display', serif",
-          fontWeight: 500,
-          fontStyle:  'italic',
+          fontFamily: "'Poppins', sans-serif",
+          fontWeight: 600,
           fontSize:   'clamp(18px, 4vw, 22px)',
           color:      'var(--text-dark)',
         }}>
@@ -51,12 +50,12 @@ export default function NotFound() {
         <div style={{
           width:      '32px',
           height:     '0.5px',
-          background: 'rgba(74,124,89,0.3)',
+          background: 'rgba(14,92,91,0.3)',
           margin:     '4px 0',
         }} />
 
         <p style={{
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "'Poppins', sans-serif",
           fontWeight: 400,
           fontSize:   '14px',
           color:      'var(--text-muted)',
@@ -72,7 +71,7 @@ export default function NotFound() {
           justifyContent:  'center',
           background:      'var(--forest-dark)',
           color:           'var(--moss)',
-          fontFamily:      "'DM Sans', sans-serif",
+          fontFamily:      "'Poppins', sans-serif",
           fontWeight:      500,
           fontSize:        '13px',
           padding:         '12px 28px',

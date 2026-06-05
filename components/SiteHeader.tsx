@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IconArrowLeft, IconSettings, IconHome, IconMessageCircle, IconUser } from '@tabler/icons-react';
@@ -11,7 +12,6 @@ const NAV_LINKS = [
 ];
 
 const TITLES: Record<string, string> = {
-  '/':                    'Tvättio',
   '/tjanster':            'Tjänster',
   '/boka':                'Boka tjänst',
   '/checkout':            'Betala',
@@ -30,22 +30,35 @@ const BACK_TO: Record<string, string> = {
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const title   = TITLES[pathname] ?? 'Tvättio';
+  const title    = TITLES[pathname];
   const backHref = BACK_TO[pathname];
+  const isHome   = pathname === '/';
 
   return (
     <header className="site-header">
-      {/* Left: back arrow on detail pages, logo otherwise */}
+      {/* Left: back arrow on detail pages, logo on home */}
       <div className="header-left">
-        {backHref && (
+        {backHref ? (
           <Link href={backHref} className="header-back" aria-label="Tillbaka">
             <IconArrowLeft size={20} stroke={1.5} />
           </Link>
-        )}
+        ) : isHome ? (
+          <Link href="/" aria-label="Express Tvätt – startsida">
+            <Image
+              src="/logo.png"
+              alt="Express Tvätt"
+              height={36}
+              width={120}
+              style={{ objectFit: 'contain', objectPosition: 'left center' }}
+              priority
+            />
+          </Link>
+        ) : null}
       </div>
 
-      {/* Center: page title */}
-      <span className="header-title">{title}</span>
+      {/* Center: page title (hidden on home where logo is shown) */}
+      {!isHome && <span className="header-title">{title ?? 'Express Tvätt'}</span>}
+      {isHome && <span style={{ flex: 1 }} />}
 
       {/* Right: desktop nav OR mobile settings */}
       <nav className="header-nav" aria-label="Huvudnavigation">
