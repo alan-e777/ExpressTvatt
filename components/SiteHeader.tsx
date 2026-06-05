@@ -47,8 +47,8 @@ export default function SiteHeader() {
             <Image
               src="/logo-icon.png"
               alt=""
-              height={60}
-              width={60}
+              height={75}
+              width={75}
               style={{ objectFit: 'contain', display: 'block' }}
               priority
             />
