@@ -123,6 +123,7 @@ input, textarea, select { font-family: inherit; }
   flex-shrink: 0;
   width: 85px;
   height: 100%;
+  margin-left: -8px; /* mobile: pull logo away from page padding so it doesn't crowd center text */
 }
 
 .header-left a {
@@ -266,6 +267,7 @@ input, textarea, select { font-family: inherit; }
   .header-title { flex: unset; }         /* don't stretch, sits next to logo */
   .header-settings { display: none; }   /* nav replaces settings */
   .mobile-nav { display: none; }        /* hide bottom nav */
+  .header-left { margin-left: 0; }      /* reset mobile pull on desktop */
 }
 
 @media (min-width: 1200px) {
