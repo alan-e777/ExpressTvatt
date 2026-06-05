@@ -863,6 +863,16 @@ input, textarea, select { font-family: inherit; }
   margin: 0 auto;
 }
 
+.checkout-card {
+  background: var(--white);
+  border: 1px solid rgba(14, 92, 91, 0.15);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
 /* ── Order summary (checkout) ─────────────────────────────────────────── */
 .order-summary {
   background: var(--linen);
