@@ -36,29 +36,35 @@ export default function SiteHeader() {
 
   return (
     <header className="site-header">
-      {/* Left: back arrow on detail pages, logo on home */}
+      {/* Left: icon-only logo (always), back arrow overlays it on detail pages */}
       <div className="header-left">
         {backHref ? (
           <Link href={backHref} className="header-back" aria-label="Tillbaka">
             <IconArrowLeft size={20} stroke={1.5} />
           </Link>
-        ) : isHome ? (
+        ) : (
           <Link href="/" aria-label="Express Tvätt – startsida">
             <Image
-              src="/logo.png"
-              alt="Express Tvätt"
+              src="/logo-icon.png"
+              alt=""
               height={36}
-              width={120}
-              style={{ objectFit: 'contain', objectPosition: 'left center' }}
+              width={36}
+              style={{ objectFit: 'contain' }}
               priority
             />
           </Link>
-        ) : null}
+        )}
       </div>
 
-      {/* Center: page title (hidden on home where logo is shown) */}
-      {!isHome && <span className="header-title">{title ?? 'Express Tvätt'}</span>}
-      {isHome && <span style={{ flex: 1 }} />}
+      {/* Center: branded wordmark on home, page title elsewhere */}
+      {isHome ? (
+        <span className="header-wordmark" aria-label="Express Tvätt">
+          <span className="header-wordmark-express">EXPRESS</span>
+          <span className="header-wordmark-tvatt">TVÄTT</span>
+        </span>
+      ) : (
+        <span className="header-title">{title ?? 'Express Tvätt'}</span>
+      )}
 
       {/* Right: desktop nav OR mobile settings */}
       <nav className="header-nav" aria-label="Huvudnavigation">

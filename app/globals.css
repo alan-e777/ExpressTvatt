@@ -186,6 +186,23 @@ input, textarea, select { font-family: inherit; }
 
 .header-nav-icon { flex-shrink: 0; }
 
+/* ── Header wordmark (home page center) ──────────────────────────────── */
+.header-wordmark {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 300;
+  font-size: 15px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  user-select: none;
+}
+.header-wordmark-express { color: var(--forest-dark); }
+.header-wordmark-tvatt   { color: var(--forest-light); }
+
 /* Settings button — mobile only */
 .header-settings {
   width: 34px;
