@@ -196,8 +196,11 @@ input, textarea, select { font-family: inherit; }
 
 .header-nav-icon { flex-shrink: 0; }
 
-/* ── Header wordmark (home page center) ──────────────────────────────── */
+/* ── Header wordmark (always visible, centered edge-to-edge) ──────────────────────────────── */
 .header-wordmark {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -211,8 +214,6 @@ input, textarea, select { font-family: inherit; }
   white-space: nowrap;
   color: inherit;
   text-decoration: none;
-  flex: 1;
-  margin: 0 auto;
 }
 .header-wordmark-express { color: var(--forest-dark); }
 .header-wordmark-tvatt   { color: var(--forest-light); }
@@ -436,7 +437,7 @@ input, textarea, select { font-family: inherit; }
 /* ── Eco components ───────────────────────────────────────────────────── */
 .eco-trust-banner {
   background: var(--tan);
-  border-radius: var(--radius-sharp);
+  border-radius: var(--radius-md);
   border: 0.5px solid rgba(14, 92, 91, 0.2);
   padding: 9px 12px;
   display: flex;

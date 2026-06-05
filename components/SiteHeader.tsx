@@ -36,7 +36,7 @@ export default function SiteHeader() {
 
   return (
     <header className="site-header">
-      {/* Left: back arrow on detail pages, logo on home */}
+      {/* Left: back arrow on detail pages */}
       {backHref && (
         <div className="header-left">
           <Link href={backHref} className="header-back" aria-label="Tillbaka">
@@ -45,23 +45,19 @@ export default function SiteHeader() {
         </div>
       )}
 
-      {/* Center: branded wordmark on home (with logo), page title elsewhere */}
-      {isHome ? (
-        <Link href="/" className="header-wordmark" aria-label="Express Tvätt – startsida">
-          <span className="header-wordmark-express">EXPRESS</span>
-          <Image
-            src="/logo-icon.png"
-            alt=""
-            height={50}
-            width={50}
-            style={{ objectFit: 'contain' }}
-            priority
-          />
-          <span className="header-wordmark-tvatt">TVÄTT</span>
-        </Link>
-      ) : (
-        <span className="header-title">{title ?? 'Express Tvätt'}</span>
-      )}
+      {/* Center: branded wordmark (always visible, clickable to home) */}
+      <Link href="/" className="header-wordmark" aria-label="Express Tvätt – startsida">
+        <span className="header-wordmark-express">EXPRESS</span>
+        <Image
+          src="/logo-icon.png"
+          alt=""
+          height={50}
+          width={50}
+          style={{ objectFit: 'contain' }}
+          priority
+        />
+        <span className="header-wordmark-tvatt">TVÄTT</span>
+      </Link>
 
       {/* Right: desktop nav OR mobile settings */}
       <nav className="header-nav" aria-label="Huvudnavigation">
