@@ -14,7 +14,7 @@
   --forest-mid:   #0E5C5B;
   --forest-light: #6BB3AC;
   --moss:         #B7DCD7;
-  --cream:        #f5f0e8;
+  --cream:        #eef3f2;
   --linen:        #FFFFFF;
   --tan:          #DCCBA3;
   --white:        #fafafa;
@@ -188,17 +188,20 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Header wordmark (home page center) ──────────────────────────────── */
 .header-wordmark {
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0;
   font-family: 'Poppins', sans-serif;
-  font-weight: 300;
+  font-weight: 500;
   font-size: 15px;
   letter-spacing: 3px;
   text-transform: uppercase;
   user-select: none;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .header-wordmark-express { color: var(--forest-dark); }
 .header-wordmark-tvatt   { color: var(--forest-light); }
