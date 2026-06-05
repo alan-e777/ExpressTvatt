@@ -441,18 +441,18 @@ export default function HomePage() {
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 600, flexShrink: 0,
               }}>1</span>
-              <span style={{ color: 'var(--text-dark)', fontWeight: 500 }}>Välj tjänster</span>
+              <span style={{ color: 'var(--forest-light)', fontWeight: 500 }}>Välj tjänster</span>
             </li>
-            <li style={{ color: 'var(--text-dark)', opacity: 0.4 }}>—</li>
+            <li style={{ color: 'var(--forest-light)', opacity: 0.4 }}>—</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
                 width: 26, height: 26, borderRadius: '50%',
-                background: 'transparent', color: 'var(--text-dark)',
+                background: 'var(--moss)', color: 'var(--forest-dark)',
                 border: '0.5px solid rgba(14,92,91,0.25)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 600, flexShrink: 0,
               }}>2</span>
-              <span style={{ color: 'var(--text-dark)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
+              <span style={{ color: 'var(--forest-light)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
             </li>
           </ol>
         </div>

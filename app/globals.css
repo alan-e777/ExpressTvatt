@@ -785,10 +785,10 @@ input, textarea, select { font-family: inherit; }
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--sp-xxl);
-  background: #F5F0E8;
-  border: 1px solid rgba(14, 92, 91, 0.18);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding: var(--sp-xl);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: var(--sp-xl) var(--page-px);
 }
 
 .home-main {
