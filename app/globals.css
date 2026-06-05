@@ -217,11 +217,11 @@ input, textarea, select { font-family: inherit; }
 }
 .header-wordmark-express {
   color: var(--forest-dark);
-  margin-right: -60px;
+  margin-right: 0;
 }
 .header-wordmark-tvatt {
   color: var(--forest-light);
-  margin-left: -60px;
+  margin-left: 0;
 }
 
 /* Settings button — mobile only */
