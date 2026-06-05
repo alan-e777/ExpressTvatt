@@ -51,9 +51,9 @@ export default function SiteHeader() {
         <Image
           src="/logo-icon.png"
           alt=""
-          height={50}
-          width={50}
-          style={{ objectFit: 'contain', marginTop: '8px', width: '50px', height: '50px', maxWidth: '50px' }}
+          height={65}
+          width={65}
+          style={{ objectFit: 'contain', marginTop: '-4px', width: '65px', height: '65px', maxWidth: '65px' }}
           priority
         />
         <span className="header-wordmark-tvatt">TVÄTT</span>
