@@ -39,7 +39,7 @@
   --sp-xl: 24px;
   --sp-xxl: 32px;
 
-  --header-h:   60px;
+  --header-h:   80px;
   --mobile-nav: 60px;
   --content-max: 1140px;
   --page-px:     24px;
@@ -120,7 +120,7 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 52px;
+  width: 70px;
 }
 
 .header-logo {
