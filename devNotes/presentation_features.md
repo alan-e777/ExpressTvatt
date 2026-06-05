@@ -27,14 +27,20 @@ A persistent sidebar (desktop) and a sticky bar (mobile) shows the running total
 ### Checkout — Address, Date, Time, Payment
 
 - **Address autocomplete** — powered by Google Places but restricted to the admin-configured service area. Customers only see addresses within the delivery zone.
+- **Name & C/O field** — the customer enters their name and an optional care-of field for deliveries to third parties.
 - **Date & time selection** — the customer chooses their preferred pickup date and time window.
+- **Contact details** — email and phone number collected at checkout for delivery coordination.
 - **Notes field** — free text for any special instructions.
 - **Stripe payment** — embedded Stripe payment form. The server validates every price before the payment intent is created — the client cannot manipulate amounts.
 - On success, an order document is created in the database with status `pending_payment`, instantly upgraded to `paid` when the payment webhook fires.
 
 ### Live Order Status (logged-in customers)
 
-Customers who sign in see a live progress tracker on the home page for any active order. Five stages: Bokad → Hämtad → Rengörs → Klar → Levererad. The tracker updates in real time as the admin moves the order through statuses.
+Customers who sign in see a live progress tracker on the home page for any active order. Five stages: Bokad → Hämtad → Rengörs → Klar → Levererad. The tracker updates in real time as the admin moves the order through statuses. If a customer has multiple active orders, a badge shows the count and they can cycle between them with a tap animation.
+
+### Live Chat
+
+Logged-in customers can open the `/chatt` page to message the shop directly. Messages are delivered in real time via Firebase Realtime Database. Guests see a preview of the chat and a prompt to log in.
 
 ---
 
@@ -50,7 +56,7 @@ A dedicated checkout screen collects the pickup address (with the same service-a
 
 ### Profile & Chat
 - Profile screen shows the customer's order history and account details.
-- Chat screen for direct communication with the shop.
+- Chat screen for direct communication with the shop. Requires login — unauthenticated users see a lock screen with a prompt to log in or create an account.
 
 ---
 
@@ -60,7 +66,22 @@ The admin panel is protected by Firebase authentication + a secure server-side s
 
 ---
 
-### 3A. Orders
+### 3A. Dashboard (overview)
+
+The main landing page after login. Shows a live snapshot of the business at a glance.
+
+**Revenue summary**
+Total revenue for the current month, calculated from all completed and in-progress orders. Updates in real time.
+
+**Live order kanban**
+A kanban board showing all active orders grouped by status column: New, Collected, In Progress, Ready for Delivery. Cards update in real time as statuses change. Gives an immediate visual sense of the day's workload without opening the full orders table.
+
+**Collapsible driver map**
+An embedded map showing the current day's active delivery addresses. Can be collapsed to save screen space.
+
+---
+
+### 3B. Orders
 
 The operational heart of the business.
 
@@ -68,7 +89,7 @@ The operational heart of the business.
 All orders in one table. Default view: current month, active statuses only (New, Collected, In progress, Ready for pickup). Every column is what you need: date, service, amount, customer, status, notes.
 
 **Status management**
-Every order has a color-coded status dropdown — click to move an order from New → Collected → In progress → Ready for pickup → Completed. Changes save instantly.
+Every order has a color-coded status dropdown — click to move an order from New → Collected → In progress → Ready for delivery → Completed. Changes save instantly.
 
 **Bulk actions**
 Select multiple orders with checkboxes and apply a status change to all of them at once. Useful for batch-moving a day's collected orders into "In progress."
@@ -79,6 +100,9 @@ Filter orders by any date range. Default is the current month from day 1 to toda
 **Status filter**
 A dropdown with all statuses and live counts for each. Pick one or many. Show only what matters right now.
 
+**XLSX export — tax helper**
+A month picker in the orders header lets the admin select any past or current month. One click exports all orders for that month as a `.xlsx` file (`tvattio-orders-YYYY-MM.xlsx`). The sheet includes: date, Stripe payment ID, service name, itemized summary, address, postal code, amount in kr, status, and notes. A totals row at the bottom sums the revenue for the period. Useful for monthly bookkeeping and tax review without needing to log into Stripe.
+
 **Expandable order detail**
 Click "Add note" or "View note" on any row to expand the full order detail panel:
 - Booking details: address, postal code, dropoff date, dropoff time
@@ -88,7 +112,7 @@ Click "Add note" or "View note" on any row to expand the full order detail panel
 
 ---
 
-### 3B. Calendar
+### 3C. Calendar
 
 A visual overview of all scheduled pickups.
 
@@ -106,7 +130,7 @@ At the bottom of the calendar: total order count for the month and how many are 
 
 ---
 
-### 3C. Driver — Route Planning
+### 3D. Driver — Route Planning
 
 This is where pickups and deliveries are planned for the driver.
 
@@ -131,7 +155,7 @@ A separate tokenized URL is generated for the driver's phone. This is a mobile-o
 
 ---
 
-### 3D. Services — Live Catalog Management
+### 3E. Services — Live Catalog Management
 
 Admins can manage the full service catalog without touching any code.
 
@@ -143,7 +167,7 @@ Same CRUD interface for the ironing catalog. Products are organized into categor
 
 ---
 
-### 3E. Customers
+### 3F. Customers
 
 A full CRM view of every registered customer.
 
@@ -164,7 +188,19 @@ Click any customer to expand their full order history: service name, status, amo
 
 ---
 
-### 3F. Settings — Service Area & Driver Configuration
+### 3G. Chat — Customer Messages
+
+A two-pane messaging interface for communicating with customers.
+
+**Conversation list**
+The left panel lists every customer thread, ordered by most recent message. Unread threads are highlighted — a badge on the Chat sidebar link shows the total unread count.
+
+**Message thread**
+The right panel shows the full message history for the selected customer. The admin can read and reply inline. Messages are delivered in real time via Firebase Realtime Database.
+
+---
+
+### 3H. Settings — Service Area & Driver Configuration
 
 **Driver start and end addresses**
 Set the default start and end points used in route planning. These addresses use the same Places autocomplete as the customer app — restricted to Sweden.
@@ -199,7 +235,9 @@ The admin sees status changes in real time on the Orders page.
 |---|---|
 | Customer website | Browse, combine, and pay for mattvätt + struken tvätt + tailoring in one checkout |
 | Customer app (iOS) | Full mobile booking with the same services and push notifications |
-| Orders dashboard | Real-time order management with status tracking, notes, and bulk actions |
+| Live chat | Real-time messaging between customers (web + app) and the admin |
+| Admin dashboard | Live kanban of active orders by status + revenue summary + driver map |
+| Orders | Real-time order management, status tracking, notes, bulk actions, and XLSX export for bookkeeping |
 | Calendar | Visual schedule overview by date with upcoming order list |
 | Driver planning | Route optimization, Google Maps integration, mobile driver run page |
 | Catalog management | Live editing of all services and prices — no code deploys |
