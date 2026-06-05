@@ -36,32 +36,29 @@ export default function SiteHeader() {
 
   return (
     <header className="site-header">
-      {/* Left: icon-only logo (always), back arrow overlays it on detail pages */}
-      <div className="header-left">
-        {backHref ? (
+      {/* Left: back arrow on detail pages, logo on home */}
+      {backHref && (
+        <div className="header-left">
           <Link href={backHref} className="header-back" aria-label="Tillbaka">
             <IconArrowLeft size={20} stroke={1.5} />
           </Link>
-        ) : (
-          <Link href="/" aria-label="Express Tvätt – startsida">
-            <Image
-              src="/logo-icon.png"
-              alt=""
-              height={75}
-              width={75}
-              style={{ objectFit: 'contain', display: 'block' }}
-              priority
-            />
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Center: branded wordmark on home, page title elsewhere */}
+      {/* Center: branded wordmark on home (with logo), page title elsewhere */}
       {isHome ? (
-        <span className="header-wordmark" aria-label="Express Tvätt">
+        <Link href="/" className="header-wordmark" aria-label="Express Tvätt – startsida">
           <span className="header-wordmark-express">EXPRESS</span>
+          <Image
+            src="/logo-icon.png"
+            alt=""
+            height={50}
+            width={50}
+            style={{ objectFit: 'contain' }}
+            priority
+          />
           <span className="header-wordmark-tvatt">TVÄTT</span>
-        </span>
+        </Link>
       ) : (
         <span className="header-title">{title ?? 'Express Tvätt'}</span>
       )}
