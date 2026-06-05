@@ -436,22 +436,22 @@ export default function HomePage() {
             <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
                 width: 26, height: 26, borderRadius: '50%',
-                background: 'var(--forest-dark)', color: 'var(--white)',
+                background: 'var(--moss)', color: 'var(--forest-dark)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 600, flexShrink: 0,
               }}>1</span>
-              <span style={{ color: 'var(--text-dark)', fontWeight: 500 }}>Välj tjänster</span>
+              <span style={{ color: 'var(--moss)', fontWeight: 500 }}>Välj tjänster</span>
             </li>
-            <li style={{ color: 'var(--text-muted)', opacity: 0.4 }}>—</li>
+            <li style={{ color: 'var(--moss)', opacity: 0.4 }}>—</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{
                 width: 26, height: 26, borderRadius: '50%',
-                background: 'var(--linen)', color: 'var(--text-mid)',
-                border: '0.5px solid rgba(74,124,89,0.2)',
+                background: 'transparent', color: 'var(--moss)',
+                border: '0.5px solid rgba(183,220,215,0.4)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 600, flexShrink: 0,
               }}>2</span>
-              <span style={{ color: 'var(--text-mid)' }}>Uppgifter &amp; datum</span>
+              <span style={{ color: 'var(--moss)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
             </li>
           </ol>
         </div>
