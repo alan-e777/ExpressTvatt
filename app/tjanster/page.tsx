@@ -83,7 +83,7 @@ export default function TjansterPage() {
     : services.filter(s => serviceCategory(s.name) === activeCategory);
 
   return (
-    <>
+    <div className="service-card">
       <div className="chips-row">
         {CATEGORIES.map(cat => (
           <button
@@ -131,6 +131,6 @@ export default function TjansterPage() {
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }

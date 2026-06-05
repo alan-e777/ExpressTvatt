@@ -120,7 +120,7 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 56px;
+  width: 52px;
 }
 
 .header-logo {
@@ -332,7 +332,7 @@ input, textarea, select { font-family: inherit; }
   gap: 6px;
   width: 100%;
   max-width: 480px;
-  background: var(--forest-dark);
+  background: var(--forest-mid);
   border-radius: var(--radius-md);
   padding: 14px;
   font-family: 'Poppins', sans-serif;
@@ -423,7 +423,7 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Eco components ───────────────────────────────────────────────────── */
 .eco-trust-banner {
-  background: var(--tan);
+  background: var(--moss);
   border-radius: var(--radius-sharp);
   border: 0.5px solid rgba(14, 92, 91, 0.2);
   padding: 9px 12px;
@@ -879,7 +879,9 @@ input, textarea, select { font-family: inherit; }
   align-items: stretch;
   max-width: 420px;
   margin: 0 auto;
-  padding-top: var(--sp-xl);
+  padding: var(--sp-xl);
+  background: var(--white);
+  border-radius: var(--radius-lg);
 }
 
 .auth-avatar {
@@ -979,7 +981,7 @@ input, textarea, select { font-family: inherit; }
   border-bottom-left-radius: var(--radius-sm);
 }
 .bubble-right {
-  background: var(--forest-dark);
+  background: var(--forest-mid);
   align-self: flex-end;
   border-bottom-right-radius: var(--radius-sm);
 }
@@ -1035,7 +1037,7 @@ input, textarea, select { font-family: inherit; }
   width: 44px;
   height: 44px;
   border-radius: var(--radius-pill);
-  background: var(--forest-dark);
+  background: var(--forest-mid);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -71,7 +71,7 @@ export default function StrukenTvattPage() {
   const Icon     = CAT_ICON[active];
 
   return (
-    <div>
+    <div className="service-card">
       {/* Category chips */}
       <div className="chips-row" style={{ marginBottom: 'var(--sp-lg)' }}>
         {CATEGORIES.map(cat => {
@@ -126,7 +126,7 @@ export default function StrukenTvattPage() {
                     alignItems:      'center',
                     gap:             12,
                     padding:         '13px 0',
-                    borderBottom:    isLast ? 'none' : '0.5px solid rgba(30,46,36,0.08)',
+                    borderBottom:    isLast ? 'none' : '0.5px solid rgba(6,63,65,0.08)',
                   }}>
                     <div className="icon-circle">
                       <Icon size={16} stroke={1.5} />
