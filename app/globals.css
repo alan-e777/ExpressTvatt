@@ -784,6 +784,10 @@ input, textarea, select { font-family: inherit; }
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--sp-xxl);
+  background: #E6F3F2;
+  border: 1px solid rgba(14, 92, 91, 0.18);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-xl);
 }
 
 .home-main {
@@ -1167,18 +1171,18 @@ input, textarea, select { font-family: inherit; }
 }
 .section { margin-bottom: var(--sp-xl); }
 .service-card {
-  background: var(--white);
+  background: #E6F3F2;
   border-radius: var(--radius-lg);
   padding: var(--sp-xl);
-  border: 0.5px solid rgba(14, 92, 91, 0.12);
+  border: 1px solid rgba(14, 92, 91, 0.18);
   box-shadow: 0 1px 4px rgba(6, 63, 65, 0.06);
   margin-bottom: var(--sp-lg);
 }
 .greeting-card {
-  background: var(--linen);
+  background: #E6F3F2;
   border-radius: var(--radius-lg);
   padding: var(--sp-xl);
-  border: 0.5px solid rgba(14, 92, 91, 0.12);
+  border: 1px solid rgba(14, 92, 91, 0.18);
   box-shadow: 0 1px 4px rgba(6, 63, 65, 0.06);
   margin-bottom: var(--sp-lg);
 }
