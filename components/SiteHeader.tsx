@@ -49,7 +49,7 @@ export default function SiteHeader() {
               alt=""
               height={188}
               width={188}
-              style={{ objectFit: 'contain', display: 'block' }}
+              style={{ objectFit: 'contain', objectPosition: 'center 60%', display: 'block' }}
               priority
             />
           </Link>

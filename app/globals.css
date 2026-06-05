@@ -444,7 +444,7 @@ input, textarea, select { font-family: inherit; }
   font-family: 'Poppins', sans-serif;
   font-weight: 400;
   font-size: 10px;
-  color: var(--text-mid);
+  color: var(--moss);
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
