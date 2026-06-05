@@ -686,10 +686,18 @@ input, textarea, select { font-family: inherit; }
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
   font-size: 9px;
-  color: var(--earth);
+  color: var(--forest-dark);
   letter-spacing: 0.8px;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* Badge is gold only when status is "Klar" (ready_for_pickup or completed) */
+.active-order-card[data-status="ready_for_pickup"] .order-badge,
+.active-order-card[data-status="completed"] .order-badge {
+  background: rgba(212, 175, 55, 0.15);
+  border: 1.5px solid var(--earth);
+  color: var(--earth);
 }
 
 /* Stepper */
