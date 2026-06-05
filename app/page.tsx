@@ -464,7 +464,7 @@ export default function HomePage() {
           </p>
           <div className="eco-trust-banner" style={{ marginTop: 'var(--sp-lg)', background: 'var(--cream)' }}>
             <IconLeaf size={12} stroke={1.5} />
-            <span>Miljövänliga metoder sedan 1987</span>
+            <span style={{ color: 'var(--moss)' }}>Miljövänliga metoder sedan 1987</span>
           </div>
         </div>
 

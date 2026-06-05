@@ -39,7 +39,7 @@
   --sp-xl: 24px;
   --sp-xxl: 32px;
 
-  --header-h:   80px;
+  --header-h:   75px;
   --mobile-nav: 60px;
   --content-max: 1140px;
   --page-px:     24px;
@@ -114,13 +114,21 @@ input, textarea, select { font-family: inherit; }
   padding: 0 var(--page-px);
   gap: 12px;
   z-index: 200;
+  overflow: hidden;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 70px;
+  width: 85px;
+  height: 100%;
+}
+
+.header-left a {
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .header-logo {
