@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { IconArrowLeft, IconSettings, IconHome, IconMessageCircle, IconUser } from '@tabler/icons-react';
 
@@ -30,12 +31,19 @@ const BACK_TO: Record<string, string> = {
 
 export default function SiteHeader() {
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
   const title    = TITLES[pathname];
   const backHref = BACK_TO[pathname];
   const isHome   = pathname === '/';
 
+  useEffect(() => {
+    function onScroll() { setScrolled(window.scrollY > 20); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header className="site-header">
+    <header className={`site-header${scrolled ? ' scrolled' : ''}`}>
       {/* Left: back arrow on detail pages */}
       {backHref && (
         <div className="header-left">
