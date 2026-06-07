@@ -40,7 +40,7 @@
   --sp-xl: 24px;
   --sp-xxl: 32px;
 
-  --header-h:      75px;
+  --header-h:      60px;
   --header-hero-h: 320px;
   --mobile-nav:    60px;
   --content-max: 1140px;
@@ -81,7 +81,7 @@ input, textarea, select { font-family: inherit; }
   flex: 1;
   padding-top: var(--current-header-h, var(--header-h));
   padding-bottom: var(--mobile-nav);   /* cleared by desktop override */
-  transition: padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding-top 0.28s ease;
 }
 
 /* Inner page wrapper — centers & caps width */
@@ -118,7 +118,7 @@ input, textarea, select { font-family: inherit; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
+  transition: height 0.28s ease, box-shadow 0.4s ease;
 }
 
 .site-header.scrolled {
@@ -866,7 +866,7 @@ input, textarea, select { font-family: inherit; }
     gap: var(--sp-xl);
   }
   .home-main { order: 1; }
-  .home-sidebar { order: 2; position: sticky; top: calc(var(--current-header-h, var(--header-h)) + var(--sp-xl)); align-self: start; transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+  .home-sidebar { order: 2; position: sticky; top: calc(var(--current-header-h, var(--header-h)) + var(--sp-xl)); align-self: start; transition: top 0.28s ease; }
 }
 
 /* ── Summary card (booking) ───────────────────────────────────────────── */
