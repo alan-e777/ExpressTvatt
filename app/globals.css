@@ -223,15 +223,31 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ── Hero section (home page, in normal page flow) ────────────────────── */
-/* Sits right below the fixed header; same dark teal bg for seamless look.  */
-/* Negative margins break out of home-grid's padding so it spans full width. */
-.home-hero {
+/* Wrapper: handles full-width breakout + grid-row collapse animation       */
+.home-hero-wrap {
+  /* Break out of home-grid's 24px padding on mobile */
   margin-top: calc(-1 * var(--sp-xl));
   margin-left: calc(-1 * var(--page-px));
   margin-right: calc(-1 * var(--page-px));
   margin-bottom: var(--sp-xl);
-  padding: 28px var(--page-px) 36px;
+  /* Smooth collapse: grid rows 1fr→0fr animates height without max-height tricks */
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.28s ease, margin-bottom 0.28s ease;
+}
+
+.home-hero-wrap--hidden {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+}
+
+/* Inner hero — must have min-height:0 so it can shrink below natural height */
+.home-hero {
+  min-height: 0;
+  overflow: hidden;
   background: var(--forest-dark);
+  padding: 28px var(--page-px) 36px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -288,10 +304,12 @@ input, textarea, select { font-family: inherit; }
 
 /* On desktop: contain within the column (no breakout) */
 @media (min-width: 900px) {
-  .home-hero {
+  .home-hero-wrap {
     margin-left: 0;
     margin-right: 0;
     margin-top: 0;
+  }
+  .home-hero {
     border-radius: var(--radius-lg);
   }
 }
