@@ -251,6 +251,13 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* Text fades out fast; the dark-teal space then collapses via the wrapper */
+  opacity: 1;
+  transition: opacity 0.1s ease-in;
+}
+
+.home-hero-wrap--hidden .home-hero {
+  opacity: 0;
 }
 
 .home-hero-title {

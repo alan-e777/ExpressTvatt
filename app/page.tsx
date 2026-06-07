@@ -330,10 +330,10 @@ function CartPanel({ cart, onAdd, onRemove, onCheckout }: {
 export default function HomePage() {
   const router = useRouter();
 
-  // Hero collapses on any scroll; restores only at scrollY === 0
+  // Hero: always visible on load; collapses on any scroll; restores at scrollY === 0
   const [heroHidden, setHeroHidden] = useState(false);
   useEffect(() => {
-    setHeroHidden(window.scrollY > 0);
+    // Do NOT initialise from window.scrollY — always show hero on fresh load
     function onScroll() {
       const y = window.scrollY ?? window.pageYOffset ?? document.documentElement.scrollTop;
       setHeroHidden(y > 0);
