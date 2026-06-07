@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
-  IconLeaf, IconWashMachine, IconSteam, IconNeedle,
+  IconWashMachine, IconSteam, IconNeedle,
   IconShirt, IconHanger, IconStar, IconWash, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
   IconPlus, IconMinus, IconSpray, IconInfoCircle, IconChevronUp, IconChevronDown,
@@ -457,21 +457,8 @@ export default function HomePage() {
           </ol>
         </div>
 
-        {/* Page heading */}
-        <div className="greeting-card">
-          <div className="h1">Vad vill du lämna in?</div>
-          <p className="small" style={{ color: 'var(--text-mid)', marginTop: 8 }}>
-Boka på några minuter. Vi hämtar din tvätt direkt vid dörren, rengör den med högsta omsorg och levererar tillbaka den fräsch, ren och redo att användas – utan att du behöver lyfta ett finger.
-
-          </p>
-          <div className="eco-trust-banner" style={{ marginTop: 'var(--sp-lg)' }}>
-            <IconLeaf size={12} stroke={1.5} />
-            <span>Miljövänliga metoder sedan 1987</span>
-          </div>
-        </div>
-
         {/* Service toggle cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-md)', marginBottom: 'var(--sp-lg)' }}>
+        <div id="services" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-md)', marginBottom: 'var(--sp-lg)' }}>
           {([
             { id: 'mattvätt',  label: 'Mattvätt',      Icon: IconSpray, desc: 'Djuptvätt av mattor' },
             { id: 'struken',   label: 'Struken tvätt', Icon: IconSteam, desc: 'Skjortor, kostym & festklädsel' },

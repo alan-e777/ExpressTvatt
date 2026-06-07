@@ -40,8 +40,9 @@
   --sp-xl: 24px;
   --sp-xxl: 32px;
 
-  --header-h:   75px;
-  --mobile-nav: 60px;
+  --header-h:      75px;
+  --header-hero-h: 320px;
+  --mobile-nav:    60px;
   --content-max: 1140px;
   --page-px:     24px;
 }
@@ -75,8 +76,9 @@ input, textarea, select { font-family: inherit; }
 
 .site-content {
   flex: 1;
-  padding-top: var(--header-h);
+  padding-top: var(--current-header-h, var(--header-h));
   padding-bottom: var(--mobile-nav);   /* cleared by desktop override */
+  transition: padding-top 0.35s ease;
 }
 
 /* Inner page wrapper — centers & caps width */
@@ -109,19 +111,32 @@ input, textarea, select { font-family: inherit; }
   right: 0;
   height: var(--header-h);
   background: var(--forest-dark);
-  border-bottom: 0px solid transparent;
-  display: flex;
-  align-items: center;
-  padding: 0 var(--page-px);
-  gap: 12px;
   z-index: 200;
   overflow: hidden;
-  transition: height 0.25s ease, box-shadow 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  transition: height 0.35s ease, box-shadow 0.35s ease;
 }
 
 .site-header.scrolled {
   height: 54px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Expanded hero state — home page, not scrolled */
+.site-header.has-hero:not(.scrolled) {
+  height: var(--header-hero-h);
+}
+
+/* ── Topbar row (always visible) ──────────────────────────────────────── */
+.header-topbar {
+  height: var(--header-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--page-px);
+  gap: 12px;
+  position: relative; /* anchor for absolute wordmark */
 }
 
 .header-left {
@@ -130,25 +145,13 @@ input, textarea, select { font-family: inherit; }
   flex-shrink: 0;
   width: 85px;
   height: 100%;
-  margin-left: -8px; /* mobile: pull logo away from page padding so it doesn't crowd center text */
+  margin-left: -8px;
 }
 
 .header-left a {
   display: flex;
   align-items: center;
   height: 100%;
-}
-
-.header-logo {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 300;
-  font-size: 10px;
-  color: var(--forest-mid);
-  opacity: 0.6;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  line-height: 1.3;
-  white-space: pre-line;
 }
 
 .header-back {
@@ -164,12 +167,11 @@ input, textarea, select { font-family: inherit; }
   font-size: 16px;
   color: #ffffff;
   flex: 1;
-  /* On desktop: left-aligned after logo; on mobile: centered */
 }
 
 /* Desktop nav — right side */
 .header-nav {
-  display: none;   /* hidden on mobile */
+  display: none;
   align-items: center;
   gap: 4px;
   margin-left: auto;
@@ -202,7 +204,7 @@ input, textarea, select { font-family: inherit; }
 
 .header-nav-icon { flex-shrink: 0; }
 
-/* ── Header wordmark (always visible, centered edge-to-edge) ──────────────────────────────── */
+/* ── Wordmark (centered in topbar) ───────────────────────────────────── */
 .header-wordmark {
   position: absolute;
   left: 50%;
@@ -221,14 +223,8 @@ input, textarea, select { font-family: inherit; }
   color: inherit;
   text-decoration: none;
 }
-.header-wordmark-express {
-  color: #ffffff;
-  margin-right: 0;
-}
-.header-wordmark-tvatt {
-  color: var(--forest-light);
-  margin-left: 0;
-}
+.header-wordmark-express { color: #ffffff; }
+.header-wordmark-tvatt   { color: var(--forest-light); }
 
 /* Settings button — mobile only */
 .header-settings {
@@ -242,6 +238,71 @@ input, textarea, select { font-family: inherit; }
   color: rgba(255, 255, 255, 0.8);
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* ── Hero section (home page, inside header) ──────────────────────────── */
+.header-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 var(--page-px) 28px;
+  gap: 14px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.site-header.scrolled .header-hero {
+  opacity: 0;
+}
+
+.header-hero-title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: clamp(32px, 8.5vw, 46px);
+  line-height: 1.12;
+  color: #ffffff;
+}
+
+.header-hero-title-accent {
+  color: var(--earth);
+}
+
+.header-hero-tagline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(183, 220, 215, 0.7);
+}
+
+.header-hero-cta {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  padding: 14px;
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.header-hero-cta:hover {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* ── Mobile nav ───────────────────────────────────────────────────────── */
@@ -808,7 +869,7 @@ input, textarea, select { font-family: inherit; }
     gap: var(--sp-xl);
   }
   .home-main { order: 1; }
-  .home-sidebar { order: 2; position: sticky; top: calc(var(--header-h) + var(--sp-xl)); align-self: start; }
+  .home-sidebar { order: 2; position: sticky; top: calc(var(--current-header-h, var(--header-h)) + var(--sp-xl)); align-self: start; transition: top 0.35s ease; }
 }
 
 /* ── Summary card (booking) ───────────────────────────────────────────── */
