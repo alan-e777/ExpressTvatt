@@ -79,9 +79,8 @@ input, textarea, select { font-family: inherit; }
 
 .site-content {
   flex: 1;
-  padding-top: var(--current-header-h, var(--header-h));
+  padding-top: var(--header-h);
   padding-bottom: var(--mobile-nav);   /* cleared by desktop override */
-  transition: padding-top 0.28s ease;
 }
 
 /* Inner page wrapper — centers & caps width */
@@ -115,31 +114,11 @@ input, textarea, select { font-family: inherit; }
   height: var(--header-h);
   background: var(--forest-dark);
   z-index: 200;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: height 0.28s ease, box-shadow 0.4s ease;
-}
-
-.site-header.scrolled {
-  height: 54px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
-}
-
-/* Expanded hero state — home page, not scrolled */
-.site-header.has-hero:not(.scrolled) {
-  height: var(--header-hero-h);
-}
-
-/* ── Topbar row (always visible) ──────────────────────────────────────── */
-.header-topbar {
-  height: var(--header-h);
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   padding: 0 var(--page-px);
   gap: 12px;
-  position: relative; /* anchor for absolute wordmark */
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .header-left {
@@ -243,17 +222,22 @@ input, textarea, select { font-family: inherit; }
   flex-shrink: 0;
 }
 
-/* ── Hero section (home page, inside header) ──────────────────────────── */
-.header-hero {
-  flex: 1;
+/* ── Hero section (home page, in normal page flow) ────────────────────── */
+/* Sits right below the fixed header; same dark teal bg for seamless look.  */
+/* Negative margins break out of home-grid's padding so it spans full width. */
+.home-hero {
+  margin-top: calc(-1 * var(--sp-xl));
+  margin-left: calc(-1 * var(--page-px));
+  margin-right: calc(-1 * var(--page-px));
+  margin-bottom: var(--sp-xl);
+  padding: 28px var(--page-px) 36px;
+  background: var(--forest-dark);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 0 var(--page-px) 28px;
-  gap: 14px;
+  gap: 16px;
 }
 
-.header-hero-title {
+.home-hero-title {
   font-family: 'Poppins', sans-serif;
   font-weight: 700;
   font-size: clamp(32px, 8.5vw, 46px);
@@ -261,11 +245,11 @@ input, textarea, select { font-family: inherit; }
   color: #ffffff;
 }
 
-.header-hero-title-accent {
+.home-hero-title-accent {
   color: var(--earth);
 }
 
-.header-hero-tagline {
+.home-hero-tagline {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -277,7 +261,7 @@ input, textarea, select { font-family: inherit; }
   color: rgba(183, 220, 215, 0.7);
 }
 
-.header-hero-cta {
+.home-hero-cta {
   display: block;
   width: 100%;
   max-width: 480px;
@@ -297,9 +281,19 @@ input, textarea, select { font-family: inherit; }
   transition: border-color 0.15s, background 0.15s;
 }
 
-.header-hero-cta:hover {
+.home-hero-cta:hover {
   border-color: rgba(255, 255, 255, 0.65);
   background: rgba(255, 255, 255, 0.06);
+}
+
+/* On desktop: contain within the column (no breakout) */
+@media (min-width: 900px) {
+  .home-hero {
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    border-radius: var(--radius-lg);
+  }
 }
 
 /* ── Mobile nav ───────────────────────────────────────────────────────── */
@@ -866,7 +860,7 @@ input, textarea, select { font-family: inherit; }
     gap: var(--sp-xl);
   }
   .home-main { order: 1; }
-  .home-sidebar { order: 2; position: sticky; top: calc(var(--current-header-h, var(--header-h)) + var(--sp-xl)); align-self: start; transition: top 0.28s ease; }
+  .home-sidebar { order: 2; position: sticky; top: calc(var(--header-h) + var(--sp-xl)); align-self: start; }
 }
 
 /* ── Summary card (booking) ───────────────────────────────────────────── */

@@ -9,6 +9,7 @@ import {
   IconShirt, IconHanger, IconStar, IconWash, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
   IconPlus, IconMinus, IconSpray, IconInfoCircle, IconChevronUp, IconChevronDown,
+  IconLeaf,
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 
@@ -430,6 +431,20 @@ export default function HomePage() {
 
       {/* ── Main column ───────────────────────────────────────────────── */}
       <div className="home-main">
+
+        {/* ── Hero — scrolls away naturally, revealing content below ──── */}
+        <div className="home-hero">
+          <div className="home-hero-title">
+            <div>Kemtvätt.</div>
+            <div className="home-hero-title-accent">Hämtning.</div>
+            <div>Hemleverans.</div>
+          </div>
+          <div className="home-hero-tagline">
+            <IconLeaf size={10} stroke={1.5} />
+            <span>Miljövänliga metoder sedan 1987</span>
+          </div>
+          <a href="#services" className="home-hero-cta">BOKA UPPHÄMTNING</a>
+        </div>
 
         {/* Progress indicator */}
         <div style={{ textAlign: 'center', marginBottom: 'var(--sp-lg)' }}>
