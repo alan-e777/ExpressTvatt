@@ -46,7 +46,9 @@ export default function SiteHeader() {
     }
 
     function onScroll() {
-      const isScrolled = window.scrollY > 20;
+      // window.pageYOffset is the iOS-safe fallback for window.scrollY
+      const scrollY = window.scrollY ?? window.pageYOffset ?? document.documentElement.scrollTop;
+      const isScrolled = scrollY > 20;
       setScrolled(isScrolled);
       if (isHome) {
         document.documentElement.style.setProperty(
@@ -57,8 +59,11 @@ export default function SiteHeader() {
     }
 
     window.addEventListener('scroll', onScroll, { passive: true });
+    // document fires on iOS when window doesn't
+    document.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('scroll', onScroll);
       document.documentElement.style.removeProperty('--current-header-h');
     };
   }, [isHome]);

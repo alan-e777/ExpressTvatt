@@ -49,9 +49,12 @@
 
 /* ── Base ─────────────────────────────────────────────────────────────── */
 html, body {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
-  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden; /* prevent horizontal scroll without locking iOS body scroll */
 }
 
 body {
