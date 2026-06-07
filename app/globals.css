@@ -78,7 +78,7 @@ input, textarea, select { font-family: inherit; }
   flex: 1;
   padding-top: var(--current-header-h, var(--header-h));
   padding-bottom: var(--mobile-nav);   /* cleared by desktop override */
-  transition: padding-top 0.35s ease;
+  transition: padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Inner page wrapper — centers & caps width */
@@ -115,7 +115,7 @@ input, textarea, select { font-family: inherit; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: height 0.35s ease, box-shadow 0.35s ease;
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
 }
 
 .site-header.scrolled {
@@ -248,12 +248,6 @@ input, textarea, select { font-family: inherit; }
   justify-content: flex-end;
   padding: 0 var(--page-px) 28px;
   gap: 14px;
-  opacity: 1;
-  transition: opacity 0.2s ease;
-}
-
-.site-header.scrolled .header-hero {
-  opacity: 0;
 }
 
 .header-hero-title {
@@ -869,7 +863,7 @@ input, textarea, select { font-family: inherit; }
     gap: var(--sp-xl);
   }
   .home-main { order: 1; }
-  .home-sidebar { order: 2; position: sticky; top: calc(var(--current-header-h, var(--header-h)) + var(--sp-xl)); align-self: start; transition: top 0.35s ease; }
+  .home-sidebar { order: 2; position: sticky; top: calc(var(--current-header-h, var(--header-h)) + var(--sp-xl)); align-self: start; transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 }
 
 /* ── Summary card (booking) ───────────────────────────────────────────── */
