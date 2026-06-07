@@ -309,15 +309,10 @@ input, textarea, select { font-family: inherit; }
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* On desktop: contain within the column (no breakout) */
+/* On desktop: hide the hero — sidebar cart anchors the page already */
 @media (min-width: 900px) {
   .home-hero-wrap {
-    margin-left: 0;
-    margin-right: 0;
-    margin-top: 0;
-  }
-  .home-hero {
-    border-radius: var(--radius-lg);
+    display: none;
   }
 }
 
