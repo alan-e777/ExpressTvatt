@@ -412,11 +412,11 @@ input, textarea, select { font-family: inherit; }
 .landing-hero-card {
   background: url('/pattern.png') center / auto repeat;
   border-radius: 20px;
-  padding: 32px;
+  padding: 12px;
   box-shadow: 0 8px 32px rgba(6, 63, 65, 0.12);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 /* Inner card with pattern-dark.png — cutout effect inside pattern.png */
