@@ -423,15 +423,14 @@ input, textarea, select { font-family: inherit; }
 
 .service-anim-card {
   width: 100%;
-  background: rgba(6, 63, 65, 0.80);
-  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  background: #ffffff;
+  border: 0.5px solid rgba(6, 63, 65, 0.10);
   border-radius: 18px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 24px rgba(6, 63, 65, 0.12);
 }
 
 .service-anim-card--shake {
@@ -454,25 +453,25 @@ input, textarea, select { font-family: inherit; }
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(6, 63, 65, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   transition: color 0.3s ease, background 0.3s ease;
 }
 
 .service-anim-item--active .service-anim-icon {
   color: #D4AF37;
-  background: rgba(212, 175, 55, 0.12);
+  background: rgba(212, 175, 55, 0.10);
 }
 
 .service-anim-label {
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted);
   transition: color 0.3s ease;
   line-height: 1.3;
 }
@@ -485,13 +484,13 @@ input, textarea, select { font-family: inherit; }
   font-family: 'Poppins', sans-serif;
   font-size: 11px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(6, 63, 65, 0.35);
   margin-top: 2px;
   transition: color 0.3s ease;
 }
 
 .service-anim-item--active .service-anim-sub {
-  color: rgba(212, 175, 55, 0.6);
+  color: rgba(212, 175, 55, 0.7);
 }
 
 /* Testimonials section */

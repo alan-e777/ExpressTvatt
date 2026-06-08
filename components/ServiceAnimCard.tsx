@@ -70,15 +70,15 @@ export default function ServiceAnimCard() {
     zIndex: 2,
   };
 
-  // ── after image ──
+  // ── after image — exits downward out of the card bottom ──
   const afterVisible = phase === 'delivery';
   const afterStyle: React.CSSProperties = {
     position: 'absolute',
-    bottom: afterVisible ? 0 : -30,
+    top: afterVisible ? 10 : -20,
     left: '50%',
     transform: 'translateX(-50%)',
     opacity: afterVisible ? 1 : 0,
-    transition: 'bottom 0.6s ease-out, opacity 0.5s ease-out',
+    transition: 'top 0.6s ease-out, opacity 0.5s ease-out',
     pointerEvents: 'none',
     zIndex: 2,
   };
