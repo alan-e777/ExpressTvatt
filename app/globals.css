@@ -373,6 +373,8 @@ input, textarea, select { font-family: inherit; }
 .landing-hero-wrap {
   display: block;
   padding: 16px 16px 0;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 /* ── Landing page ─────────────────────────────────────────────────────── */
@@ -405,11 +407,9 @@ input, textarea, select { font-family: inherit; }
   z-index: 1;
 }
 
-/* Hero inside landing page — photo in a rounded island */
+/* Hero inside landing page — photo background */
 .landing-page .home-hero {
   background: url('/herobg.png') center / contain no-repeat var(--forest-dark);
-  border-radius: 20px;
-  overflow: hidden;
 }
 
 /* Hero — full viewport height minus floating header.
