@@ -297,7 +297,7 @@ input, textarea, select { font-family: inherit; }
 .home-hero {
   min-height: 0;
   overflow: hidden;
-  background: url('/pattern-dark.png') center / auto repeat;
+  background: var(--forest-dark);
   padding: 28px var(--page-px) 36px;
   display: flex;
   flex-direction: column;
@@ -374,9 +374,20 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Landing page ─────────────────────────────────────────────────────── */
 
+/* Break out of site-content's max-width so the pattern covers the full viewport */
 .landing-page {
   display: flex;
   flex-direction: column;
+  width: 100vw;
+  max-width: none;
+  margin-left: calc(50% - 50vw);
+  padding: 0;                          /* override site-content > * padding */
+  background: url('/pattern-dark.png') center / auto repeat;
+}
+
+/* Hero inside landing page — transparent, parent pattern shows through */
+.landing-page .home-hero {
+  background: transparent;
 }
 
 /* Hero — full viewport height minus floating header.
