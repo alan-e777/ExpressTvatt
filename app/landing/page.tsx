@@ -1,40 +1,48 @@
 'use client';
 
-import { IconLeaf, IconStar } from '@tabler/icons-react';
+import { IconLeaf, IconCalendarEvent, IconSparkles, IconHome } from '@tabler/icons-react';
 import ServiceAnimCard from '@/components/ServiceAnimCard';
+import { motion } from 'framer-motion';
 
-// ── Testimonial data ──────────────────────────────────────────────────────────
+// ── How it works data ─────────────────────────────────────────────────────────
 
-const TESTIMONIALS = [
+const HOW_STEPS = [
   {
-    name: 'Anna L.',
-    location: 'Östermalm',
-    rating: 5,
-    text: 'Fantastisk service! Kostymerna kom tillbaka perfekt pressade och levererades precis i tid inför mötet. Rekommenderar varmt.',
+    number: '01',
+    Icon: IconCalendarEvent,
+    title: 'Du väljer datum & tid',
+    desc: 'Boka upphämtning när det passar dig — morgon, lunch eller kväll. Vi hämtar direkt vid din dörr, utan krångel.',
   },
   {
-    name: 'Marcus W.',
-    location: 'Södermalm',
-    rating: 5,
-    text: 'Hämtade mattan på måndag, levererade på onsdag — renare än den var när vi köpte den. Smidigt och professionellt.',
+    number: '02',
+    Icon: IconSparkles,
+    title: 'Premium-rengöring med omsorg',
+    desc: 'Dina plagg och mattor behandlas med miljövänliga metoder och professionell utrustning. Vi förlänger livslängden på det du älskar.',
   },
   {
-    name: 'Elin K.',
-    location: 'Vasastan',
-    rating: 5,
-    text: 'Äntligen en tvättjänst som håller vad den lovar. Miljövänliga metoder och alltid i tid. Använder dem varje månad.',
+    number: '03',
+    Icon: IconHome,
+    title: 'Hemleverans när du vill',
+    desc: 'Rent, pressat och klart — levererat tillbaka hem till dig. Alltid i tid, alltid med ett leende.',
   },
 ];
 
-function StarRow({ count }: { count: number }) {
-  return (
-    <div style={{ display: 'flex', gap: 3 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <IconStar key={i} size={13} stroke={0} fill="var(--earth)" />
-      ))}
-    </div>
-  );
-}
+// ── Animation variants ────────────────────────────────────────────────────────
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (delay = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut', delay } }),
+};
+
+const fadeUpCard = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (delay = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut', delay } }),
+};
+
+const fadeRight = {
+  hidden: { opacity: 0, x: 40 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.7, ease: 'easeOut' } },
+};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -45,63 +53,115 @@ export default function LandingPage() {
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div className="landing-hero-wrap">
         <div className="home-hero landing-hero-full">
-          <div className="landing-hero-inner">
+          <div className="landing-hero-inner landing-hero-inner--no-card">
 
             {/* Text column */}
             <div className="landing-hero-text">
               <div className="home-hero-title">
-                <div>Kemtvätt.</div>
-                <div className="home-hero-title-accent">Hämtning.</div>
-                <div>Hemleverans.</div>
+                <motion.div
+                  initial="hidden" whileInView="visible" viewport={{ once: true }}
+                  custom={0} variants={fadeUp}
+                >Kemtvätt.</motion.div>
+                <motion.div
+                  initial="hidden" whileInView="visible" viewport={{ once: true }}
+                  custom={0.1} variants={fadeUp}
+                  className="home-hero-title-accent"
+                >Hämtning.</motion.div>
+                <motion.div
+                  initial="hidden" whileInView="visible" viewport={{ once: true }}
+                  custom={0.2} variants={fadeUp}
+                >Hemleverans.</motion.div>
               </div>
-              <div className="home-hero-tagline" style={{ marginTop: 16 }}>
+
+              <motion.div
+                initial="hidden" whileInView="visible" viewport={{ once: true }}
+                custom={0.35} variants={fadeUp}
+                className="home-hero-tagline" style={{ marginTop: 16 }}
+              >
                 <IconLeaf size={10} stroke={1.5} />
                 <span>Miljövänliga metoder sedan 1987</span>
-              </div>
-              <a href="/#services" className="home-hero-cta" style={{ marginTop: 24 }}>BOKA UPPHÄMTNING</a>
+              </motion.div>
 
-              <p className="landing-hero-desc">
+              <motion.a
+                href="/#services"
+                className="home-hero-cta"
+                style={{ marginTop: 24, display: 'inline-block' }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}
+              >
+                BOKA UPPHÄMTNING
+              </motion.a>
+
+              <motion.p
+                className="landing-hero-desc"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: 'easeOut', delay: 0.45 }}
+              >
                 Professionell kemtvätt med miljövänliga metoder. Vi hämtar din tvätt, tvättar den med omsorg, och levererar den direkt hem till din dörr. Snabbt, enkelt och tillförlitligt sedan 1987.
-              </p>
-            </div>
-
-            {/* Animated card column */}
-            <div className="landing-hero-card-col">
-              <ServiceAnimCard />
+              </motion.p>
             </div>
 
           </div>
         </div>
       </div>
 
-      {/* ── Testimonials ─────────────────────────────────────────────── */}
-      <section className="landing-testimonials">
-        <div className="landing-testimonials-header">
-          <div className="landing-testimonials-kicker">KUNDRECENSIONER</div>
-          <div className="landing-testimonials-title">Vad våra kunder säger</div>
-          <div className="landing-testimonials-avg">
-            <StarRow count={5} />
-            <span className="landing-testimonials-score">4.9 / 5</span>
-            <span className="landing-testimonials-count">· 1 000+ recensioner</span>
-          </div>
-        </div>
+      {/* ── How it works ─────────────────────────────────────────────── */}
+      <section className="landing-howitworks">
+        <div className="landing-howitworks-inner">
 
-        <div className="landing-testimonials-grid">
-          {TESTIMONIALS.map((t) => (
-            <div key={t.name} className="landing-testimonial-card">
-              <StarRow count={t.rating} />
-              <p className="landing-testimonial-text">&ldquo;{t.text}&rdquo;</p>
-              <div className="landing-testimonial-author">
-                <div className="landing-testimonial-avatar">
-                  {t.name.charAt(0)}
-                </div>
-                <div>
-                  <div className="landing-testimonial-name">{t.name}</div>
-                  <div className="landing-testimonial-location">{t.location}</div>
-                </div>
-              </div>
+          {/* Left — animated service card */}
+          <motion.div
+            className="landing-howitworks-card-col"
+            initial="hidden" whileInView="visible" viewport={{ once: true }}
+            variants={fadeRight}
+          >
+            <ServiceAnimCard />
+          </motion.div>
+
+          {/* Right — steps */}
+          <div className="landing-howitworks-steps">
+            <motion.div
+              className="landing-testimonials-kicker"
+              initial="hidden" whileInView="visible" viewport={{ once: true }}
+              custom={0} variants={fadeUp}
+            >
+              SÅ HÄR FUNGERAR DET
+            </motion.div>
+            <motion.div
+              className="landing-howitworks-heading"
+              initial="hidden" whileInView="visible" viewport={{ once: true }}
+              custom={0.15} variants={fadeUp}
+            >
+              Tre enkla steg från smutsigt till rent
+            </motion.div>
+
+            <div className="landing-howitworks-list">
+              {HOW_STEPS.map(({ number, Icon, title, desc }, i) => (
+                <motion.div
+                  key={number}
+                  className="landing-howitworks-step"
+                  initial="hidden" whileInView="visible" viewport={{ once: true }}
+                  custom={0.2 + i * 0.1} variants={fadeUpCard}
+                >
+                  <div className="landing-howitworks-step-num">{number}</div>
+                  <div className="landing-howitworks-step-body">
+                    <div className="landing-howitworks-step-icon">
+                      <Icon size={16} stroke={1.75} />
+                    </div>
+                    <div>
+                      <div className="landing-howitworks-step-title">{title}</div>
+                      <div className="landing-howitworks-step-desc">{desc}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          ))}
+          </div>
+
         </div>
       </section>
 
