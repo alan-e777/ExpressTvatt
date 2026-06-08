@@ -9,10 +9,10 @@ import { IconClock, IconSpray, IconHome } from '@tabler/icons-react';
 type Phase = 'initial' | 'pickup' | 'processing' | 'delivery' | 'reset';
 
 const PHASE_MS: Record<Phase, number> = {
-  initial:    3000,
+  initial:    2600,   // 3000 - 400ms (before.png hold time)
   pickup:     1200,
-  processing: 1500,  // doubled (1000) + 0.5s extra
-  delivery:   3000,
+  processing: 1500,
+  delivery:   2600,   // 3000 - 400ms (after.png hold time)
   reset:       800,
 };
 
