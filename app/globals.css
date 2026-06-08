@@ -408,6 +408,23 @@ input, textarea, select { font-family: inherit; }
   padding: 0 20%;
 }
 
+/* Hero text card — holds title, tagline, CTA, and description with pattern background */
+.landing-hero-card {
+  background: url('/pattern.png') center / auto repeat;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(6, 63, 65, 0.12);
+}
+
+.landing-hero-card-desc {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.65;
+  color: rgba(6, 63, 65, 0.65);
+  margin-top: 24px;
+}
+
 @media (min-width: 800px) {
   .landing-hero-inner {
     flex-direction: row;

@@ -47,18 +47,24 @@ export default function LandingPage() {
         <div className="home-hero landing-hero-full">
           <div className="landing-hero-inner">
 
-            {/* Text column */}
+            {/* Text column — wrapped in card with pattern background */}
             <div className="landing-hero-text">
-              <div className="home-hero-title">
-                <div>Kemtvätt.</div>
-                <div className="home-hero-title-accent">Hämtning.</div>
-                <div>Hemleverans.</div>
+              <div className="landing-hero-card">
+                <div className="home-hero-title">
+                  <div>Kemtvätt.</div>
+                  <div className="home-hero-title-accent">Hämtning.</div>
+                  <div>Hemleverans.</div>
+                </div>
+                <div className="home-hero-tagline" style={{ marginTop: 16 }}>
+                  <IconLeaf size={10} stroke={1.5} />
+                  <span>Miljövänliga metoder sedan 1987</span>
+                </div>
+                <a href="/#services" className="home-hero-cta" style={{ marginTop: 24 }}>BOKA UPPHÄMTNING</a>
+
+                <p className="landing-hero-card-desc">
+                  Professionell kemtvätt med miljövänliga metoder. Vi hämtar din tvätt, tvättar den med omsorg, och levererar den direkt hem till din dörr. Snabbt, enkelt och tillförlitligt sedan 1987.
+                </p>
               </div>
-              <div className="home-hero-tagline" style={{ marginTop: 16 }}>
-                <IconLeaf size={10} stroke={1.5} />
-                <span>Miljövänliga metoder sedan 1987</span>
-              </div>
-              <a href="/#services" className="home-hero-cta" style={{ marginTop: 24 }}>BOKA UPPHÄMTNING</a>
             </div>
 
             {/* Animated card column */}
