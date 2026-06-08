@@ -297,7 +297,7 @@ input, textarea, select { font-family: inherit; }
 .home-hero {
   min-height: 0;
   overflow: hidden;
-  background: var(--forest-dark);
+  background: url('/pattern-dark.png') center / cover no-repeat;
   padding: 28px var(--page-px) 36px;
   display: flex;
   flex-direction: column;

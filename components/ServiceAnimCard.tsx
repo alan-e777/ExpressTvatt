@@ -9,11 +9,11 @@ import { IconClock, IconSpray, IconHome } from '@tabler/icons-react';
 type Phase = 'initial' | 'pickup' | 'processing' | 'delivery' | 'reset';
 
 const PHASE_MS: Record<Phase, number> = {
-  initial:    1500,
-  pickup:      600,
-  processing:  500,
-  delivery:   1500,
-  reset:       400,
+  initial:    3000,
+  pickup:     1200,
+  processing: 1500,  // doubled (1000) + 0.5s extra
+  delivery:   3000,
+  reset:       800,
 };
 
 const PHASE_ORDER: Phase[] = ['initial', 'pickup', 'processing', 'delivery', 'reset'];
