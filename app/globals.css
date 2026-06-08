@@ -394,6 +394,7 @@ input, textarea, select { font-family: inherit; }
   max-width: var(--content-max);
   margin: 0 auto;
   width: 100%;
+  background: url('/pattern.png') center / cover no-repeat;
 }
 
 .landing-testimonials-header {
@@ -452,11 +453,9 @@ input, textarea, select { font-family: inherit; }
   }
 }
 
-/* Individual card — same frosted pill style as header */
+/* Individual card — white with subtle shadow */
 .landing-testimonial-card {
-  background: rgba(250, 250, 250, 0.92) url('/pattern.png') center / cover no-repeat;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 2px 20px rgba(6, 63, 65, 0.08), 0 0.5px 0 rgba(6, 63, 65, 0.07);
   padding: 24px;
