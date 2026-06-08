@@ -384,12 +384,11 @@ input, textarea, select { font-family: inherit; }
   max-width: none;
   margin-left: calc(50% - 50vw);
   padding: 0;                          /* override site-content > * padding */
-  background: url('/herobg.png') center / contain no-repeat;
 }
 
-/* Hero inside landing page — transparent, parent pattern shows through */
+/* Hero inside landing page — photo background fills the hero area only */
 .landing-page .home-hero {
-  background: transparent;
+  background: url('/herobg.png') center / contain no-repeat var(--forest-dark);
 }
 
 /* Hero — full viewport height minus floating header.
