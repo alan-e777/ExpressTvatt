@@ -19,10 +19,13 @@ const PHASE_MS: Record<Phase, number> = {
 const PHASE_ORDER: Phase[] = ['initial', 'pickup', 'processing', 'delivery', 'reset'];
 
 const ITEMS = [
-  { Icon: IconClock,  label: 'Upphämtning inom 2h', sub: 'När det passar dig' },
-  { Icon: IconSpray,  label: 'Skonsam kemtvätt',     sub: 'Förlänger livslängden' },
+  { Icon: IconClock,  label: 'Upphämtning inom 2h',    sub: 'När det passar dig' },
+  { Icon: IconSpray,  label: 'Skonsam kemtvätt',        sub: 'Förlänger livslängden' },
   { Icon: IconHome,   label: 'Leverans hem till dörren', sub: 'Alltid i tid' },
 ];
+
+// Image zone height — space above/below the card where images travel
+const IMG_ZONE = 110;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -31,85 +34,82 @@ export default function ServiceAnimCard() {
 
   useEffect(() => {
     let cancelled = false;
-
     function step(current: Phase) {
-      const duration = PHASE_MS[current];
       const timer = setTimeout(() => {
         if (cancelled) return;
         const next = PHASE_ORDER[(PHASE_ORDER.indexOf(current) + 1) % PHASE_ORDER.length];
         setPhase(next);
         step(next);
-      }, duration);
+      }, PHASE_MS[current]);
       return timer;
     }
-
     const timer = step('initial');
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   const activeIdx =
-    phase === 'initial' || phase === 'pickup'    ? 0 :
-    phase === 'processing'                        ? 1 : 2;
+    phase === 'initial' || phase === 'pickup' ? 0 :
+    phase === 'processing'                     ? 1 : 2;
 
-  // ── before image ──
+  // ── Before image: starts above card, slides down behind card on pickup ──
   const beforeVisible = phase === 'initial';
   const beforePickup  = phase === 'pickup';
   const beforeStyle: React.CSSProperties = {
     position: 'absolute',
-    top: beforePickup ? 60 : 0,
+    // During pickup it slides down into / behind the card
+    top: beforePickup ? IMG_ZONE + 20 : 12,
     left: '50%',
     transform: 'translateX(-50%)',
     opacity: beforeVisible ? 1 : 0,
     transition: beforePickup
-      ? 'top 0.6s ease-in, opacity 0.6s ease-in'
-      : 'opacity 0.3s ease',
+      ? 'top 0.6s ease-in, opacity 0.45s ease-in'
+      : 'opacity 0.25s ease',
     pointerEvents: 'none',
-    zIndex: 2,
+    zIndex: 1,           // behind the card (z-index 10)
   };
 
-  // ── after image — exits downward out of the card bottom ──
+  // ── After image: starts hidden behind card bottom, slides out downward ──
   const afterVisible = phase === 'delivery';
   const afterStyle: React.CSSProperties = {
     position: 'absolute',
-    top: afterVisible ? 10 : -20,
+    bottom: afterVisible ? 12 : IMG_ZONE - 20, // starts near card bottom, exits downward
     left: '50%',
     transform: 'translateX(-50%)',
     opacity: afterVisible ? 1 : 0,
-    transition: 'top 0.6s ease-out, opacity 0.5s ease-out',
+    transition: 'bottom 0.6s ease-out, opacity 0.5s ease-out',
     pointerEvents: 'none',
-    zIndex: 2,
+    zIndex: 1,           // behind the card
   };
 
-  // ── card: shake during processing ──
+  // ── Card: shake during processing ──
   const cardClass = `service-anim-card${phase === 'processing' ? ' service-anim-card--shake' : ''}`;
 
   return (
-    <div className="service-anim-wrap">
-
-      {/* Before image — above the card */}
-      <div style={{ height: 100, position: 'relative', flexShrink: 0, width: '100%' }}>
-        <div style={beforeStyle}>
-          <Image
-            src="/before"
-            alt="Smutsig tvätt"
-            width={110}
-            height={90}
-            style={{ objectFit: 'cover', borderRadius: 10 }}
-          />
-        </div>
+    // Outer wrapper has padding top/bottom = IMG_ZONE to give images travel room.
+    // Images are absolutely positioned within; card is in normal flow with z-index 10.
+    <div
+      className="service-anim-wrap"
+      style={{ paddingTop: IMG_ZONE, paddingBottom: IMG_ZONE }}
+    >
+      {/* Before image — travels in the top IMG_ZONE, slides under card */}
+      <div style={beforeStyle}>
+        <Image
+          src="/before"
+          alt="Smutsig tvätt"
+          width={120}
+          height={100}
+          style={{ objectFit: 'cover', borderRadius: 12 }}
+        />
       </div>
 
-      {/* Card */}
+      {/* Card — higher z-index so images go behind it */}
       <div className={cardClass}>
         {ITEMS.map(({ Icon, label, sub }, i) => {
           const active = i === activeIdx;
           return (
             <div key={label} className={`service-anim-item${active ? ' service-anim-item--active' : ''}`}>
               <div className="service-anim-icon">
-                <Icon size={16} stroke={1.75} />
+                <Icon size={18} stroke={1.75} />
               </div>
               <div>
                 <div className="service-anim-label">{label}</div>
@@ -120,19 +120,16 @@ export default function ServiceAnimCard() {
         })}
       </div>
 
-      {/* After image — below the card */}
-      <div style={{ height: 100, position: 'relative', flexShrink: 0, width: '100%' }}>
-        <div style={afterStyle}>
-          <Image
-            src="/after.png"
-            alt="Ren skjorta"
-            width={110}
-            height={90}
-            style={{ objectFit: 'cover', borderRadius: 10 }}
-          />
-        </div>
+      {/* After image — exits downward from the card's bottom edge */}
+      <div style={afterStyle}>
+        <Image
+          src="/after.png"
+          alt="Ren skjorta"
+          width={120}
+          height={100}
+          style={{ objectFit: 'cover', borderRadius: 12 }}
+        />
       </div>
-
     </div>
   );
 }

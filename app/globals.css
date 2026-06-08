@@ -379,10 +379,13 @@ input, textarea, select { font-family: inherit; }
   flex-direction: column;
 }
 
-/* Hero — full viewport height minus floating header */
+/* Hero — full viewport height minus floating header.
+   padding-bottom shifts content up so its center lands at ~33% from top
+   rather than the default 50% center. */
 .landing-hero-full {
   min-height: calc(100dvh - var(--header-h) - 20px);
   justify-content: center;
+  padding-bottom: 20dvh;
 }
 
 /* Two-column layout inside the hero: text left, card right */
@@ -415,22 +418,26 @@ input, textarea, select { font-family: inherit; }
 }
 
 .service-anim-wrap {
+  position: relative;   /* anchor for absolutely-positioned images */
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 290px;
+  width: 320px;
+  overflow: visible;
 }
 
 .service-anim-card {
+  position: relative;
+  z-index: 10;          /* above the images (z-index 1) */
   width: 100%;
   background: #ffffff;
   border: 0.5px solid rgba(6, 63, 65, 0.10);
-  border-radius: 18px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 28px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 4px 24px rgba(6, 63, 65, 0.12);
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(6, 63, 65, 0.14);
 }
 
 .service-anim-card--shake {
@@ -469,7 +476,7 @@ input, textarea, select { font-family: inherit; }
 
 .service-anim-label {
   font-family: 'Poppins', sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-muted);
   transition: color 0.3s ease;
