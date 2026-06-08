@@ -363,6 +363,20 @@ input, textarea, select { font-family: inherit; }
   }
 }
 
+/* ── Landing page hero — always visible on all screen sizes ──────────── */
+.landing-hero-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.28s ease, margin-bottom 0.28s ease;
+  margin-bottom: var(--sp-xl);
+}
+
+.landing-hero-wrap--hidden {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+}
+
 /* ── Mobile nav ───────────────────────────────────────────────────────── */
 .mobile-nav {
   position: fixed;

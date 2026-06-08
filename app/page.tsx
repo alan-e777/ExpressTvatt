@@ -9,7 +9,6 @@ import {
   IconShirt, IconHanger, IconStar, IconWash, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
   IconPlus, IconMinus, IconSpray, IconInfoCircle, IconChevronUp, IconChevronDown,
-  IconLeaf,
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 
@@ -330,22 +329,6 @@ function CartPanel({ cart, onAdd, onRemove, onCheckout }: {
 export default function HomePage() {
   const router = useRouter();
 
-  // Hero: always visible on load; collapses on any scroll; restores at scrollY === 0
-  const [heroHidden, setHeroHidden] = useState(false);
-  useEffect(() => {
-    // Do NOT initialise from window.scrollY — always show hero on fresh load
-    function onScroll() {
-      const y = window.scrollY ?? window.pageYOffset ?? document.documentElement.scrollTop;
-      setHeroHidden(y > 0);
-    }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    document.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      document.removeEventListener('scroll', onScroll);
-    };
-  }, []);
-
   const [user, setUser]               = useState<User | null>(null);
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [strukenCatalog, setStrukenCatalog] = useState<Partial<Record<StrukenCat, StrukenProduct[]>>>({});
@@ -447,22 +430,6 @@ export default function HomePage() {
 
       {/* ── Main column ───────────────────────────────────────────────── */}
       <div className="home-main">
-
-        {/* ── Hero — collapses on any scroll, restores at scrollY=0 ── */}
-        <div className={`home-hero-wrap${heroHidden ? ' home-hero-wrap--hidden' : ''}`}>
-          <div className="home-hero">
-            <div className="home-hero-title">
-              <div>Kemtvätt.</div>
-              <div className="home-hero-title-accent">Hämtning.</div>
-              <div>Hemleverans.</div>
-            </div>
-            <div className="home-hero-tagline">
-              <IconLeaf size={10} stroke={1.5} />
-              <span>Miljövänliga metoder sedan 1987</span>
-            </div>
-            <a href="#services" className="home-hero-cta">BOKA UPPHÄMTNING</a>
-          </div>
-        </div>
 
         {/* Progress indicator */}
         <div style={{ textAlign: 'center', marginBottom: 'var(--sp-lg)' }}>
