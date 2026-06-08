@@ -1137,6 +1137,35 @@ input, textarea, select { font-family: inherit; }
   white-space: nowrap;
 }
 
+/* ── Profile page — light text on dark body background ────────────────── */
+.profile-page .h2,
+.profile-page .h3 {
+  color: #ffffff;
+}
+
+.profile-page .small {
+  color: var(--moss);
+}
+
+/* "Logga ut" button — ghost style for dark background */
+.profile-page .btn-secondary {
+  color: var(--moss);
+  border-color: rgba(183, 220, 215, 0.4);
+  background: rgba(183, 220, 215, 0.06);
+}
+
+.profile-page .btn-secondary:hover {
+  background: rgba(183, 220, 215, 0.12);
+  border-color: var(--moss);
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Section headings inline (Mina ordrar / Mina adresser) */
+.profile-section-title {
+  color: #ffffff;
+}
+
 /* ── Profile page grid on desktop ─────────────────────────────────────── */
 @media (min-width: 768px) {
   .profile-page {

@@ -390,7 +390,7 @@ export default function ProfilPage() {
             <button
               type="button"
               onClick={() => { setShowAddForm(v => !v); setAddrError(''); }}
-              style={{ background: 'none', border: 'none', color: 'var(--forest-dark)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, cursor: 'pointer' }}
+              style={{ background: 'none', border: 'none', color: 'var(--moss)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, cursor: 'pointer' }}
             >
               {showAddForm ? 'Avbryt' : '+ Lägg till'}
             </button>
