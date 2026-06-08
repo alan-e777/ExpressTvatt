@@ -369,12 +369,11 @@ input, textarea, select { font-family: inherit; }
   }
 }
 
-/* ── Landing page hero — always visible on all screen sizes ──────────── */
+/* ── Landing page hero ────────────────────────────────────────────────── */
 .landing-hero-wrap {
-  display: block;
+  display: flex;
+  justify-content: center;
   padding: 16px 16px 0;
-  border-radius: 12px;
-  overflow: hidden;
 }
 
 /* ── Landing page ─────────────────────────────────────────────────────── */
@@ -413,9 +412,25 @@ input, textarea, select { font-family: inherit; }
   border-radius: 12px;
   overflow: hidden;
   background: url('/herobg.png') center / cover no-repeat var(--forest-dark);
-  min-height: 680px;
+  width: 70%;
+  min-height: 476px;
   display: flex;
   align-items: center;
+}
+
+/* Mobile: full-bleed, no radius, pattern hidden */
+@media (max-width: 799px) {
+  .landing-page::before {
+    display: none;
+  }
+  .landing-hero-wrap {
+    padding: 0;
+  }
+  .landing-hero-island {
+    width: 100%;
+    border-radius: 0;
+    min-height: 520px;
+  }
 }
 
 /* Text sits on the left where the wall space is, above the image */
