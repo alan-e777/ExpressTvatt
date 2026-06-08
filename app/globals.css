@@ -387,20 +387,33 @@ input, textarea, select { font-family: inherit; }
 
 /* Testimonials section */
 .landing-testimonials {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
   padding: 60px var(--page-px) 80px;
   display: flex;
   flex-direction: column;
   gap: 36px;
-  max-width: var(--content-max);
-  margin: 0 auto;
-  width: 100%;
+  z-index: 1;
+}
+
+.landing-testimonials::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: url('/pattern.png') center / cover no-repeat;
+  z-index: -1;
 }
 
 .landing-testimonials-header {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-width: var(--content-max);
+  margin: 0 auto;
 }
 
 .landing-testimonials-kicker {
@@ -445,6 +458,8 @@ input, textarea, select { font-family: inherit; }
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+  max-width: var(--content-max);
+  margin: 0 auto;
 }
 
 @media (min-width: 640px) {
