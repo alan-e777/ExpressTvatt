@@ -407,33 +407,58 @@ input, textarea, select { font-family: inherit; }
   z-index: 1;
 }
 
-/* Hero inside landing page — photo background */
+/* Hero inside landing page — transparent, pattern shows through */
 .landing-page .home-hero {
-  background: url('/herobg.png') center / contain no-repeat var(--forest-dark);
+  background: transparent;
 }
 
-/* Hero — full viewport height minus floating header.
-   padding-bottom shifts content up so its center lands at ~33% from top
-   rather than the default 50% center. */
+/* Hero — full viewport height minus floating header */
 .landing-hero-full {
   min-height: calc(100dvh - var(--header-h) - 20px);
   justify-content: center;
-  padding-bottom: 20dvh;
+  padding: 32px;
 }
 
-/* Two-column layout inside the hero: text left, card right */
+/* Two-column layout: text card left, image card right */
 .landing-hero-inner {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 16px;
   width: 100%;
-  padding: 0 20%;
+  height: 100%;
 }
 
-/* Hero with no card column — text stays centered */
-.landing-hero-inner--no-card {
-  max-width: 700px;
-  margin: 0 auto;
+@media (min-width: 800px) {
+  .landing-hero-inner {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+/* Left — text card */
+.landing-hero-text-card {
+  background: var(--forest-dark);
+  border-radius: 12px;
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 800px) {
+  .landing-hero-text-card {
+    width: 420px;
+  }
+}
+
+/* Right — image card */
+.landing-hero-image-card {
+  flex: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: url('/herobg.png') center / cover no-repeat var(--forest-dark);
+  min-height: 340px;
 }
 
 /* Description text — white color */
