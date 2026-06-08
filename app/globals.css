@@ -385,7 +385,24 @@ input, textarea, select { font-family: inherit; }
   max-width: none;
   margin-left: calc(50% - 50vw);
   padding: 0;                          /* override site-content > * padding */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Rotated repeating pattern — pseudo-element is oversized so rotation never reveals edges */
+.landing-page::before {
+  content: '';
+  position: absolute;
+  inset: -60%;
   background: url('/rolexpattern.png') center / auto repeat;
+  transform: rotate(-45deg);
+  z-index: 0;
+}
+
+/* All direct children sit above the rotated background */
+.landing-page > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Hero inside landing page — photo in a rounded island */
