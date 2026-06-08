@@ -7,7 +7,11 @@ import MobileNav from './MobileNav';
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname.startsWith('/admin') || pathname.startsWith('/driver')) {
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/driver') ||
+    pathname.startsWith('/landing')
+  ) {
     return <>{children}</>;
   }
 
