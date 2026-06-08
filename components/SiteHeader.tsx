@@ -3,7 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { IconArrowLeft, IconSettings, IconHome, IconMessageCircle, IconUser } from '@tabler/icons-react';
+import { useState, useEffect, useRef } from 'react';
+import { IconArrowLeft, IconMenu2, IconX, IconHome, IconMessageCircle, IconUser } from '@tabler/icons-react';
 
 const NAV_LINKS = [
   { href: '/',       label: 'Hem',    Icon: IconHome },
@@ -21,6 +22,21 @@ const BACK_TO: Record<string, string> = {
 export default function SiteHeader() {
   const pathname = usePathname();
   const backHref = BACK_TO[pathname];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
 
   return (
     <header className="site-header">
@@ -59,11 +75,37 @@ export default function SiteHeader() {
         })}
       </nav>
 
-      {/* Mobile: settings button */}
+      {/* Mobile: hamburger button + dropdown */}
       {!backHref && (
-        <button className="header-settings" aria-label="Inställningar">
-          <IconSettings size={16} stroke={1.5} />
-        </button>
+        <div className="header-burger-wrap" ref={menuRef}>
+          <button
+            className="header-burger"
+            aria-label={menuOpen ? 'Stäng meny' : 'Öppna meny'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(v => !v)}
+          >
+            {menuOpen ? <IconX size={20} stroke={1.5} /> : <IconMenu2 size={20} stroke={1.5} />}
+          </button>
+
+          {menuOpen && (
+            <nav className="burger-menu" aria-label="Mobilmeny">
+              {NAV_LINKS.map(({ href, label, Icon }) => {
+                const active = pathname === href || (href !== '/' && pathname.startsWith(href));
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`burger-menu-link${active ? ' active' : ''}`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Icon size={18} stroke={active ? 1.75 : 1.5} />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+        </div>
       )}
     </header>
   );

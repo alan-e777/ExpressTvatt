@@ -80,7 +80,7 @@ input, textarea, select { font-family: inherit; }
 .site-content {
   flex: 1;
   padding-top: var(--header-h);
-  padding-bottom: var(--mobile-nav);   /* cleared by desktop override */
+  padding-bottom: 0;
 }
 
 /* Inner page wrapper — centers & caps width */
@@ -94,15 +94,7 @@ input, textarea, select { font-family: inherit; }
 .site-content > .chat-shell {
   max-width: 100%;
   padding: 0;
-  height: calc(100dvh - var(--header-h) - var(--mobile-nav));
-}
-
-@media (min-width: 768px) {
-  .site-content > .chat-shell {
-    height: calc(100dvh - var(--header-h));
-    max-width: var(--content-max);
-    margin: 0 auto;
-  }
+  height: calc(100dvh - var(--header-h));
 }
 
 /* ── Header ───────────────────────────────────────────────────────────── */
@@ -208,18 +200,73 @@ input, textarea, select { font-family: inherit; }
 .header-wordmark-express { color: #ffffff; }
 .header-wordmark-tvatt   { color: var(--forest-light); }
 
-/* Settings button — mobile only */
+/* Settings button — mobile only (legacy, kept for safety) */
 .header-settings {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-pill);
+  display: none;
+}
+
+/* Hamburger button — mobile only */
+.header-burger-wrap {
+  margin-left: auto;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.header-burger {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
   border: 0.5px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
-  margin-left: auto;
-  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.header-burger:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.burger-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 160px;
+  background: var(--forest-dark);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 300;
+}
+
+.burger-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(183, 220, 215, 0.75);
+  transition: background 0.12s, color 0.12s;
+  text-decoration: none;
+}
+
+.burger-menu-link:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.burger-menu-link.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 500;
 }
 
 /* ── Hero section (home page, in normal page flow) ────────────────────── */
@@ -345,17 +392,19 @@ input, textarea, select { font-family: inherit; }
 .mobile-nav a.active { color: var(--forest-dark); font-weight: 500; }
 
 /* ── Desktop overrides ────────────────────────────────────────────────── */
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   :root { --page-px: 40px; }
 
-  .site-content { padding-bottom: 0; }   /* no mobile nav space */
+  .site-content { padding-bottom: 0; }
 
-  .header-nav { display: flex; }         /* show desktop nav */
-  .header-title { flex: unset; }         /* don't stretch, sits next to logo */
-  .header-settings { display: none; }   /* nav replaces settings */
-  .mobile-nav { display: none; }        /* hide bottom nav */
-  .header-left { margin-left: 0; }      /* reset mobile pull on desktop */
+  .header-nav { display: flex; }
+  .header-title { flex: unset; }
+  .header-burger-wrap { display: none; }  /* hamburger hidden when desktop nav is visible */
+  .header-left { margin-left: 0; }
 }
+
+/* Bottom mobile-nav superseded by hamburger */
+.mobile-nav { display: none !important; }
 
 @media (min-width: 1200px) {
   :root { --page-px: 60px; }
@@ -1103,10 +1152,7 @@ input, textarea, select { font-family: inherit; }
 .chat-shell {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - var(--header-h) - var(--mobile-nav));
-}
-@media (min-width: 768px) {
-  .chat-shell { height: calc(100dvh - var(--header-h)); }
+  height: calc(100dvh - var(--header-h));
 }
 
 .chat-list {
