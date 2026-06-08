@@ -56,29 +56,38 @@ export default function ServiceAnimCard() {
   const beforePickup  = phase === 'pickup';
   const beforeStyle: React.CSSProperties = {
     position: 'absolute',
-    // During pickup it slides down into / behind the card
-    top: beforePickup ? IMG_ZONE + 20 : 12,
+    // Starts slightly above the wrap; slides down behind the card on pickup
+    top: beforePickup ? IMG_ZONE + 20 : -18,
     left: '50%',
     transform: 'translateX(-50%)',
     opacity: beforeVisible ? 1 : 0,
     transition: beforePickup
-      ? 'top 0.6s ease-in, opacity 0.45s ease-in'
+      ? 'top 1.2s ease-in, opacity 0.9s ease-in'
       : 'opacity 0.25s ease',
     pointerEvents: 'none',
-    zIndex: 1,           // behind the card (z-index 10)
+    zIndex: 1,
   };
 
-  // ── After image: starts hidden behind card bottom, slides out downward ──
+  // ── After image: slides out downward from card bottom, fades in place on hide ──
   const afterVisible = phase === 'delivery';
+  const isReset     = phase === 'reset';
+  const isInitial   = phase === 'initial';
+  // Resting position (near card bottom, hidden behind it); exit position (well below)
+  const afterBottom = (afterVisible || isReset) ? -60 : IMG_ZONE - 10;
   const afterStyle: React.CSSProperties = {
     position: 'absolute',
-    bottom: afterVisible ? 12 : IMG_ZONE - 20, // starts near card bottom, exits downward
+    bottom: afterBottom,
     left: '50%',
     transform: 'translateX(-50%)',
     opacity: afterVisible ? 1 : 0,
-    transition: 'bottom 0.6s ease-out, opacity 0.5s ease-out',
+    // initial: snap back instantly; delivery: slide + fade; reset/others: fade only
+    transition: isInitial
+      ? 'none'
+      : afterVisible
+        ? 'bottom 0.9s ease-out, opacity 0.6s ease-out'
+        : 'opacity 0.5s ease',
     pointerEvents: 'none',
-    zIndex: 1,           // behind the card
+    zIndex: 1,
   };
 
   // ── Card: shake during processing ──
