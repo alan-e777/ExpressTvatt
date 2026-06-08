@@ -372,6 +372,7 @@ input, textarea, select { font-family: inherit; }
 /* ── Landing page hero — always visible on all screen sizes ──────────── */
 .landing-hero-wrap {
   display: block;
+  padding: 16px 16px 0;
 }
 
 /* ── Landing page ─────────────────────────────────────────────────────── */
@@ -384,11 +385,14 @@ input, textarea, select { font-family: inherit; }
   max-width: none;
   margin-left: calc(50% - 50vw);
   padding: 0;                          /* override site-content > * padding */
+  background: url('/rolexpattern.png') center / auto repeat;
 }
 
-/* Hero inside landing page — photo background fills the hero area only */
+/* Hero inside landing page — photo in a rounded island */
 .landing-page .home-hero {
   background: url('/herobg.png') center / contain no-repeat var(--forest-dark);
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 /* Hero — full viewport height minus floating header.
