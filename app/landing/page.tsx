@@ -1,6 +1,7 @@
 'use client';
 
 import { IconLeaf, IconStar } from '@tabler/icons-react';
+import ServiceAnimCard from '@/components/ServiceAnimCard';
 
 // ── Testimonial data ──────────────────────────────────────────────────────────
 
@@ -44,16 +45,28 @@ export default function LandingPage() {
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div className="landing-hero-wrap">
         <div className="home-hero landing-hero-full">
-          <div className="home-hero-title">
-            <div>Kemtvätt.</div>
-            <div className="home-hero-title-accent">Hämtning.</div>
-            <div>Hemleverans.</div>
+          <div className="landing-hero-inner">
+
+            {/* Text column */}
+            <div className="landing-hero-text">
+              <div className="home-hero-title">
+                <div>Kemtvätt.</div>
+                <div className="home-hero-title-accent">Hämtning.</div>
+                <div>Hemleverans.</div>
+              </div>
+              <div className="home-hero-tagline" style={{ marginTop: 16 }}>
+                <IconLeaf size={10} stroke={1.5} />
+                <span>Miljövänliga metoder sedan 1987</span>
+              </div>
+              <a href="/#services" className="home-hero-cta" style={{ marginTop: 24 }}>BOKA UPPHÄMTNING</a>
+            </div>
+
+            {/* Animated card column */}
+            <div className="landing-hero-card-col">
+              <ServiceAnimCard />
+            </div>
+
           </div>
-          <div className="home-hero-tagline">
-            <IconLeaf size={10} stroke={1.5} />
-            <span>Miljövänliga metoder sedan 1987</span>
-          </div>
-          <a href="/#services" className="home-hero-cta">BOKA UPPHÄMTNING</a>
         </div>
       </div>
 

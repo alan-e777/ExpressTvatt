@@ -385,6 +385,115 @@ input, textarea, select { font-family: inherit; }
   justify-content: center;
 }
 
+/* Two-column layout inside the hero: text left, card right */
+.landing-hero-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
+}
+
+@media (min-width: 800px) {
+  .landing-hero-inner {
+    flex-direction: row;
+    align-items: center;
+    gap: 60px;
+  }
+  .landing-hero-text { flex: 1; }
+  .landing-hero-card-col { flex-shrink: 0; }
+}
+
+/* ── ServiceAnimCard ──────────────────────────────────────────────────── */
+@keyframes card-shake {
+  0%,100% { transform: translateX(0); }
+  15%      { transform: translateX(-5px); }
+  30%      { transform: translateX(5px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(4px); }
+  75%      { transform: translateX(-2px); }
+  90%      { transform: translateX(2px); }
+}
+
+.service-anim-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 290px;
+}
+
+.service-anim-card {
+  width: 100%;
+  background: rgba(6, 63, 65, 0.80);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.service-anim-card--shake {
+  animation: card-shake 0.5s ease-in-out;
+}
+
+.service-anim-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: opacity 0.3s ease;
+  opacity: 0.5;
+}
+
+.service-anim-item--active {
+  opacity: 1;
+}
+
+.service-anim-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.3s ease, background 0.3s ease;
+}
+
+.service-anim-item--active .service-anim-icon {
+  color: #D4AF37;
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.service-anim-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.3s ease;
+  line-height: 1.3;
+}
+
+.service-anim-item--active .service-anim-label {
+  color: #D4AF37;
+}
+
+.service-anim-sub {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 2px;
+  transition: color 0.3s ease;
+}
+
+.service-anim-item--active .service-anim-sub {
+  color: rgba(212, 175, 55, 0.6);
+}
+
 /* Testimonials section */
 .landing-testimonials {
   position: relative;
