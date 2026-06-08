@@ -407,58 +407,23 @@ input, textarea, select { font-family: inherit; }
   z-index: 1;
 }
 
-/* Hero inside landing page — transparent, pattern shows through */
-.landing-page .home-hero {
-  background: transparent;
-}
-
-/* Hero — full viewport height minus floating header */
-.landing-hero-full {
-  min-height: calc(100dvh - var(--header-h) - 20px);
-  justify-content: center;
-  padding: 32px;
-}
-
-/* Two-column layout: text card left, image card right */
-.landing-hero-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  height: 100%;
-}
-
-@media (min-width: 800px) {
-  .landing-hero-inner {
-    flex-direction: row;
-    align-items: stretch;
-  }
-}
-
-/* Left — text card */
-.landing-hero-text-card {
-  background: var(--forest-dark);
-  border-radius: 12px;
-  padding: 48px 40px;
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  width: 100%;
-}
-
-@media (min-width: 800px) {
-  .landing-hero-text-card {
-    width: 420px;
-  }
-}
-
-/* Right — image card */
-.landing-hero-image-card {
-  flex: 1;
+/* Single island card — image as background, text overlaid on the left */
+.landing-hero-island {
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
   background: url('/herobg.png') center / cover no-repeat var(--forest-dark);
-  min-height: 340px;
+  min-height: 680px;
+  display: flex;
+  align-items: center;
+}
+
+/* Text sits on the left where the wall space is, above the image */
+.landing-hero-island .landing-hero-text {
+  position: relative;
+  z-index: 2;
+  padding: 56px 48px;
+  max-width: 480px;
 }
 
 /* Description text — white color */

@@ -35,39 +35,31 @@ export default function LandingPage() {
   return (
     <div className="landing-page">
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* ── Hero — single island card, image bg, text overlaid left ──── */}
       <div className="landing-hero-wrap">
-        <div className="home-hero landing-hero-full">
-          <div className="landing-hero-inner">
+        <div className="landing-hero-island">
 
-            {/* Left — text card */}
-            <div className="landing-hero-text-card">
-              <div className="landing-hero-text">
-                <div className="home-hero-title">
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0} variants={fadeUp}>Kemtvätt.</motion.div>
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.1} variants={fadeUp} className="home-hero-title-accent">Hämtning.</motion.div>
-                  <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.2} variants={fadeUp}>Hemleverans.</motion.div>
-                </div>
-
-                <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.35} variants={fadeUp} className="home-hero-tagline" style={{ marginTop: 16 }}>
-                  <IconLeaf size={10} stroke={1.5} />
-                  <span>Miljövänliga metoder sedan 1987</span>
-                </motion.div>
-
-                <motion.a href="/#services" className="home-hero-cta" style={{ marginTop: 24, display: 'inline-block' }} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}>
-                  BOKA UPPHÄMTNING
-                </motion.a>
-
-                <motion.p className="landing-hero-desc" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: 'easeOut', delay: 0.45 }}>
-                  Professionell kemtvätt med miljövänliga metoder. Vi hämtar din tvätt, tvättar den med omsorg, och levererar den direkt hem till din dörr. Snabbt, enkelt och tillförlitligt sedan 1987.
-                </motion.p>
-              </div>
+          <div className="landing-hero-text">
+            <div className="home-hero-title">
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0} variants={fadeUp}>Kemtvätt.</motion.div>
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.1} variants={fadeUp} className="home-hero-title-accent">Hämtning.</motion.div>
+              <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.2} variants={fadeUp}>Hemleverans.</motion.div>
             </div>
 
-            {/* Right — image card */}
-            <motion.div className="landing-hero-image-card" initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, ease: 'easeOut', delay: 0.1 }}></motion.div>
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.35} variants={fadeUp} className="home-hero-tagline" style={{ marginTop: 16 }}>
+              <IconLeaf size={10} stroke={1.5} />
+              <span>Miljövänliga metoder sedan 1987</span>
+            </motion.div>
 
+            <motion.a href="/#services" className="home-hero-cta" style={{ marginTop: 24, display: 'inline-block' }} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}>
+              BOKA UPPHÄMTNING
+            </motion.a>
+
+            <motion.p className="landing-hero-desc" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: 'easeOut', delay: 0.45 }}>
+              Professionell kemtvätt med miljövänliga metoder. Vi hämtar din tvätt, tvättar den med omsorg, och levererar den direkt hem till din dörr. Snabbt, enkelt och tillförlitligt sedan 1987.
+            </motion.p>
           </div>
+
         </div>
       </div>
 
