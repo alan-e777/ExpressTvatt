@@ -384,7 +384,7 @@ input, textarea, select { font-family: inherit; }
   max-width: none;
   margin-left: calc(50% - 50vw);
   padding: 0;                          /* override site-content > * padding */
-  background: url('/pattern-dark.png') center / auto repeat;
+  background: url('/herobg.png') center / cover no-repeat;
 }
 
 /* Hero inside landing page — transparent, parent pattern shows through */
