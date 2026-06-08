@@ -24,9 +24,19 @@ export default function SiteHeader() {
   const pathname = usePathname();
   const backHref = BACK_TO[pathname];
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  // Shop page only: header slides away after ~50px of downward scroll
+  useEffect(() => {
+    if (pathname !== '/') { setHidden(false); return; }
+    const onScroll = () => setHidden(window.scrollY > 50);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -40,7 +50,7 @@ export default function SiteHeader() {
   }, [menuOpen]);
 
   return (
-    <header className="site-header">
+    <header className={`site-header${hidden ? ' site-header--hidden' : ''}`}>
       {backHref && (
         <div className="header-left">
           <Link href={backHref} className="header-back" aria-label="Tillbaka">

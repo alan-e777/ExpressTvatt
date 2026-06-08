@@ -8,7 +8,7 @@ import {
   IconWashMachine, IconSteam, IconNeedle,
   IconShirt, IconHanger, IconStar, IconWash, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconPlus, IconMinus, IconSpray, IconInfoCircle, IconChevronUp, IconChevronDown,
+  IconPlus, IconMinus, IconSpray, IconChevronUp, IconChevronDown,
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 
@@ -202,32 +202,6 @@ function SkeletonRows({ count }: { count: number }) {
           <div className="skeleton" style={{ width: 50, height: 14 }} />
         </div>
       ))}
-    </div>
-  );
-}
-
-// Inline [−] count [+] stepper used in all service rows
-function QtyControl({ qty, onAdd, onRemove, price }: { qty: number; onAdd: () => void; onRemove: () => void; price: number }) {
-  const btnStyle: React.CSSProperties = {
-    width: 28, height: 28, borderRadius: 9999,
-    border: '0.5px solid rgba(74,124,89,0.3)',
-    background: 'none', color: 'var(--forest-mid)', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  };
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-      <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-mid)', minWidth: 60, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-        {qty > 0 ? `${price * qty} kr` : `${price} kr`}
-      </span>
-      <button
-        onClick={onRemove}
-        disabled={qty === 0}
-        style={{ ...btnStyle, opacity: qty === 0 ? 0.4 : 1, cursor: qty === 0 ? 'default' : 'pointer' }}
-      >
-        <IconMinus size={11} stroke={2.5} />
-      </button>
-      <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-dark)', minWidth: 24, textAlign: 'center' }}>{qty}</span>
-      <button onClick={onAdd} style={btnStyle}><IconPlus size={11} stroke={2.5} /></button>
     </div>
   );
 }
@@ -473,28 +447,28 @@ export default function HomePage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'center', gap: 'var(--sp-md)',
                   padding: '28px 16px',
-                  background: open ? 'var(--forest-mid)' : 'var(--white)',
+                  background: open ? '#6BB3AC' : 'var(--white)',
                   borderRadius: 'var(--radius-lg)',
-                  border: open ? '0.5px solid var(--forest-mid)' : '0.5px solid rgba(14,92,91,0.15)',
-                  boxShadow: '0 1px 4px rgba(30,46,36,0.06)',
+                  border: open ? '0.5px solid #6BB3AC' : '0.5px solid rgba(14,92,91,0.15)',
+                  boxShadow: open ? '0 6px 20px rgba(8,63,65,0.18)' : '0 1px 4px rgba(30,46,36,0.06)',
                   cursor: 'pointer',
                   transition: 'background 0.15s',
-                  color: open ? 'var(--moss)' : 'var(--text-dark)',
+                  color: open ? '#083F41' : 'var(--text-dark)',
                   textAlign: 'center',
                 }}
               >
                 <div style={{
                   width: 40, height: 40, borderRadius: '50%',
-                  background: open ? 'rgba(183,220,215,0.15)' : 'var(--linen)',
-                  border: open ? '0.5px solid rgba(183,220,215,0.25)' : '0.5px solid rgba(14,92,91,0.2)',
+                  background: open ? 'rgba(8,63,65,0.12)' : 'var(--linen)',
+                  border: open ? '0.5px solid rgba(8,63,65,0.22)' : '0.5px solid rgba(14,92,91,0.2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
-                  color: open ? 'var(--moss)' : 'var(--forest-mid)',
+                  color: open ? '#083F41' : 'var(--forest-mid)',
                 }}>
                   <Icon size={18} stroke={1.5} />
                 </div>
                 <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 16, fontWeight: 600, lineHeight: 1.2 }}>{label}</div>
-                <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 11, color: open ? 'rgba(183,220,215,0.65)' : 'var(--text-muted)', lineHeight: 1.5 }}>{desc}</div>
+                <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 11, color: open ? 'rgba(8,63,65,0.72)' : 'var(--text-muted)', lineHeight: 1.5 }}>{desc}</div>
               </button>
             );
           })}
@@ -637,33 +611,26 @@ export default function HomePage() {
           {loadingServices ? <SkeletonRows count={6} /> : allStrukenProducts.length === 0 ? (
             <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga plagg tillgängliga just nu.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {allStrukenProducts.map((p, i) => {
+            <div className="prod-grid">
+              {allStrukenProducts.map(p => {
                 const Icon = strukenIcon(p.name);
+                const qty  = cartQty(p.id);
                 return (
-                  <div key={p.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0',
-                    borderBottom: i < allStrukenProducts.length - 1 ? '0.5px solid rgba(30,46,36,0.08)' : 'none',
-                  }}>
-                    <div className="icon-circle"><Icon size={16} stroke={1.5} /></div>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div className="body" style={{ overflowWrap: 'break-word', minWidth: 0 }}>{p.name}</div>
-                      <button
-                        title="Mer information tillkommer."
-                        aria-label={`Mer information om ${p.name}`}
-                        style={{ width: 18, height: 18, borderRadius: '50%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0 }}
-                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--forest-mid)')}
-                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                      >
-                        <IconInfoCircle size={13} stroke={1.5} />
-                      </button>
+                  <div key={p.id} className="prod-tile">
+                    <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
+                    <div className="prod-tile-name">{p.name}</div>
+                    <div className="prod-tile-foot">
+                      <div className="prod-tile-price">{p.price} kr<span className="prod-tile-per">/st</span></div>
+                      <div className="prod-stepper">
+                        <button className="prod-step-btn" disabled={qty === 0} aria-label={`Ta bort ${p.name}`} onClick={() => removeFromCart(p.id)}>
+                          <IconMinus size={13} stroke={2.5} />
+                        </button>
+                        <span className="prod-step-qty">{qty}</span>
+                        <button className="prod-step-btn" aria-label={`Lägg till ${p.name}`} onClick={() => addToCart({ id: p.id, name: p.name, price: p.price, type: 'struken' })}>
+                          <IconPlus size={13} stroke={2.5} />
+                        </button>
+                      </div>
                     </div>
-                    <QtyControl
-                      qty={cartQty(p.id)}
-                      price={p.price}
-                      onAdd={() => addToCart({ id: p.id, name: p.name, price: p.price, type: 'struken' })}
-                      onRemove={() => removeFromCart(p.id)}
-                    />
                   </div>
                 );
               })}
@@ -688,34 +655,27 @@ export default function HomePage() {
           {loadingServices ? <SkeletonRows count={5} /> : services.length === 0 ? (
             <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga tjänster tillgängliga just nu.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {services.map((svc, i) => {
+            <div className="prod-grid">
+              {services.map(svc => {
                 const Icon  = serviceIcon(svc.name);
                 const price = svc.price_ore / 100;
+                const qty   = cartQty(svc.id);
                 return (
-                  <div key={svc.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0',
-                    borderBottom: i < services.length - 1 ? '0.5px solid rgba(30,46,36,0.08)' : 'none',
-                  }}>
-                    <div className="icon-circle"><Icon size={16} stroke={1.5} /></div>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div className="body" style={{ overflowWrap: 'break-word', minWidth: 0 }}>{svc.name}</div>
-                      <button
-                        title="Mer information tillkommer."
-                        aria-label={`Mer information om ${svc.name}`}
-                        style={{ width: 18, height: 18, borderRadius: '50%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0 }}
-                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--forest-mid)')}
-                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                      >
-                        <IconInfoCircle size={13} stroke={1.5} />
-                      </button>
+                  <div key={svc.id} className="prod-tile">
+                    <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
+                    <div className="prod-tile-name">{svc.name}</div>
+                    <div className="prod-tile-foot">
+                      <div className="prod-tile-price">{price} kr<span className="prod-tile-per">/st</span></div>
+                      <div className="prod-stepper">
+                        <button className="prod-step-btn" disabled={qty === 0} aria-label={`Ta bort ${svc.name}`} onClick={() => removeFromCart(svc.id)}>
+                          <IconMinus size={13} stroke={2.5} />
+                        </button>
+                        <span className="prod-step-qty">{qty}</span>
+                        <button className="prod-step-btn" aria-label={`Lägg till ${svc.name}`} onClick={() => addToCart({ id: svc.id, name: svc.name, price, type: 'service', serviceId: svc.id })}>
+                          <IconPlus size={13} stroke={2.5} />
+                        </button>
+                      </div>
                     </div>
-                    <QtyControl
-                      qty={cartQty(svc.id)}
-                      price={price}
-                      onAdd={() => addToCart({ id: svc.id, name: svc.name, price, type: 'service', serviceId: svc.id })}
-                      onRemove={() => removeFromCart(svc.id)}
-                    />
                   </div>
                 );
               })}
