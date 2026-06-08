@@ -2295,3 +2295,110 @@ input, textarea, select { font-family: inherit; }
   .lp-nav-logo img { width: 28px; height: 28px; }
   .lp-nav-cta { height: 38px; padding: 0 14px; font-size: 13px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ORDER FLOW REDESIGN  —  scoped under .of  (booking page + kassa)
+   Pure presentational layer: matches the .lp landing language
+   (Inter, #083F41 primary, gold/teal accents, #F7F5F0 light, #0F172A ink).
+   No markup logic touched — colours/typography remapped via tokens.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.of {
+  /* Remap existing design tokens to the premium landing palette.
+     Every inline style that references these vars adopts the new look. */
+  --forest-dark:  #083F41;
+  --forest-mid:   #083F41;
+  --forest-light: #6BB3AC;
+  --moss:         #B7DCD7;
+  --linen:        #F7F5F0;
+  --white:        #FFFFFF;
+  --text-dark:    #0F172A;
+  --text-mid:     #334155;
+  --text-muted:   #64748B;
+  --earth:        #D4AF37;
+  --radius-md:    12px;
+  --radius-lg:    16px;
+}
+
+/* Unify typography to Inter (overrides inline Poppins / DM Sans / Playfair) */
+.of, .of * { font-family: 'Inter', -apple-system, system-ui, sans-serif !important; }
+
+/* Headings — tighter, ink, confident */
+.of .h1, .of .h2, .of .h3 {
+  color: var(--text-dark);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Primary action — solid deep teal, white label, 52px, radius 12 */
+.of .btn-primary {
+  background: #083F41;
+  color: #fff;
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  box-shadow: none;
+}
+.of .btn-primary:hover { opacity: 0.92; }
+.of .btn-secondary {
+  border: 1px solid rgba(8,63,65,0.5);
+  color: #083F41;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Cards — white surfaces, hairline borders, restrained shadow, more air */
+.of .service-card,
+.of .checkout-card {
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.08);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+/* Cart / booking sidebar panel — warm cream, hairline */
+.of .home-sidebar > div:first-child {
+  border: 1px solid rgba(15,23,42,0.07);
+}
+
+/* Inputs — cream fill, hairline, teal focus ring */
+.of .input,
+.of .select-btn {
+  background: #F7F5F0;
+  border: 1px solid rgba(15,23,42,0.08);
+  border-radius: 12px;
+  font-size: 15px;
+  color: var(--text-dark);
+}
+.of .input:focus { box-shadow: 0 0 0 2px #083F41; }
+.of .field-label,
+.of .section-label {
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  font-weight: 500;
+}
+
+/* Order summary block — cream */
+.of .order-summary { background: #F7F5F0; border-radius: 12px; }
+.of .summary-total { color: var(--text-dark); font-weight: 700; }
+
+/* Progress indicator step bubbles — deep teal active, hairline upcoming */
+.of .home-main ol li > span:first-child { font-weight: 600; }
+
+/* Stripe field wrap — hairline */
+.of .stripe-wrap {
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 12px;
+}
+
+/* Mobile sticky cart bar — match deep teal, rounded, lifted */
+.of .mobile-cart-bar {
+  background: #083F41;
+  border-radius: 16px 16px 0 0;
+}

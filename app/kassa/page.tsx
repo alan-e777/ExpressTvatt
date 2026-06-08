@@ -204,7 +204,7 @@ function CheckoutForm() {
 
   if (items.length === 0) {
     return (
-      <div className="form-page">
+      <div className="form-page of">
         <p className="error-msg">
           Varukorgen är tom.{' '}
           <Link href="/" style={{ color: 'var(--forest-mid)' }}>Gå tillbaka</Link>
@@ -215,7 +215,7 @@ function CheckoutForm() {
 
   if (step === 'payment' && clientSecret) {
     return (
-      <div className="form-page">
+      <div className="form-page of">
         <Summary />
         <Elements stripe={stripePromise} options={{ clientSecret }}>
           <PaymentForm totalKr={totalKr} onBack={() => setStep('form')} />
@@ -225,7 +225,7 @@ function CheckoutForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="form-page">
+    <form onSubmit={handleSubmit} className="form-page of">
       <div className="checkout-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
         <Summary />
 

@@ -426,7 +426,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="home-grid">
+    <div className="home-grid of">
 
       {/* ── Main column ───────────────────────────────────────────────── */}
       <div className="home-main">
