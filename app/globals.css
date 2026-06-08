@@ -347,17 +347,19 @@ input, textarea, select { font-family: inherit; }
   letter-spacing: 2.5px;
   text-transform: uppercase;
   color: #ffffff;
-  background: transparent;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, #D4AF37 0%, #E8C547 100%);
+  border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   text-decoration: none;
-  transition: border-color 0.15s, background 0.15s;
+  transition: opacity 0.2s, transform 0.15s;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
 .home-hero-cta:hover {
-  border-color: rgba(255, 255, 255, 0.65);
-  background: rgba(255, 255, 255, 0.06);
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(212, 175, 55, 0.4);
 }
 
 /* On desktop: hide the hero — sidebar cart anchors the page already */
@@ -408,32 +410,14 @@ input, textarea, select { font-family: inherit; }
   padding: 0 20%;
 }
 
-/* Hero text card — outer card with pattern.png background */
-.landing-hero-card {
-  background: url('/pattern.png') center / auto repeat;
-  border-radius: 20px;
-  padding: 12px;
-  box-shadow: 0 8px 32px rgba(6, 63, 65, 0.12);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Inner card with pattern-dark.png — cutout effect inside pattern.png */
-.landing-hero-card-inner {
-  background: url('/pattern-dark.png') center / auto repeat;
-  border-radius: 16px;
-  padding: 28px 24px;
-  box-shadow: inset 0 2px 8px rgba(6, 63, 65, 0.08);
-}
-
-/* Description text stays in outer pattern.png card */
-.landing-hero-card-desc {
+/* Description text — white color */
+.landing-hero-desc {
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.65;
-  color: rgba(6, 63, 65, 0.65);
+  color: #ffffff;
+  margin-top: 16px;
 }
 
 @media (min-width: 800px) {
