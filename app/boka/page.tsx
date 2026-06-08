@@ -7,6 +7,7 @@ import { IconLeaf, IconMapPin, IconClock, IconAlignLeft } from '@tabler/icons-re
 import { auth } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
+import TimePicker from '@/components/TimePicker';
 
 type CustomField = {
   name: string; label: string; type: string; placeholder?: string;
@@ -159,11 +160,11 @@ function BookForm() {
   const price = service.price_ore / 100;
 
   return (
-    <form onSubmit={handleNext} className="form-page" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
+    <form onSubmit={handleNext} className="form-page form-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
       {/* Service summary */}
       <div className="summary-card">
         <div className="summary-icon">
-          {service.icon ?? <IconLeaf size={22} stroke={1.5} style={{ color: 'var(--forest-mid)' }} />}
+          <IconLeaf size={22} stroke={1.5} style={{ color: 'var(--forest-mid)' }} />
         </div>
         <div>
           <div className="h3">{service.name}</div>
@@ -194,8 +195,7 @@ function BookForm() {
             <IconClock size={12} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
             Tid
           </label>
-          <input className="input" type="time" value={time}
-            onChange={e => setTime(e.target.value)} />
+          <TimePicker value={time} onChange={setTime} placeholder="Välj tid" />
         </div>
       </div>
 

@@ -436,8 +436,8 @@ export default function ProfilPage() {
                 />
               </div>
               <div className="input-group">
-                <label className="field-label">Delivery notes</label>
-                <input className="input" placeholder="C/O Andersson" value={newDeliveryNote} onChange={e => setNewDeliveryNote(e.target.value)} />
+                <label className="field-label">Leveransanteckning (valfritt)</label>
+                <input className="input" placeholder="t.ex. C/O Andersson, portkod 1234" value={newDeliveryNote} onChange={e => setNewDeliveryNote(e.target.value)} />
               </div>
               {addrError && <p className="error-msg">{addrError}</p>}
               <button type="submit" className="btn-primary" disabled={savingAddr} style={{ marginTop: 4, width: '100%', maxWidth: 'none' }}>

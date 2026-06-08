@@ -2305,13 +2305,15 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   ORDER FLOW REDESIGN  —  scoped under .of  (booking page + kassa)
-   Pure presentational layer: matches the .lp landing language
-   (Inter, #083F41 primary, gold/teal accents, #F7F5F0 light, #0F172A ink).
+   SITE-WIDE DESIGN SYSTEM  —  scoped under .site-shell
+   Applies the .lp landing language to EVERY customer route (home, kassa,
+   chatt, profil, tjanster, boka, checkout, struken-tvätt, 404).
+   (Inter, #083F41 primary, gold/teal accents, #F7F5F0 light, #0F172A ink.)
+   Landing (.lp) and admin/driver bypass the shell and are unaffected.
    No markup logic touched — colours/typography remapped via tokens.
    ═══════════════════════════════════════════════════════════════════════ */
 
-.of {
+.site-shell {
   /* Remap existing design tokens to the premium landing palette.
      Every inline style that references these vars adopts the new look. */
   --forest-dark:  #083F41;
@@ -2329,17 +2331,17 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Unify typography to Inter (overrides inline Poppins / DM Sans / Playfair) */
-.of, .of * { font-family: 'Inter', -apple-system, system-ui, sans-serif !important; }
+.site-shell, .site-shell * { font-family: 'Inter', -apple-system, system-ui, sans-serif !important; }
 
 /* Headings — tighter, ink, confident */
-.of .h1, .of .h2, .of .h3 {
+.site-shell .h1, .site-shell .h2, .site-shell .h3 {
   color: var(--text-dark);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 /* Primary action — solid deep teal, white label, 52px, radius 12 */
-.of .btn-primary {
+.site-shell .btn-primary {
   background: #083F41;
   color: #fff;
   height: 52px;
@@ -2350,8 +2352,8 @@ input, textarea, select { font-family: inherit; }
   letter-spacing: -0.01em;
   box-shadow: none;
 }
-.of .btn-primary:hover { opacity: 0.92; }
-.of .btn-secondary {
+.site-shell .btn-primary:hover { opacity: 0.92; }
+.site-shell .btn-secondary {
   border: 1px solid rgba(8,63,65,0.5);
   color: #083F41;
   border-radius: 12px;
@@ -2360,8 +2362,8 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Cards — white surfaces, hairline borders, restrained shadow, more air */
-.of .service-card,
-.of .checkout-card {
+.site-shell .service-card,
+.site-shell .checkout-card {
   background: #fff;
   border: 1px solid rgba(15,23,42,0.08);
   box-shadow: 0 1px 2px rgba(15,23,42,0.04);
@@ -2370,54 +2372,54 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Cart / booking sidebar panel — warm cream, hairline */
-.of .home-sidebar > div:first-child {
+.site-shell .home-sidebar > div:first-child {
   border: 1px solid rgba(15,23,42,0.07);
 }
 
 /* Inputs — cream fill, hairline, teal focus ring */
-.of .input,
-.of .select-btn {
+.site-shell .input,
+.site-shell .select-btn {
   background: #F7F5F0;
   border: 1px solid rgba(15,23,42,0.08);
   border-radius: 12px;
   font-size: 15px;
   color: var(--text-dark);
 }
-.of .input:focus { box-shadow: 0 0 0 2px #083F41; }
-.of .field-label,
-.of .section-label {
+.site-shell .input:focus { box-shadow: 0 0 0 2px #083F41; }
+.site-shell .field-label,
+.site-shell .section-label {
   color: var(--text-muted);
   letter-spacing: 0.12em;
   font-weight: 500;
 }
 
 /* Order summary block — cream */
-.of .order-summary { background: #F7F5F0; border-radius: 12px; }
-.of .summary-total { color: var(--text-dark); font-weight: 700; }
+.site-shell .order-summary { background: #F7F5F0; border-radius: 12px; }
+.site-shell .summary-total { color: var(--text-dark); font-weight: 700; }
 
 /* Progress indicator step bubbles — deep teal active, hairline upcoming */
-.of .home-main ol li > span:first-child { font-weight: 600; }
+.site-shell .home-main ol li > span:first-child { font-weight: 600; }
 
 /* Stripe field wrap — hairline */
-.of .stripe-wrap {
+.site-shell .stripe-wrap {
   background: #fff;
   border: 1px solid rgba(15,23,42,0.10);
   border-radius: 12px;
 }
 
 /* Mobile sticky cart bar — match deep teal, rounded, lifted */
-.of .mobile-cart-bar {
+.site-shell .mobile-cart-bar {
   background: #083F41;
   border-radius: 16px 16px 0 0;
 }
 
 /* Product tiles — 2-column grid, portrait 5:3 (height:width) tiles */
-.of .prod-grid {
+.site-shell .prod-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
-.of .prod-tile {
+.site-shell .prod-tile {
   aspect-ratio: 3 / 5;            /* height:width = 5:3 (portrait) */
   display: flex;
   flex-direction: column;
@@ -2431,11 +2433,11 @@ input, textarea, select { font-family: inherit; }
   box-shadow: 0 1px 2px rgba(15,23,42,0.04);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.of .prod-tile:hover {
+.site-shell .prod-tile:hover {
   border-color: rgba(8,63,65,0.18);
   box-shadow: 0 6px 18px rgba(15,23,42,0.07);
 }
-.of .prod-tile-icon {
+.site-shell .prod-tile-icon {
   width: 54px;
   height: 54px;
   border-radius: 50%;
@@ -2447,7 +2449,7 @@ input, textarea, select { font-family: inherit; }
   color: #083F41;
   flex-shrink: 0;
 }
-.of .prod-tile-name {
+.site-shell .prod-tile-name {
   font-size: 16px;
   font-weight: 600;
   color: #0F172A;
@@ -2455,14 +2457,14 @@ input, textarea, select { font-family: inherit; }
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.of .prod-tile-foot {
+.site-shell .prod-tile-foot {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
   width: 100%;
 }
-.of .prod-tile-price {
+.site-shell .prod-tile-price {
   display: flex;
   align-items: baseline;
   gap: 4px;
@@ -2471,9 +2473,9 @@ input, textarea, select { font-family: inherit; }
   color: #0F172A;
   letter-spacing: -0.01em;
 }
-.of .prod-tile-per { font-size: 12px; font-weight: 500; color: #64748B; }
-.of .prod-stepper { display: flex; align-items: center; gap: 12px; }
-.of .prod-step-btn {
+.site-shell .prod-tile-per { font-size: 12px; font-weight: 500; color: #64748B; }
+.site-shell .prod-stepper { display: flex; align-items: center; gap: 12px; }
+.site-shell .prod-step-btn {
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -2487,9 +2489,9 @@ input, textarea, select { font-family: inherit; }
   flex-shrink: 0;
   transition: background 0.12s;
 }
-.of .prod-step-btn:hover:not(:disabled) { background: #F7F5F0; }
-.of .prod-step-btn:disabled { opacity: 0.4; cursor: default; }
-.of .prod-step-qty {
+.site-shell .prod-step-btn:hover:not(:disabled) { background: #F7F5F0; }
+.site-shell .prod-step-btn:disabled { opacity: 0.4; cursor: default; }
+.site-shell .prod-step-qty {
   min-width: 22px;
   text-align: center;
   font-size: 15px;
@@ -2497,3 +2499,116 @@ input, textarea, select { font-family: inherit; }
   color: #0F172A;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Shared component unification (secondary routes) ──────────────────────
+   chat, auth, summary/order cards, eco, chips, success, icons, header.   */
+
+/* Header wordmark — tighter on Inter; reveal/hide handled elsewhere */
+.site-shell .header-wordmark { letter-spacing: 2px; font-weight: 700; }
+.site-shell .header-nav-link { font-weight: 500; }
+
+/* Icon chips / circles — cream fill, hairline, deep-teal glyph */
+.site-shell .icon-circle,
+.site-shell .icon-circle-lg {
+  background: #F7F5F0;
+  border: 1px solid rgba(15,23,42,0.06);
+  color: #083F41;
+}
+
+/* Service list rows (tjänster) */
+.site-shell .service-row { border-bottom-color: rgba(15,23,42,0.07); }
+.site-shell .service-price { color: #0F172A; font-weight: 700; }
+.site-shell .chevron { color: #94A3B8; }
+
+/* Chips */
+.site-shell .chip {
+  border: 1px solid rgba(15,23,42,0.12);
+  background: #fff;
+  color: #334155;
+  border-radius: 10px;
+}
+.site-shell .chip.active { background: #083F41; color: #fff; border-color: #083F41; }
+.site-shell .chip:hover:not(.active) { background: #F7F5F0; border-color: rgba(15,23,42,0.2); color: #0F172A; }
+
+/* Summary / order / grid cards — cream with hairline */
+.site-shell .summary-card,
+.site-shell .order-card {
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.08);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  border-radius: 16px;
+}
+.site-shell .summary-icon { background: #F7F5F0; border: 1px solid rgba(15,23,42,0.06); }
+.site-shell .grid-card { background: #F7F5F0; border: 1px solid rgba(15,23,42,0.06); }
+.site-shell .grid-card:hover,
+.site-shell .wide-card:hover { background: #EAF2F0; transform: translateY(-2px); }
+
+/* Live price card — deep teal, white figure */
+.site-shell .live-price-card { background: #083F41; border-radius: 16px; }
+.site-shell .price-value { color: #fff; }
+.site-shell .price-label,
+.site-shell .pickup-label { color: rgba(255,255,255,0.7); }
+
+/* Eco elements — cream/gold, no off-palette tan */
+.site-shell .eco-badge {
+  background: #F7F5F0;
+  border: 1px solid rgba(15,23,42,0.08);
+  border-radius: 12px;
+  color: #083F41;
+}
+.site-shell .eco-trust-banner { border-radius: 12px; }
+
+/* Auth card */
+.site-shell .auth-content {
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.08);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  border-radius: 16px;
+}
+.site-shell .auth-avatar { background: #F7F5F0; border: 1px solid rgba(15,23,42,0.06); color: #083F41; }
+
+/* Status badge — pill, readable */
+.site-shell .status-badge { border-radius: 9999px; font-weight: 600; font-size: 11px; padding: 5px 12px; }
+
+/* Success state */
+.site-shell .success-icon-circle { background: #083F41; color: #fff; }
+
+/* ── Chat ─────────────────────────────────────────────────────────────── */
+.site-shell .bubble-left  { background: #F7F5F0; }
+.site-shell .bubble-right { background: #6BB3AC; }
+.site-shell .bubble-text-right { color: #083F41; }
+.site-shell .time-right { color: rgba(8,63,65,0.55); }
+.site-shell .chat-input {
+  background: #F7F5F0;
+  border: 1px solid rgba(15,23,42,0.08);
+}
+.site-shell .chat-input:focus { box-shadow: 0 0 0 2px #083F41; }
+.site-shell .send-btn { background: #083F41; color: #fff; }
+.site-shell .chat-gate-btn { background: #083F41; color: #fff; border-radius: 10px; }
+
+/* ── Mobile-first header: prevent wordmark/burger overlap on small screens */
+@media (max-width: 430px) {
+  .site-header .header-wordmark { font-size: 18px; letter-spacing: 1.5px; gap: 4px; }
+  .site-header .header-wordmark img { width: 34px !important; height: 34px !important; }
+}
+@media (max-width: 340px) {
+  .site-header .header-wordmark img { display: none; }
+}
+
+/* ── Surfaces on the dark body — wrap in white cards so CTAs/icons read ──
+   Forms/states that aren't already inside a card would otherwise place a
+   deep-teal button on the deep-teal page background.                     */
+.site-shell .success-box,
+.site-shell .form-card {
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.08);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  border-radius: 16px;
+}
+.site-shell .success-box { max-width: 480px; margin: 0 auto; }
+.site-shell .form-card { padding: 24px; }
+/* Inner summary inside the boka card → cream so it separates from white */
+.site-shell .form-card .summary-card { background: #F7F5F0; box-shadow: none; }
+
+/* Kassa empty-cart link — readable on dark body */
+.site-shell .form-page.of > .error-msg a { color: #6BB3AC; font-weight: 600; }

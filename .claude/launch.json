@@ -4,9 +4,9 @@
     {
       "name": "web",
       "runtimeExecutable": "/bin/bash",
-      "runtimeArgs": ["-c", "export PATH=/Users/Carl/.nvm/versions/node/v23.11.1/bin:$PATH && npm run dev"],
-      "port": 3000,
-      "autoPort": true
+      "runtimeArgs": ["-c", "export PATH=/Users/Carl/.nvm/versions/node/v23.11.1/bin:$PATH && npm run dev -- --port 3001"],
+      "port": 3001,
+      "autoPort": false
     }
   ]
 }

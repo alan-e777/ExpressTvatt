@@ -18,48 +18,46 @@ export default function NotFound() {
         gap:           '12px',
       }}>
         <p style={{
-          fontFamily:    "'Poppins', sans-serif",
-          fontWeight:    300,
-          fontSize:      '10px',
-          color:         'var(--text-muted)',
-          letterSpacing: '2px',
+          fontWeight:    600,
+          fontSize:      '12px',
+          color:         '#6BB3AC',
+          letterSpacing: '0.14em',
           textTransform: 'uppercase',
         }}>
           Express Tvätt
         </p>
 
         <p style={{
-          fontFamily: "'Poppins', sans-serif",
-          fontWeight: 600,
+          fontWeight: 700,
           fontSize:   'clamp(72px, 20vw, 120px)',
-          color:      'var(--forest-dark)',
+          color:      '#FFFFFF',
+          letterSpacing: '-0.03em',
           lineHeight: 1,
         }}>
           404
         </p>
 
         <p style={{
-          fontFamily: "'Poppins', sans-serif",
-          fontWeight: 600,
-          fontSize:   'clamp(18px, 4vw, 22px)',
-          color:      'var(--text-dark)',
+          fontWeight: 700,
+          fontSize:   'clamp(20px, 4vw, 24px)',
+          letterSpacing: '-0.01em',
+          color:      '#FFFFFF',
         }}>
           Sidan hittades inte
         </p>
 
         <div style={{
           width:      '32px',
-          height:     '0.5px',
-          background: 'rgba(14,92,91,0.3)',
+          height:     '1px',
+          background: 'rgba(255,255,255,0.25)',
           margin:     '4px 0',
         }} />
 
         <p style={{
-          fontFamily: "'Poppins', sans-serif",
           fontWeight: 400,
-          fontSize:   '14px',
-          color:      'var(--text-muted)',
-          lineHeight: '22px',
+          fontSize:   '15px',
+          color:      'rgba(255,255,255,0.6)',
+          lineHeight: '24px',
         }}>
           Sidan du letar efter finns inte längre<br />
           eller har aldrig funnits.
@@ -69,15 +67,15 @@ export default function NotFound() {
           display:         'inline-flex',
           alignItems:      'center',
           justifyContent:  'center',
-          background:      'var(--forest-dark)',
-          color:           'var(--moss)',
-          fontFamily:      "'Poppins', sans-serif",
-          fontWeight:      500,
-          fontSize:        '13px',
-          padding:         '12px 28px',
-          borderRadius:    'var(--radius-md)',
+          height:          '52px',
+          background:      '#FFFFFF',
+          color:           '#083F41',
+          fontWeight:      600,
+          fontSize:        '15px',
+          padding:         '0 26px',
+          borderRadius:    '12px',
           textDecoration:  'none',
-          marginTop:       '8px',
+          marginTop:       '12px',
         }}>
           Gå till startsidan
         </Link>
