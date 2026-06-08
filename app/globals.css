@@ -405,7 +405,7 @@ input, textarea, select { font-family: inherit; }
   flex-direction: column;
   gap: 40px;
   width: 100%;
-  padding: 0 15%;
+  padding: 0 20%;
 }
 
 @media (min-width: 800px) {
