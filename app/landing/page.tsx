@@ -115,7 +115,7 @@ export default function LandingPage() {
           <div className="lp-hero-text">
             <Reveal>
               <h1 className="lp-hero-title">
-                Kemtvättat.<br />Upphämtat.<br />Levererat.
+                Kemtvättat.<br /><span className="lp-hero-title-gold">Upphämtning.</span><br />Levererat.
               </h1>
             </Reveal>
             <Reveal delay={80}>

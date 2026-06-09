@@ -1904,31 +1904,30 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ── Navigation ─────────────────────────────────────────────────────── */
+/* Floating white pill — matches the site-wide SiteHeader */
 .lp-nav {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 80px;
+  top: 12px; left: 16px; right: 16px;
+  height: 64px;
   z-index: 100;
   display: flex;
   align-items: center;
-  background: transparent;
-  border-bottom: 1px solid transparent;
-  transition: background 220ms ease, border-color 220ms ease, backdrop-filter 220ms ease;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(8, 63, 65, 0.10), 0 0.5px 0 rgba(8, 63, 65, 0.07);
+  transition: box-shadow 220ms ease;
 }
 .lp-nav--scrolled {
-  background: rgba(8, 63, 65, 0.72);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom-color: rgba(255,255,255,0.08);
+  box-shadow: 0 6px 28px rgba(8, 63, 65, 0.16), 0 0.5px 0 rgba(8, 63, 65, 0.07);
 }
 .lp-nav-inner {
   width: 100%;
   max-width: var(--max);
   margin: 0 auto;
-  padding: 0 40px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 24px;
 }
 .lp-nav-logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .lp-nav-wordmark {
@@ -1938,21 +1937,28 @@ input, textarea, select { font-family: inherit; }
   font-weight: 700;
   letter-spacing: 0.12em;
 }
-.lp-nav-express { color: #fff; }
+.lp-nav-express { color: var(--p); }
 .lp-nav-tvatt   { color: var(--teal); }
+/* Anchor links grouped into a floating pill */
 .lp-nav-links {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 2px;
   margin-left: auto;
+  background: rgba(8, 63, 65, 0.05);
+  border: 0.5px solid rgba(8, 63, 65, 0.12);
+  border-radius: 9999px;
+  padding: 4px;
 }
 .lp-nav-links a {
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255,255,255,0.72);
-  transition: color 160ms ease;
+  color: var(--p);
+  padding: 7px 16px;
+  border-radius: 9999px;
+  transition: background 160ms ease, color 160ms ease;
 }
-.lp-nav-links a:hover { color: #fff; }
+.lp-nav-links a:hover { background: rgba(8, 63, 65, 0.08); color: var(--p); }
 .lp-nav-cta {
   flex-shrink: 0;
   display: inline-flex;
@@ -1960,13 +1966,16 @@ input, textarea, select { font-family: inherit; }
   height: 42px;
   padding: 0 20px;
   border-radius: 10px;
-  background: #fff;
-  color: var(--p);
+  background: var(--p);
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
   transition: opacity 160ms ease, transform 160ms ease;
 }
 .lp-nav-cta:hover { transform: translateY(-1px); opacity: 0.92; }
+
+/* Gold hero word (per ColorLayout reference) */
+.lp-hero-title-gold { color: var(--gold); }
 
 /* ── Hero ───────────────────────────────────────────────────────────── */
 .lp-hero {
