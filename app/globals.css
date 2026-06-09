@@ -1977,6 +1977,14 @@ input, textarea, select { font-family: inherit; }
 /* Gold hero word (per ColorLayout reference) */
 .lp-hero-title-gold { color: var(--gold); }
 
+/* /order wears the landing header inside .site-shell — supply the .lp
+   colour vars the .lp-nav classes reference so it's an exact visual copy. */
+.order-shell {
+  --p:    #083F41;
+  --gold: #D4AF37;
+  --teal: #6BB3AC;
+}
+
 /* ── Hero ───────────────────────────────────────────────────────────── */
 .lp-hero {
   position: relative;

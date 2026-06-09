@@ -7,14 +7,9 @@ import {
   IconShieldCheck, IconSparkles, IconClock, IconHome,
   IconCalendarEvent, IconTruck, IconArrowRight, IconStarFilled,
 } from '@tabler/icons-react';
+import LandingHeader from '@/components/LandingHeader';
 
 // ── Content ─────────────────────────────────────────────────────────────────
-
-const NAV_LINKS = [
-  { href: '#how',  label: 'Så fungerar det' },
-  { href: '#why',  label: 'Varför oss' },
-  { href: '#reviews', label: 'Omdömen' },
-];
 
 const TRUST = [
   { Icon: IconShieldCheck, label: 'Försäkrade plagg' },
@@ -74,38 +69,11 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   return (
     <div className="lp">
 
-      {/* ── Navigation ─────────────────────────────────────────────── */}
-      <header className={`lp-nav${scrolled ? ' lp-nav--scrolled' : ''}`}>
-        <div className="lp-nav-inner">
-          <Link href="/landing" className="lp-nav-logo" aria-label="Express Tvätt">
-            <Image src="/logo-icon.png" alt="" width={34} height={34} priority />
-            <span className="lp-nav-wordmark">
-              <span className="lp-nav-express">EXPRESS</span>
-              <span className="lp-nav-tvatt">TVÄTT</span>
-            </span>
-          </Link>
-
-          <nav className="lp-nav-links" aria-label="Sidnavigation">
-            {NAV_LINKS.map(l => (
-              <a key={l.href} href={l.href}>{l.label}</a>
-            ))}
-          </nav>
-
-          <Link href="/" className="lp-nav-cta">Boka upphämtning</Link>
-        </div>
-      </header>
+      {/* ── Navigation (shared with /order) ─────────────────────────── */}
+      <LandingHeader />
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="lp-hero">
@@ -127,7 +95,7 @@ export default function LandingPage() {
             </Reveal>
             <Reveal delay={160}>
               <div className="lp-hero-cta-group">
-                <Link href="/" className="lp-btn lp-btn--light">Boka upphämtning</Link>
+                <Link href="/order" className="lp-btn lp-btn--light">Boka upphämtning</Link>
                 <a href="#how" className="lp-btn lp-btn--ghost">Så fungerar det</a>
               </div>
             </Reveal>
@@ -198,7 +166,7 @@ export default function LandingPage() {
               spårad, försäkrad och hanterad av specialister från upphämtning
               till leverans.
             </p>
-            <Link href="/" className="lp-btn lp-btn--dark">Boka upphämtning</Link>
+            <Link href="/order" className="lp-btn lp-btn--dark">Boka upphämtning</Link>
           </Reveal>
 
           <div className="lp-why-right">
@@ -245,7 +213,7 @@ export default function LandingPage() {
         <div className="lp-final-pattern" aria-hidden />
         <Reveal className="lp-final-inner">
           <h2 className="lp-final-title">Sluta tänka på tvätten.</h2>
-          <Link href="/" className="lp-btn lp-btn--light lp-final-btn">
+          <Link href="/order" className="lp-btn lp-btn--light lp-final-btn">
             Boka upphämtning <IconArrowRight size={18} stroke={2} />
           </Link>
         </Reveal>
@@ -265,7 +233,7 @@ export default function LandingPage() {
 
           <div className="lp-footer-col">
             <div className="lp-footer-h">Tjänst</div>
-            <Link href="/">Boka upphämtning</Link>
+            <Link href="/order">Boka upphämtning</Link>
             <a href="#how">Så fungerar det</a>
             <a href="#why">Varför oss</a>
           </div>
