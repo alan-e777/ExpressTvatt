@@ -1977,14 +1977,6 @@ input, textarea, select { font-family: inherit; }
 /* Gold hero word (per ColorLayout reference) */
 .lp-hero-title-gold { color: var(--gold); }
 
-/* /order wears the landing header inside .site-shell — supply the .lp
-   colour vars the .lp-nav classes reference so it's an exact visual copy. */
-.order-shell {
-  --p:    #083F41;
-  --gold: #D4AF37;
-  --teal: #6BB3AC;
-}
-
 /* ── Hero ───────────────────────────────────────────────────────────── */
 .lp-hero {
   position: relative;
@@ -2351,6 +2343,11 @@ input, textarea, select { font-family: inherit; }
   --earth:        #D4AF37;
   --radius-md:    12px;
   --radius-lg:    16px;
+  /* Landing-header (.lp-nav) palette — so the shared header resolves on every
+     shell route, not just the landing page. */
+  --p:    #083F41;
+  --gold: #D4AF37;
+  --teal: #6BB3AC;
 }
 
 /* Unify typography to Inter (overrides inline Poppins / DM Sans / Playfair) */

@@ -219,7 +219,7 @@ function CheckoutForm() {
             Lägg till en tjänst så hämtar vi upp, tvättar och levererar tillbaka — hela vägen hem till din dörr.
           </p>
           <Link
-            href="/"
+            href="/order"
             className="btn-primary"
             style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           >

@@ -4,12 +4,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-// Anchor links resolve to the landing page sections so the header works
-// identically whether it's rendered on /landing or on /order.
+// Anchor links resolve to the landing page sections (the site root) so the
+// header behaves identically on every route it's rendered on.
 const NAV_LINKS = [
-  { href: '/landing#how',     label: 'Så fungerar det' },
-  { href: '/landing#why',     label: 'Varför oss' },
-  { href: '/landing#reviews', label: 'Omdömen' },
+  { href: '/#how',     label: 'Så fungerar det' },
+  { href: '/#why',     label: 'Varför oss' },
+  { href: '/#reviews', label: 'Omdömen' },
 ];
 
 export default function LandingHeader() {
@@ -25,7 +25,7 @@ export default function LandingHeader() {
   return (
     <header className={`lp-nav${scrolled ? ' lp-nav--scrolled' : ''}`}>
       <div className="lp-nav-inner">
-        <Link href="/landing" className="lp-nav-logo" aria-label="Express Tvätt">
+        <Link href="/" className="lp-nav-logo" aria-label="Express Tvätt">
           <Image src="/logo-icon.png" alt="" width={34} height={34} priority />
           <span className="lp-nav-wordmark">
             <span className="lp-nav-express">EXPRESS</span>
