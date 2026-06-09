@@ -2108,8 +2108,9 @@ input, textarea, select { font-family: inherit; }
   height: 1px;
   background: rgba(15,23,42,0.10);
 }
-.lp-how-step { position: relative; }
+.lp-how-step { position: relative; z-index: 2; }
 .lp-how-icon {
+  position: relative;
   width: 56px;
   height: 56px;
   border-radius: 14px;
@@ -2120,6 +2121,36 @@ input, textarea, select { font-family: inherit; }
   justify-content: center;
   color: var(--p);
   margin-bottom: 22px;
+  transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+.lp-how-icon--active {
+  color: #C49A2C;
+  background: #FBF3D8;            /* opaque pale gold — keeps the icon occluding */
+  border-color: rgba(212,175,55,0.45);
+}
+.lp-how-icon--shake { animation: how-icon-shake 0.55s ease-in-out; }
+@keyframes how-icon-shake {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-4px); }
+  30%     { transform: translateX(4px); }
+  45%     { transform: translateX(-3px); }
+  60%     { transform: translateX(3px); }
+  75%     { transform: translateX(-2px); }
+  90%     { transform: translateX(2px); }
+}
+
+/* Parcel-flow overlay (before.png / after.png travelling between icons) */
+.lp-how-anim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.lp-how-anim-img {
+  display: block;
+  object-fit: cover;
+  border-radius: 9px;
+  box-shadow: 0 4px 14px rgba(15,23,42,0.18);
 }
 .lp-how-n {
   font-size: 13px;
@@ -2303,6 +2334,7 @@ input, textarea, select { font-family: inherit; }
   .lp-why-inner { grid-template-columns: 1fr; gap: 40px; }
   .lp-how-grid { grid-template-columns: repeat(2, 1fr); gap: 40px 32px; }
   .lp-how-line { display: none; }
+  .lp-how-anim { display: none; }   /* 4-col icon row collapses — flow no longer maps */
   .lp-trust-inner { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
   .lp-trust-item { justify-content: flex-start; }
   .lp-reviews-grid { grid-template-columns: 1fr; gap: 20px; }

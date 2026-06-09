@@ -66,9 +66,86 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
   );
 }
 
+// ── "How it works" flow animation ────────────────────────────────────────────
+// before.png travels from the Hämtning icon (idx 1) into/behind the Rengöring
+// icon (idx 2), which shakes; then after.png emerges from behind Rengöring and
+// slides into/behind the Leverans icon (idx 3). Loops forever.
+
+type HowPhase = 'initial' | 'pickup' | 'processing' | 'delivery' | 'reset';
+
+const HOW_MS: Record<HowPhase, number> = {
+  initial:    1700,
+  pickup:     1300,
+  processing: 1200,
+  delivery:   1400,
+  reset:       700,
+};
+const HOW_ORDER: HowPhase[] = ['initial', 'pickup', 'processing', 'delivery', 'reset'];
+
+// Horizontal centres of the four step icons (matches .lp-how-line 12.5%↔87.5%).
+const ICON_X = ['12.5%', '37.5%', '62.5%', '87.5%'];
+
+function useHowFlow() {
+  const [phase, setPhase] = useState<HowPhase>('initial');
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    function step(current: HowPhase) {
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        const next = HOW_ORDER[(HOW_ORDER.indexOf(current) + 1) % HOW_ORDER.length];
+        setPhase(next);
+        step(next);
+      }, HOW_MS[current]);
+    }
+    step('initial');
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, []);
+  return phase;
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const howPhase = useHowFlow();
+
+  // Which icon glows gold this phase, and which one shakes.
+  const activeIcon =
+    howPhase === 'initial'                            ? 1 :
+    howPhase === 'pickup' || howPhase === 'processing' ? 2 :
+    howPhase === 'delivery'                           ? 3 : -1;
+  const shakeIcon = howPhase === 'processing' ? 2 : -1;
+
+  // before.png: rests behind Hämtning (idx 1), slides behind Rengöring (idx 2).
+  const beforeStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 28,
+    left: howPhase === 'initial' ? ICON_X[1] : ICON_X[2],
+    transform: 'translate(-50%, -50%)',
+    opacity: howPhase === 'initial' || howPhase === 'pickup' ? 1 : 0,
+    transition:
+      howPhase === 'pickup'  ? 'left 1.2s ease-in-out' :
+      howPhase === 'initial' ? 'none' :
+                               'opacity 0.3s ease',
+    zIndex: 1,
+    pointerEvents: 'none',
+  };
+
+  // after.png: emerges from behind Rengöring (idx 2), slides behind Leverans (idx 3).
+  const afterStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 28,
+    left: howPhase === 'delivery' || howPhase === 'reset' ? ICON_X[3] : ICON_X[2],
+    transform: 'translate(-50%, -50%)',
+    opacity: howPhase === 'delivery' ? 1 : 0,
+    transition:
+      howPhase === 'delivery' ? 'left 1.2s ease-in-out, opacity 0.5s ease' :
+      howPhase === 'initial'  ? 'none' :
+                                'opacity 0.4s ease',
+    zIndex: 1,
+    pointerEvents: 'none',
+  };
+
   return (
     <div className="lp">
 
@@ -141,9 +218,22 @@ export default function LandingPage() {
 
           <div className="lp-how-grid">
             <div className="lp-how-line" aria-hidden />
+
+            {/* Animated parcel flow: before.png → behind Rengöring → after.png → behind Leverans */}
+            <div className="lp-how-anim" aria-hidden>
+              <div style={beforeStyle}>
+                <Image src="/before.png" alt="" width={54} height={46} className="lp-how-anim-img" />
+              </div>
+              <div style={afterStyle}>
+                <Image src="/after.png" alt="" width={54} height={46} className="lp-how-anim-img" />
+              </div>
+            </div>
+
             {STEPS.map(({ n, Icon, title, desc }, i) => (
               <Reveal key={n} delay={i * 70} className="lp-how-step">
-                <div className="lp-how-icon"><Icon size={22} stroke={1.5} /></div>
+                <div className={`lp-how-icon${activeIcon === i ? ' lp-how-icon--active' : ''}${shakeIcon === i ? ' lp-how-icon--shake' : ''}`}>
+                  <Icon size={22} stroke={1.5} />
+                </div>
                 <div className="lp-how-n">{n}</div>
                 <div className="lp-how-title">{title}</div>
                 <div className="lp-how-desc">{desc}</div>
