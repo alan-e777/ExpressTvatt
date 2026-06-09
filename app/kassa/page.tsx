@@ -7,7 +7,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
-import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone } from '@tabler/icons-react';
+import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone, IconShoppingBag, IconArrowRight } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
@@ -205,10 +205,28 @@ function CheckoutForm() {
   if (items.length === 0) {
     return (
       <div className="form-page of">
-        <p className="error-msg">
-          Varukorgen är tom.{' '}
-          <Link href="/" style={{ color: 'var(--forest-mid)' }}>Gå tillbaka</Link>
-        </p>
+        <div className="success-box">
+          <div
+            className="success-icon-circle"
+            style={{ background: 'var(--linen)', color: 'var(--forest-dark)' }}
+          >
+            <IconShoppingBag size={30} stroke={1.5} />
+          </div>
+          <div className="h2" style={{ marginBottom: 10, textAlign: 'center' }}>
+            Din varukorg är tom
+          </div>
+          <p className="body" style={{ color: 'var(--text-muted)', textAlign: 'center', marginBottom: 28, maxWidth: 320 }}>
+            Lägg till en tjänst så hämtar vi upp, tvättar och levererar tillbaka — hela vägen hem till din dörr.
+          </p>
+          <Link
+            href="/"
+            className="btn-primary"
+            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            Boka en tjänst
+            <IconArrowRight size={16} stroke={2} />
+          </Link>
+        </div>
       </div>
     );
   }

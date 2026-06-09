@@ -422,7 +422,7 @@ input, textarea, select { font-family: inherit; }
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  background: url('/herobg.png') center / cover no-repeat var(--forest-dark);
+  background: url('/herobg.jpg') center / cover no-repeat var(--forest-dark);
   width: 70%;
   height: 66vh;
   display: flex;

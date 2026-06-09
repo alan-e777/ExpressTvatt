@@ -228,7 +228,7 @@ function CartPanel({ cart, onAdd, onRemove, onCheckout }: {
       {/* Item list */}
       {isEmpty ? (
         <p className="small" style={{ color: 'var(--text-muted)', lineHeight: '20px', marginBottom: 'var(--sp-lg)' }}>
-          Välj tjänster till vänster så visas de här.
+          Välj en tjänst så visas den här.
         </p>
       ) : (
         <div style={{ marginBottom: 'var(--sp-md)' }}>
