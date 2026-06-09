@@ -9,6 +9,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { IconShieldCheck, IconLock, IconCalendar, IconMapPin, IconClock } from '@tabler/icons-react';
 import { auth } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import DatePicker from '@/components/DatePicker';
+import TimePicker from '@/components/TimePicker';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -206,16 +208,16 @@ function BookingForm() {
         <div className="input-group">
           <label className="field-label">
             <IconCalendar size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            Datum
+            Önskad tid för hämtning
           </label>
-          <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <DatePicker value={date} onChange={setDate} placeholder="Välj datum" minDate={new Date().toISOString().slice(0, 10)} />
         </div>
         <div className="input-group">
           <label className="field-label">
             <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
             Tid
           </label>
-          <input className="input" type="time" value={time} onChange={e => setTime(e.target.value)} />
+          <TimePicker value={time} onChange={setTime} placeholder="Välj tid" />
         </div>
       </div>
 
