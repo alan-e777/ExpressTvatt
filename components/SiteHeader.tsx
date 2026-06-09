@@ -4,10 +4,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { IconArrowLeft, IconMenu2, IconX, IconHome, IconMessageCircle, IconUser, IconFlag } from '@tabler/icons-react';
+import { IconArrowLeft, IconMenu2, IconX, IconHome, IconMessageCircle, IconUser } from '@tabler/icons-react';
 
 const NAV_LINKS = [
-  { href: '/landing', label: 'Landing', Icon: IconFlag },
   { href: '/',        label: 'Hem',     Icon: IconHome },
   { href: '/chatt',   label: 'Chatt',   Icon: IconMessageCircle },
   { href: '/profil',  label: 'Profil',  Icon: IconUser },
