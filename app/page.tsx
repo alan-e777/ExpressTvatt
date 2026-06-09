@@ -223,10 +223,10 @@ export default function LandingPage() {
             {/* Animated parcel flow: before.png → behind Rengöring → after.png → behind Leverans */}
             <div className="lp-how-anim" aria-hidden>
               <div style={beforeStyle}>
-                <Image src="/before.png" alt="" width={54} height={46} className="lp-how-anim-img" priority />
+                <img src="/before.png" alt="" className="lp-how-anim-img" loading="eager" />
               </div>
               <div style={afterStyle}>
-                <Image src="/after.png" alt="" width={54} height={46} className="lp-how-anim-img" priority />
+                <img src="/after.png" alt="" className="lp-how-anim-img" loading="eager" />
               </div>
             </div>
 
