@@ -220,13 +220,13 @@ export default function LandingPage() {
           <div className="lp-how-grid">
             <div className="lp-how-line" aria-hidden />
 
-            {/* Animated parcel flow: before.png → behind Rengöring → after.png → behind Leverans */}
+            {/* Animated parcel flow: tinybefore.png → behind Rengöring → tinyafter.png → behind Leverans */}
             <div className="lp-how-anim" aria-hidden>
               <div style={beforeStyle}>
-                <img src="/before.png" alt="" className="lp-how-anim-img" loading="eager" />
+                <img src="/tinybefore.png" alt="" className="lp-how-anim-img" loading="eager" />
               </div>
               <div style={afterStyle}>
-                <img src="/after.png" alt="" className="lp-how-anim-img" loading="eager" />
+                <img src="/tinyafter.png" alt="" className="lp-how-anim-img" loading="eager" />
               </div>
             </div>
 
