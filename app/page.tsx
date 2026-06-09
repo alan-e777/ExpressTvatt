@@ -82,8 +82,9 @@ const HOW_MS: Record<HowPhase, number> = {
 };
 const HOW_ORDER: HowPhase[] = ['initial', 'pickup', 'processing', 'delivery', 'reset'];
 
-// Horizontal centres of the four step icons (matches .lp-how-line 12.5%↔87.5%).
-const ICON_X = ['12.5%', '37.5%', '62.5%', '87.5%'];
+// Horizontal centres of the four step icons. Icons are 56px, left-aligned in
+// each 1fr column (gap 32px), so centre_i = i*(colW+32) + 28 = i*25% + (i*8+28)px.
+const ICON_X = ['28px', 'calc(25% + 36px)', 'calc(50% + 44px)', 'calc(75% + 52px)'];
 
 function useHowFlow() {
   const [phase, setPhase] = useState<HowPhase>('initial');
