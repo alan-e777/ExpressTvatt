@@ -126,7 +126,7 @@ export default function PaymentScreen({ navigation, route }: Props) {
             cardStyle={{
               backgroundColor: colors.white,
               borderWidth: 0.5,
-              borderColor: 'rgba(74,124,89,0.25)',
+              borderColor: 'rgba(14,92,91,0.25)',
               borderRadius: radius.sm,
               textColor: colors.textDark,
             }}
@@ -137,7 +137,7 @@ export default function PaymentScreen({ navigation, route }: Props) {
         <CTAButton
           label={`Betala ${formatPrice(service.price_ore)}`}
           onPress={handlePay}
-          icon={<IconLock size={14} color="#c8e6c9" strokeWidth={1.5} />}
+          icon={<IconLock size={14} color="#B7DCD7" strokeWidth={1.5} />}
           disabled={!cardReady || !clientSecret}
           loading={status === 'processing'}
         />
@@ -163,7 +163,7 @@ function Row({ label, value, bold = false }: { label: string; value: string; bol
   return (
     <View style={styles.row}>
       <Text style={typography.small}>{label}</Text>
-      <Text style={[typography.small, bold && { fontFamily: 'PlayfairDisplay_500', color: colors.textDark }]}>
+      <Text style={[typography.small, bold && { fontFamily: 'Poppins_600', color: colors.textDark }]}>
         {value}
       </Text>
     </View>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 0.5,
-    backgroundColor: 'rgba(74,124,89,0.18)',
+    backgroundColor: 'rgba(14,92,91,0.18)',
     marginVertical: spacing.md,
   },
 

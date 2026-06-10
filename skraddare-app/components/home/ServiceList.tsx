@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   rowBorder: {
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(30,46,36,0.08)',
+    borderBottomColor: 'rgba(6,63,65,0.08)',
   },
   iconCircle: {
     width:          36,
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1, gap: 2 },
   price: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   15,
     color:      colors.textMid,
   },

@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     justifyContent:  'center',
   },
   initials: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontStyle:  'italic',
     fontSize:   14,
     color:      colors.forestDark,

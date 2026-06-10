@@ -95,8 +95,8 @@ const styles = StyleSheet.create({
   container: { gap: spacing.xs },
 
   valueRow:  { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
-  sqmValue:  { fontFamily: 'PlayfairDisplay_500', fontSize: 24, color: colors.forestDark },
-  sqmUnit:   { fontFamily: 'DMSans_400', fontSize: 13, color: colors.textMuted, marginBottom: 3 },
+  sqmValue:  { fontFamily: 'Poppins_600', fontSize: 24, color: colors.forestDark },
+  sqmUnit:   { fontFamily: 'Poppins_400', fontSize: 13, color: colors.textMuted, marginBottom: 3 },
 
   trackContainer: {
     height:         THUMB_SIZE,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
 
   rangeRow:  { flexDirection: 'row', justifyContent: 'space-between' },
-  rangeText: { fontFamily: 'DMSans_300', fontSize: 9, color: colors.textMuted },
+  rangeText: { fontFamily: 'Poppins_300', fontSize: 9, color: colors.textMuted },
 
   hintCard: {
     backgroundColor:   colors.linen,
@@ -140,5 +140,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     alignSelf:         'flex-start',
   },
-  hintText: { fontFamily: 'DMSans_400', fontSize: 12, color: colors.textMid },
+  hintText: { fontFamily: 'Poppins_400', fontSize: 12, color: colors.textMid },
 });

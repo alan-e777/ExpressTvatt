@@ -122,20 +122,20 @@ const subStyles = StyleSheet.create({
     height:         28,
     borderRadius:   radius.circle,
     borderWidth:    0.5,
-    borderColor:    'rgba(74,124,89,0.2)',
+    borderColor:    'rgba(14,92,91,0.2)',
     alignItems:     'center',
     justifyContent: 'center',
     flexShrink:     0,
   },
-  title:    { fontFamily: 'DMSans_500',     fontSize: 15, color: colors.textDark },
-  subtitle: { fontFamily: 'DMSans_400',     fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  title:    { fontFamily: 'Poppins_500',     fontSize: 15, color: colors.textDark },
+  subtitle: { fontFamily: 'Poppins_400',     fontSize: 12, color: colors.textMuted, marginTop: 2 },
 
   row: {
     flexDirection:     'row',
     alignItems:        'center',
     paddingVertical:   13,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(30,46,36,0.08)',
+    borderBottomColor: 'rgba(6,63,65,0.08)',
     gap:               spacing.md,
   },
   rowIcon: {
@@ -155,7 +155,7 @@ const subStyles = StyleSheet.create({
     flexShrink:    0,
   },
   priceLabel: {
-    fontFamily:        'DMSans_500',
+    fontFamily:        'Poppins_500',
     fontSize:          13,
     color:             colors.textMid,
     minWidth:          52,
@@ -166,12 +166,12 @@ const subStyles = StyleSheet.create({
     height:         26,
     borderRadius:   radius.circle,
     borderWidth:    0.5,
-    borderColor:    'rgba(74,124,89,0.3)',
+    borderColor:    'rgba(14,92,91,0.3)',
     alignItems:     'center',
     justifyContent: 'center',
   },
   stepCount: {
-    fontFamily: 'DMSans_500',
+    fontFamily: 'Poppins_500',
     fontSize:   13,
     color:      colors.textDark,
     minWidth:   18,
@@ -308,7 +308,7 @@ export default function HomeScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <TopBar title="Tvättio" />
+      <TopBar title="Express Tvätt" />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -317,10 +317,10 @@ export default function HomeScreen() {
       >
         {/* Greeting */}
         <View style={styles.section}>
-          <Text style={typography.h1}>
+          <Text style={[typography.h1, { color: colors.white }]}>
             {userName ? `God dag, ${userName}.` : 'Välkommen.'}
           </Text>
-          <Text style={[typography.small, { marginTop: 4 }]}>
+          <Text style={[typography.small, { marginTop: 4, color: colors.moss }]}>
             Vad vill du lämna in idag?
           </Text>
         </View>
@@ -475,33 +475,28 @@ const styles = StyleSheet.create({
 
   // ─ Service section cards ─
   serviceCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.mint,
     borderRadius:    radius.lg,
     padding:         spacing.xl,
-    borderWidth:     0.5,
-    borderColor:     'rgba(74,124,89,0.12)',
-    shadowColor:     '#1e2e24',
-    shadowOffset:    { width: 0, height: 1 },
-    shadowOpacity:   0.06,
-    shadowRadius:    4,
-    elevation:       2,
+    borderWidth:     1,
+    borderColor:     'rgba(14,92,91,0.18)',
     marginBottom:    spacing.lg,
   },
 
   // ─ Mattvätt ─
   sliderBox: {
-    backgroundColor: colors.cream,
+    backgroundColor: colors.linen,
     borderRadius:    radius.md,
     padding:         spacing.md,
     borderWidth:     0.5,
-    borderColor:     'rgba(74,124,89,0.1)',
+    borderColor:     'rgba(14,92,91,0.1)',
     marginBottom:    spacing.md,
   },
   priceRow: {
     marginBottom: spacing.md,
   },
   priceLabel: {
-    fontFamily:    'DMSans_400',
+    fontFamily:    'Poppins_400',
     fontSize:      10,
     color:         colors.textMuted,
     letterSpacing: 1,
@@ -509,7 +504,7 @@ const styles = StyleSheet.create({
     marginBottom:  2,
   } as any,
   priceValue: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   22,
     color:      colors.textDark,
   },
@@ -521,7 +516,7 @@ const styles = StyleSheet.create({
     alignItems:      'center',
   },
   primaryBtnText: {
-    fontFamily: 'DMSans_500',
+    fontFamily: 'Poppins_500',
     fontSize:   14,
     color:      colors.moss,
   },
@@ -538,19 +533,19 @@ const styles = StyleSheet.create({
     height:         34,
     borderRadius:   radius.circle,
     borderWidth:    0.5,
-    borderColor:    'rgba(74,124,89,0.3)',
+    borderColor:    'rgba(14,92,91,0.3)',
     alignItems:     'center',
     justifyContent: 'center',
   },
   mattStepCount: {
-    fontFamily: 'DMSans_500',
+    fontFamily: 'Poppins_500',
     fontSize:   15,
     color:      colors.textDark,
     minWidth:   20,
     textAlign:  'center',
   },
   mattInCartLabel: {
-    fontFamily: 'DMSans_400',
+    fontFamily: 'Poppins_400',
     fontSize:   12,
     color:      colors.textMuted,
   },
@@ -570,12 +565,12 @@ const styles = StyleSheet.create({
     paddingBottom:     spacing.xxl,
   },
   cartCount: {
-    fontFamily: 'DMSans_400',
+    fontFamily: 'Poppins_400',
     fontSize:   11,
-    color:      'rgba(200,223,192,0.6)',
+    color:      'rgba(183,220,215,0.6)',
   },
   cartTotal: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   22,
     color:      colors.moss,
   },
@@ -586,7 +581,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   } as any,
   cartBtnText: {
-    fontFamily: 'DMSans_500',
+    fontFamily: 'Poppins_500',
     fontSize:   13,
     color:      colors.forestDark,
   },

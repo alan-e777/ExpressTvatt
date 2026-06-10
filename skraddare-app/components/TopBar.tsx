@@ -32,7 +32,7 @@ export default function TopBar({ title, onBack, right }: Props) {
             <IconArrowLeft size={20} color={colors.moss} strokeWidth={1.5} />
           </TouchableOpacity>
         ) : (
-          <Text style={styles.logo}>Tvättio</Text>
+          <Text style={styles.logo}>Express</Text>
         )}
       </View>
 
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   titlePlaceholder: { flex: 1 },
 
   logo: {
-    fontFamily:     'DMSans_300',
+    fontFamily:     'Poppins_300',
     fontSize:       11,
     color:          colors.moss,
     opacity:        0.6,
@@ -78,10 +78,10 @@ const styles = StyleSheet.create({
   title: {
     flex:       1,
     textAlign:  'center',
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   17,
-    color:      colors.moss,
-    fontStyle:  'italic',
+    color:      colors.white,
+    letterSpacing: 0.2,
   },
 
   settingsBtn: {
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     height:       36,
     borderRadius: radius.circle,
     borderWidth:  0.5,
-    borderColor:  'rgba(213,204,186,0.3)',
+    borderColor:  'rgba(183,220,215,0.3)',
     alignItems:   'center',
     justifyContent: 'center',
   },

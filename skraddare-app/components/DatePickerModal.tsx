@@ -214,7 +214,7 @@ export default function DatePickerModal({ visible, value, onConfirm, onClose }: 
 const s = StyleSheet.create({
   backdrop: {
     flex:            1,
-    backgroundColor: 'rgba(30,46,36,0.32)',
+    backgroundColor: 'rgba(6,63,65,0.32)',
   },
 
   sheet: {
@@ -231,11 +231,11 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     borderBottomWidth: 0.5,
-    borderColor:       'rgba(74,124,89,0.12)',
+    borderColor:       'rgba(14,92,91,0.12)',
   },
-  title:        { fontFamily: 'PlayfairDisplay_500', fontSize: 14, color: colors.textDark },
-  cancel:       { fontFamily: 'DMSans_400',          fontSize: 14, color: colors.textMuted },
-  done:         { fontFamily: 'DMSans_500',          fontSize: 14, color: colors.forestDark },
+  title:        { fontFamily: 'Poppins_600', fontSize: 14, color: colors.textDark },
+  cancel:       { fontFamily: 'Poppins_400',          fontSize: 14, color: colors.textMuted },
+  done:         { fontFamily: 'Poppins_500',          fontSize: 14, color: colors.forestDark },
   doneDisabled: { opacity: 0.35 },
 
   // Month navigation
@@ -247,7 +247,7 @@ const s = StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   monthLabel: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   16,
     color:      colors.textDark,
   },
@@ -263,7 +263,7 @@ const s = StyleSheet.create({
   dayLabel: {
     flex:          1,
     textAlign:     'center',
-    fontFamily:    'DMSans_400',
+    fontFamily:    'Poppins_400',
     fontSize:      11,
     color:         colors.textMuted,
     letterSpacing: 0.4,
@@ -297,8 +297,8 @@ const s = StyleSheet.create({
   },
 
   // Day number text
-  dayNum:      { fontFamily: 'DMSans_400', fontSize: 14, color: colors.textDark },
+  dayNum:      { fontFamily: 'Poppins_400', fontSize: 14, color: colors.textDark },
   dayNumPast:  { color: colors.textMuted, opacity: 0.45 },
-  dayNumToday: { fontFamily: 'DMSans_500', color: colors.forestMid },
-  dayNumSel:   { fontFamily: 'DMSans_500', color: colors.moss },
+  dayNumToday: { fontFamily: 'Poppins_500', color: colors.forestMid },
+  dayNumSel:   { fontFamily: 'Poppins_500', color: colors.moss },
 });

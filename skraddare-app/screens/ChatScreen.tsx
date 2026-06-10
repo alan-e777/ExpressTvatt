@@ -171,7 +171,7 @@ export default function ChatScreen() {
             onSubmitEditing={sendMessage}
           />
           <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} activeOpacity={0.8}>
-            <IconArrowUp size={18} color="#c8e6c9" strokeWidth={2} />
+            <IconArrowUp size={18} color="#B7DCD7" strokeWidth={2} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -200,8 +200,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.sm,
   },
-  gateTitle: { textAlign: 'center' },
-  gateSub:   { textAlign: 'center', color: colors.textMuted, marginBottom: spacing.sm },
+  gateTitle: { textAlign: 'center', color: colors.white },
+  gateSub:   { textAlign: 'center', color: colors.moss, marginBottom: spacing.sm },
 
   list: { padding: spacing.lg, paddingBottom: spacing.sm },
   emptyWrap: { paddingTop: spacing.xxl, paddingHorizontal: spacing.xl },
@@ -223,9 +223,9 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: radius.sm,
   },
   textLeft:  { color: colors.textDark, lineHeight: 21 },
-  textRight: { color: '#c8e6c9', lineHeight: 21 },
+  textRight: { color: '#B7DCD7', lineHeight: 21 },
   timeLeft:  { marginTop: spacing.xs, color: colors.textMuted },
-  timeRight: { marginTop: spacing.xs, color: 'rgba(200,230,201,0.6)', alignSelf: 'flex-end' },
+  timeRight: { marginTop: spacing.xs, color: 'rgba(183,220,215,0.6)', alignSelf: 'flex-end' },
 
   inputRow: {
     flexDirection: 'row',
@@ -233,15 +233,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     backgroundColor: colors.white,
     borderTopWidth: 0.5,
-    borderTopColor: 'rgba(74,124,89,0.12)',
+    borderTopColor: 'rgba(14,92,91,0.12)',
   },
   input: {
     flex: 1,
-    backgroundColor: colors.linen,
+    backgroundColor: colors.mint,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: 11,
-    fontFamily: 'DMSans_400',
+    fontFamily: 'Poppins_400',
     fontSize: 15,
     color: colors.textDark,
   },

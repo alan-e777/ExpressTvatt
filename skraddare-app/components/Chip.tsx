@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     borderColor:     colors.forestDark,
   },
   label: {
-    fontFamily:    'DMSans_400',
+    fontFamily:    'Poppins_400',
     fontSize:      11,
     color:         colors.textMuted,
     letterSpacing: 1.2,

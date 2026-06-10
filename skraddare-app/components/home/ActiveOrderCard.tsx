@@ -48,7 +48,7 @@ function StepCircle({ state, number }: { state: StepState; number: number }) {
         <Text style={[
           styles.stepNum,
           state === 'active' && { color: colors.forestDark },
-          state === 'future' && { color: 'rgba(200,223,192,0.35)' },
+          state === 'future' && { color: 'rgba(14,92,91,0.35)' },
         ]}>
           {number}
         </Text>
@@ -78,7 +78,7 @@ export default function ActiveOrderCard({ order }: { order: Order }) {
       {/* Order row */}
       <View style={[styles.orderRow, styles.orderRowBorder]}>
         <View style={styles.orderIcon}>
-          <IconWash size={16} color={colors.forestLight} strokeWidth={1.5} />
+          <IconWash size={16} color={colors.forestMid} strokeWidth={1.5} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.orderName}>{order.serviceName}</Text>
@@ -141,16 +141,19 @@ export default function ActiveOrderCard({ order }: { order: Order }) {
 const CONNECTOR_FLEX = 0.8;
 
 const styles = StyleSheet.create({
+  // White card with the brand's 3px gold border (mirrors website .active-order-card)
   card: {
-    backgroundColor: colors.forestDark,
+    backgroundColor: colors.white,
     borderRadius:    radius.lg,
+    borderWidth:     3,
+    borderColor:     colors.earth,
     padding:         spacing.lg,
   },
 
   sectionLabel: {
     ...typography.micro,
-    color:         colors.moss,
-    opacity:       0.55,
+    color:         colors.earth,
+    opacity:       0.85,
     marginBottom:  spacing.md,
     letterSpacing: 1.2,
   } as any,
@@ -164,7 +167,7 @@ const styles = StyleSheet.create({
   },
   orderRowBorder: {
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(200,223,192,0.14)',
+    borderBottomColor: 'rgba(212,175,55,0.25)',
     marginBottom:      spacing.md,
   },
   orderIcon: {
@@ -172,29 +175,29 @@ const styles = StyleSheet.create({
     height:         36,
     borderRadius:   radius.circle,
     borderWidth:    0.5,
-    borderColor:    'rgba(200,223,192,0.25)',
+    borderColor:    'rgba(14,92,91,0.2)',
     alignItems:     'center',
     justifyContent: 'center',
   },
   orderName: {
-    fontFamily: 'DMSans_500',
+    fontFamily: 'Poppins_500',
     fontSize:   13,
-    color:      colors.moss,
+    color:      colors.textDark,
   },
 
   // ─ Status badge ─
   badge: {
-    backgroundColor:   'rgba(200,223,192,0.15)',
-    borderWidth:       0.5,
-    borderColor:       'rgba(200,223,192,0.3)',
+    backgroundColor:   'rgba(212,175,55,0.15)',
+    borderWidth:       1,
+    borderColor:       colors.earth,
     borderRadius:      radius.sharp,
     paddingVertical:   4,
     paddingHorizontal: 8,
   },
   badgeText: {
-    fontFamily:    'DMSans_500',
+    fontFamily:    'Poppins_500',
     fontSize:      9,
-    color:         colors.moss,
+    color:         '#9a7b1a',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -223,7 +226,7 @@ const styles = StyleSheet.create({
 
   // Active node glow ring: outer padding creates the halo
   activeRing: {
-    backgroundColor: 'rgba(200,223,192,0.2)',
+    backgroundColor: 'rgba(14,92,91,0.12)',
     borderRadius:    radius.circle,
     padding:         4,
   },
@@ -235,32 +238,32 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     justifyContent: 'center',
   },
-  // done → forestLight (lighter secondary green, shows contrast with active)
-  circleDone:   { backgroundColor: colors.forestLight },
-  // active → moss (palest green, most prominent)
+  // done → teal (filled), with a white check
+  circleDone:   { backgroundColor: colors.forestMid },
+  // active → pale teal, most prominent, with a dark teal number
   circleActive: { backgroundColor: colors.moss },
-  // future → very faint
-  circleFuture: { backgroundColor: 'rgba(200,223,192,0.1)' },
+  // future → faint teal on the white card
+  circleFuture: { backgroundColor: 'rgba(14,92,91,0.12)' },
 
   stepNum: {
-    fontFamily: 'DMSans_500',
+    fontFamily: 'Poppins_500',
     fontSize:   10,
   },
   stepLabel: {
     flex:       1,
     textAlign:  'center',
-    fontFamily: 'DMSans_400',
+    fontFamily: 'Poppins_400',
     fontSize:   9,
   } as any,
-  labelDone:   { color: 'rgba(200,223,192,0.7)' },
-  labelActive: { color: colors.moss, fontFamily: 'DMSans_500' },
-  labelFuture: { color: 'rgba(200,223,192,0.3)' },
+  labelDone:   { color: colors.forestMid },
+  labelActive: { color: colors.forestDark, fontFamily: 'Poppins_500' },
+  labelFuture: { color: 'rgba(14,92,91,0.4)' },
 
   // Connector line
   connector: {
     flex:   CONNECTOR_FLEX,
     height: 2,
   },
-  connectorDone:   { backgroundColor: colors.forestLight },
-  connectorFuture: { backgroundColor: 'rgba(200,223,192,0.15)' },
+  connectorDone:   { backgroundColor: colors.forestMid },
+  connectorFuture: { backgroundColor: 'rgba(14,92,91,0.15)' },
 });

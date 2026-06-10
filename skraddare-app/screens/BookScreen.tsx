@@ -91,7 +91,7 @@ const wheel = StyleSheet.create({
     zIndex:          1,
   },
   item:     { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
-  itemText: { fontFamily: 'PlayfairDisplay_500', fontSize: 20, color: colors.textDark },
+  itemText: { fontFamily: 'Poppins_600', fontSize: 20, color: colors.textDark },
 });
 
 // ─── Time Picker Modal ───────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ function TimePickerModal({
 }
 
 const picker = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(30,46,36,0.3)' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(6,63,65,0.3)' },
   sheet: {
     backgroundColor: colors.white,
     borderTopLeftRadius:  radius.xl,
@@ -164,11 +164,11 @@ const picker = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   spacing.md,
     borderBottomWidth: 0.5,
-    borderColor:       'rgba(74,124,89,0.12)',
+    borderColor:       'rgba(14,92,91,0.12)',
   },
-  title:  { fontFamily: 'PlayfairDisplay_500', fontSize: 14, color: colors.textDark },
-  cancel: { fontFamily: 'DMSans_400', fontSize: 14, color: colors.textMuted },
-  done:   { fontFamily: 'DMSans_500', fontSize: 14, color: colors.forestDark },
+  title:  { fontFamily: 'Poppins_600', fontSize: 14, color: colors.textDark },
+  cancel: { fontFamily: 'Poppins_400', fontSize: 14, color: colors.textMuted },
+  done:   { fontFamily: 'Poppins_500', fontSize: 14, color: colors.forestDark },
   wheels: {
     flexDirection:  'row',
     alignItems:     'center',
@@ -176,7 +176,7 @@ const picker = StyleSheet.create({
     gap:            spacing.xl,
     paddingVertical: spacing.xl,
   },
-  colon: { fontFamily: 'PlayfairDisplay_500', fontSize: 28, color: colors.textDark },
+  colon: { fontFamily: 'Poppins_600', fontSize: 28, color: colors.textDark },
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -409,19 +409,19 @@ const styles = StyleSheet.create({
     borderRadius:      radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical:   13,
-    fontFamily:        'DMSans_400',
+    fontFamily:        'Poppins_400',
     fontSize:          15,
     color:             colors.textDark,
   },
   textArea: { height: 100, textAlignVertical: 'top', marginBottom: spacing.md },
 
   timeBtn:          { justifyContent: 'center' },
-  timeValue:        { fontFamily: 'DMSans_400', fontSize: 15, color: colors.textDark },
-  timePlaceholder:  { fontFamily: 'DMSans_400', fontSize: 15, color: colors.textMuted },
+  timeValue:        { fontFamily: 'Poppins_400', fontSize: 15, color: colors.textDark },
+  timePlaceholder:  { fontFamily: 'Poppins_400', fontSize: 15, color: colors.textMuted },
 
   pickerBtn:        { justifyContent: 'center' },
-  pickerValue:      { fontFamily: 'DMSans_400', fontSize: 15, color: colors.textDark },
-  pickerPlaceholder:{ fontFamily: 'DMSans_400', fontSize: 15, color: colors.textMuted },
+  pickerValue:      { fontFamily: 'Poppins_400', fontSize: 15, color: colors.textDark },
+  pickerPlaceholder:{ fontFamily: 'Poppins_400', fontSize: 15, color: colors.textMuted },
 
   sliderWrap: {
     backgroundColor:   colors.linen,
@@ -438,6 +438,6 @@ const styles = StyleSheet.create({
     paddingVertical:   13,
     marginBottom:      spacing.md,
   },
-  selectText:        { fontFamily: 'DMSans_400', fontSize: 15, color: colors.textDark },
-  selectPlaceholder: { fontFamily: 'DMSans_400', fontSize: 15, color: colors.textMuted },
+  selectText:        { fontFamily: 'Poppins_400', fontSize: 15, color: colors.textDark },
+  selectPlaceholder: { fontFamily: 'Poppins_400', fontSize: 15, color: colors.textMuted },
 });

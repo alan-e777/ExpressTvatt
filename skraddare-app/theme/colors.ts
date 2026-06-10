@@ -1,18 +1,23 @@
+// Express Tvätt — brand palette (mirrors the website's app/globals.css tokens).
+// Deep teal + gold. Never hardcode hex in components — always read from here.
 export const colors = {
-  forestDark:  '#2d5a3d',  // topbar, primärknappar, aktiv nav
-  forestMid:   '#4a7c59',  // ikoner, borders, slider-fill
-  forestLight: '#8fb87a',  // accenter, stjärnor, aktiv slider-thumb
-  moss:        '#c8dfc0',  // valda chips, eco-badge, avatar bg, SelectOption vald
+  forestDark:  '#063F41',  // deep teal — page bg, topbar, primary buttons, active nav
+  forestMid:   '#0E5C5B',  // teal — icons, borders, slider fill, primary CTA
+  forestLight: '#6BB3AC',  // light teal — accents, muted text on dark surfaces
+  moss:        '#B7DCD7',  // pale teal — chips, avatar bg, button/text on dark
 
-  cream:       '#f5f0e8',  // SafeAreaView / sidabakgrund
-  linen:       '#ede8de',  // kort, input-fält, off-chips, sammanfattningsblock
-  white:       '#fafaf7',  // skärmbakgrund, navbar
+  cream:       '#063F41',  // page background (deep teal — matches website body)
+  linen:       '#FFFFFF',  // cards, inputs, left chat bubbles
+  white:       '#FFFFFF',  // nav bar, Stripe fields, white surfaces
+  mint:        '#E6F3F2',  // service-card surface, inset blocks on white cards
 
-  textDark:    '#1e2e24',  // rubriker, primär text
-  textMid:     '#3d5245',  // sekundär text
-  textMuted:   '#7a9480',  // labels, metadata, placeholder
+  textDark:    '#063F41',  // headings / primary text on light surfaces
+  textMid:     '#0E5C5B',  // secondary text
+  textMuted:   '#6BB3AC',  // labels, metadata, placeholder
 
-  earth:       '#6b5c45',  // skrädderi-accent
-  amber:       '#fde8a0',  // status: väntande
+  earth:       '#D4AF37',  // gold accent — active-order border, highlights
+  amber:       '#fde8a0',  // status: pending
   amberText:   '#7a5a00',
+
+  onDark:      '#FFFFFF',  // text on the deep-teal page background
 } as const;

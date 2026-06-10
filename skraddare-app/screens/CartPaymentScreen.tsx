@@ -67,10 +67,10 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
           <View style={styles.successIcon}>
             <Text style={styles.successCheck}>✓</Text>
           </View>
-          <Text style={[typography.h1, { textAlign: 'center', marginBottom: spacing.md }]}>
+          <Text style={[typography.h1, { textAlign: 'center', marginBottom: spacing.md, color: colors.white }]}>
             Betalning mottagen!
           </Text>
-          <Text style={[typography.body, { textAlign: 'center', color: colors.textMid, marginBottom: spacing.xxl }]}>
+          <Text style={[typography.body, { textAlign: 'center', color: colors.moss, marginBottom: spacing.xxl }]}>
             Tack för din bokning.{'\n'}Vi hör av oss innan upphämtning.
           </Text>
           <CTAButton label="Tillbaka till startsidan" onPress={() => navigation.popToTop()} />
@@ -139,7 +139,7 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
             cardStyle={{
               backgroundColor: colors.white,
               borderWidth:     0.5,
-              borderColor:     'rgba(74,124,89,0.25)',
+              borderColor:     'rgba(14,92,91,0.25)',
               borderRadius:    radius.sm,
               textColor:       colors.textDark,
             }}
@@ -150,7 +150,7 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
         <CTAButton
           label={`Betala ${total} kr`}
           onPress={handlePay}
-          icon={<IconLock size={14} color="#c8e6c9" strokeWidth={1.5} />}
+          icon={<IconLock size={14} color="#B7DCD7" strokeWidth={1.5} />}
           disabled={!cardReady || !clientSecret}
           loading={status === 'processing'}
         />
@@ -189,11 +189,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height:          0.5,
-    backgroundColor: 'rgba(74,124,89,0.18)',
+    backgroundColor: 'rgba(14,92,91,0.18)',
     marginVertical:  spacing.md,
   },
   totalValue: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   18,
     color:      colors.textDark,
   },
@@ -218,14 +218,14 @@ const styles = StyleSheet.create({
     width:           64,
     height:          64,
     borderRadius:    32,
-    backgroundColor: colors.forestDark,
+    backgroundColor: colors.moss,
     alignItems:      'center',
     justifyContent:  'center',
     marginBottom:    spacing.xl,
   },
   successCheck: {
-    fontFamily: 'PlayfairDisplay_500',
+    fontFamily: 'Poppins_600',
     fontSize:   28,
-    color:      colors.moss,
+    color:      colors.forestDark,
   },
 });

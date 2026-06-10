@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.linen,
     borderRadius:    radius.sharp,
     borderWidth:     0.5,
-    borderColor:     'rgba(74,124,89,0.2)',
+    borderColor:     'rgba(14,92,91,0.2)',
     paddingVertical:   9,
     paddingHorizontal: spacing.md,
     flexDirection:   'row',

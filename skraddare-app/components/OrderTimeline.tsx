@@ -47,7 +47,7 @@ export default function OrderTimeline({ status }: Props) {
                 isActive && styles.circleActive,
               ]}>
                 {isDone ? (
-                  <IconCheck size={12} color="#c8e6c9" strokeWidth={2.5} />
+                  <IconCheck size={12} color="#B7DCD7" strokeWidth={2.5} />
                 ) : (
                   <Text style={[
                     styles.stepNum,
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   line: {
     width:           0.5,
     height:          14,
-    backgroundColor: 'rgba(74,124,89,0.18)',
+    backgroundColor: 'rgba(14,92,91,0.18)',
   },
 
   circle: {
@@ -107,13 +107,13 @@ const styles = StyleSheet.create({
   circleActive: { backgroundColor: colors.forestLight },
 
   stepNum: {
-    fontFamily: 'DMSans_400',
+    fontFamily: 'Poppins_400',
     fontSize:   11,
     color:      colors.textMuted,
   },
-  stepNumActive: { color: colors.forestDark, fontFamily: 'DMSans_500' },
+  stepNumActive: { color: colors.forestDark, fontFamily: 'Poppins_500' },
 
   stepLabel:     { color: colors.textMuted },
   labelDone:     { color: colors.textMid },
-  labelActive:   { color: colors.textDark, fontFamily: 'DMSans_500' },
+  labelActive:   { color: colors.textDark, fontFamily: 'Poppins_500' },
 });

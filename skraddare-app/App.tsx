@@ -3,18 +3,24 @@ import { StatusBar } from 'expo-status-bar';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
-import { PlayfairDisplay_500Medium } from '@expo-google-fonts/playfair-display';
-import { DMSans_300Light, DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
+import {
+  Poppins_300Light,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
 import RootNavigator from './navigation/RootNavigator';
 
 const STRIPE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    PlayfairDisplay_500: PlayfairDisplay_500Medium,
-    DMSans_300:          DMSans_300Light,
-    DMSans_400:          DMSans_400Regular,
-    DMSans_500:          DMSans_500Medium,
+    Poppins_300: Poppins_300Light,
+    Poppins_400: Poppins_400Regular,
+    Poppins_500: Poppins_500Medium,
+    Poppins_600: Poppins_600SemiBold,
+    Poppins_700: Poppins_700Bold,
   });
 
   if (!fontsLoaded) return null;
