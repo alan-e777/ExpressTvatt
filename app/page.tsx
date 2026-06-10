@@ -40,7 +40,19 @@ const REVIEWS = [
 
 // ── Reveal — minimal opacity + translateY on scroll ──────────────────────────
 
-function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
+type RevealVariant = 'up' | 'scale';
+
+function Reveal({
+  children,
+  delay = 0,
+  variant = 'up',
+  className = '',
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  variant?: RevealVariant;
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
 
@@ -49,7 +61,7 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
     if (!el) return;
     const io = new IntersectionObserver(
       ([e]) => { if (e.isIntersecting) { setShown(true); io.disconnect(); } },
-      { threshold: 0.15 },
+      { threshold: 0.15, rootMargin: '0px 0px -8% 0px' },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -58,7 +70,7 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
   return (
     <div
       ref={ref}
-      className={`lp-reveal${shown ? ' lp-reveal--in' : ''} ${className}`}
+      className={`lp-reveal lp-reveal--${variant}${shown ? ' lp-reveal--in' : ''} ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -177,20 +189,34 @@ export default function LandingPage() {
                 <a href="#how" className="lp-btn lp-btn--ghost">Så fungerar det</a>
               </div>
             </Reveal>
+            <Reveal delay={220}>
+              <div className="lp-hero-trust">
+                <span className="lp-hero-trust-stars" aria-hidden>
+                  {Array.from({ length: 5 }).map((_, i) => <IconStarFilled key={i} size={14} />)}
+                </span>
+                <span className="lp-hero-trust-text">
+                  <strong>4,9</strong> · 1&nbsp;200+ upphämtningar i Stockholm
+                </span>
+              </div>
+            </Reveal>
           </div>
 
-          <Reveal delay={120} className="lp-hero-visual-col">
+          <Reveal delay={120} variant="scale" className="lp-hero-visual-col">
             <div className="lp-hero-visual">
               <div className="lp-hero-visual-glow" aria-hidden />
-              <div className="lp-hero-ring" aria-hidden />
-              <Image
-                src="/logo-icon.png"
-                alt="Express Tvätt"
-                width={240}
-                height={216}
-                className="lp-hero-mark"
-                priority
-              />
+              <div className="lp-hero-float">
+                <div className="lp-hero-ring" aria-hidden />
+                <div className="lp-hero-disc">
+                  <Image
+                    src="/logo-icon.png"
+                    alt="Express Tvätt"
+                    width={240}
+                    height={216}
+                    className="lp-hero-mark"
+                    priority
+                  />
+                </div>
+              </div>
             </div>
           </Reveal>
 
@@ -287,11 +313,17 @@ export default function LandingPage() {
 
           <div className="lp-reviews-grid">
             {REVIEWS.map((r, i) => (
-              <Reveal key={r.name} delay={i * 70} className="lp-review">
+              <Reveal key={r.name} delay={i * 90} variant="scale" className="lp-review">
+                <span className="lp-review-stars" aria-label="5 av 5">
+                  {Array.from({ length: 5 }).map((_, j) => <IconStarFilled key={j} size={14} />)}
+                </span>
                 <p className="lp-review-text">{r.text}</p>
                 <div className="lp-review-author">
-                  <span className="lp-review-name">{r.name}</span>
-                  <span className="lp-review-city">{r.city}</span>
+                  <span className="lp-review-avatar" aria-hidden>{r.name.charAt(0)}</span>
+                  <span className="lp-review-meta">
+                    <span className="lp-review-name">{r.name}</span>
+                    <span className="lp-review-city">{r.city}</span>
+                  </span>
                 </div>
               </Reveal>
             ))}
@@ -304,6 +336,9 @@ export default function LandingPage() {
         <div className="lp-final-pattern" aria-hidden />
         <Reveal className="lp-final-inner">
           <h2 className="lp-final-title">Sluta tänka på tvätten.</h2>
+          <p className="lp-final-sub">
+            Boka på under en minut. Vi hämtar, rengör och levererar — du gör ingenting.
+          </p>
           <Link href="/order" className="lp-btn lp-btn--light lp-final-btn">
             Boka upphämtning <IconArrowRight size={18} stroke={2} />
           </Link>
