@@ -16,11 +16,11 @@ export default function EcoTrustBanner() {
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: colors.linen,
-    borderRadius:    radius.sharp,
-    borderWidth:     0.5,
-    borderColor:     'rgba(14,92,91,0.2)',
-    paddingVertical:   9,
+    backgroundColor: colors.mint,
+    borderRadius:    radius.md,
+    borderWidth:     1,
+    borderColor:     colors.earth,
+    paddingVertical:   10,
     paddingHorizontal: spacing.md,
     flexDirection:   'row',
     alignItems:      'center',

@@ -95,7 +95,7 @@ export default function ChatScreen() {
       <View style={styles.container}>
         <TopBar title="Chatt" />
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.forestMid} />
+          <ActivityIndicator size="large" color={colors.moss} />
         </View>
       </View>
     );
@@ -137,7 +137,7 @@ export default function ChatScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Text style={[typography.body, { textAlign: 'center', color: colors.textMuted }]}>
+              <Text style={[typography.body, { textAlign: 'center', color: colors.moss }]}>
                 Skicka ett meddelande för att starta en konversation.
               </Text>
             </View>
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: 11,
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize: 15,
     color: colors.textDark,
   },

@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   orderName: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   13,
     color:      colors.textDark,
   },
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   badgeText: {
-    fontFamily:    'Poppins_500',
+    fontFamily:    'Inter_500',
     fontSize:      9,
     color:         '#9a7b1a',
     letterSpacing: 0.8,
@@ -246,17 +246,17 @@ const styles = StyleSheet.create({
   circleFuture: { backgroundColor: 'rgba(14,92,91,0.12)' },
 
   stepNum: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   10,
   },
   stepLabel: {
     flex:       1,
     textAlign:  'center',
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   9,
   } as any,
   labelDone:   { color: colors.forestMid },
-  labelActive: { color: colors.forestDark, fontFamily: 'Poppins_500' },
+  labelActive: { color: colors.forestDark, fontFamily: 'Inter_500' },
   labelFuture: { color: 'rgba(14,92,91,0.4)' },
 
   // Connector line

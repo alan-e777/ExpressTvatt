@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: 2 },
 
   price: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   15,
     color:      colors.textMid,
   },

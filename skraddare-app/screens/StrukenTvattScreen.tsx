@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     borderColor:     colors.forestDark,
   },
   chipText: {
-    fontFamily:    'Poppins_400',
+    fontFamily:    'Inter_400',
     fontSize:      11,
     color:         colors.textMuted,
     letterSpacing: 1.2,
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepCount: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   14,
     color:      colors.textDark,
     minWidth:   20,
@@ -323,12 +323,12 @@ const styles = StyleSheet.create({
     paddingBottom:     spacing.xl,
   },
   bottomCount: {
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   11,
     color:      'rgba(183,220,215,0.6)',
   },
   bottomTotal: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   20,
     color:      colors.moss,
   },
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   nextBtnText: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   13,
     color:      colors.forestDark,
   },

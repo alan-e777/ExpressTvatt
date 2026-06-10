@@ -9,8 +9,9 @@
 
 ## Brand
 
-Deep teal + gold, Poppins typography, white/mint cards floating on a deep-teal
-background. Flat, premium, minimal. All copy in Swedish, short and direct.
+Deep teal + gold, **Inter** typography, white cards with warm-cream insets floating
+on a deep-teal canvas. Flat, premium, minimal. Swedish copy, short and direct.
+(Mirrors the website's `.site-shell` rendered system in `app/globals.css`.)
 
 ---
 
@@ -18,7 +19,7 @@ background. Flat, premium, minimal. All copy in Swedish, short and direct.
 
 ```bash
 @tabler/icons-react-native    # icons — outline only, strokeWidth 1.5
-@expo-google-fonts/poppins    # Poppins 300/400/500/600/700 (loaded in App.tsx)
+@expo-google-fonts/inter      # Inter 400/500/600/700 (loaded in App.tsx)
 @stripe/stripe-react-native   # payment
 ```
 
@@ -27,38 +28,38 @@ background. Flat, premium, minimal. All copy in Swedish, short and direct.
 ## Colors (`theme/colors.ts`)
 
 ```ts
-forestDark:  '#063F41'  // deep teal — page bg, topbar, primary buttons, active nav
-forestMid:   '#0E5C5B'  // teal — icons, borders, slider fill, CTA
-forestLight: '#6BB3AC'  // light teal — accents
+forestDark:  '#083F41'  // primary deep teal — buttons, header, glyphs, active nav
+forestMid:   '#0E5C5B'  // teal — icons, borders, slider fill
+forestLight: '#6BB3AC'  // light teal — accents, secondary text on dark
 moss:        '#B7DCD7'  // pale teal — chips, avatar bg, text/icons on dark
 
-cream:       '#063F41'  // page background (deep teal — matches website body)
-linen:       '#FFFFFF'  // cards, inputs, left chat bubbles
+cream:       '#063F41'  // page background (deep-teal canvas — website body)
+linen:       '#FFFFFF'  // cards, left chat bubbles
 white:       '#FFFFFF'  // nav bar, Stripe fields, white surfaces
-mint:        '#E6F3F2'  // service-card surface, inset blocks on white cards
+mint:        '#F7F5F0'  // warm-cream input / inset fill on white cards
 
-textDark:    '#063F41'  // headings / primary text on LIGHT surfaces
-textMid:     '#0E5C5B'  // secondary text
-textMuted:   '#6BB3AC'  // labels, metadata, placeholder
+textDark:    '#0F172A'  // ink — headings / primary text inside light cards
+textMid:     '#334155'  // slate — secondary text
+textMuted:   '#64748B'  // slate gray — labels, metadata, placeholder
 
-earth:       '#D4AF37'  // gold accent — active-order border, highlights
+earth:       '#D4AF37'  // gold accent — active-order border, eco banner
 ```
 
 **Text on the deep-teal page background must be light** — use `colors.white`
-(headings) or `colors.moss` (secondary). `textDark` is invisible on the page bg;
-only use it inside white/mint cards.
+(headings) or `colors.moss` (secondary). The ink/slate `textDark/textMid/textMuted`
+are for use INSIDE white/cream cards only; they are invisible on the page bg.
 
 ---
 
 ## Typography (`theme/typography.ts`)
 
-Poppins everywhere. Font keys `Poppins_300/400/500/600` are registered in `App.tsx`.
+Inter everywhere. Font keys `Inter_400/500/600/700` are registered in `App.tsx`.
 
 ```ts
-h1   Poppins_600 24    h2 Poppins_600 18    h3 Poppins_600 15
-body Poppins_400 14    bodyBold Poppins_500 14
-small Poppins_400 12   label Poppins_400 10 (uppercase, ls 1.5)   micro Poppins_300 9
-price Poppins_600 26 (moss, on dark)   priceDark Poppins_600 26 (forestDark)
+h1   Inter_700 24 (ls -0.4)   h2 Inter_700 18   h3 Inter_700 15
+body Inter_400 14    bodyBold Inter_500 14
+small Inter_400 12   label Inter_500 10 (uppercase, ls 1.2)   micro Inter_400 9
+price Inter_700 26 (moss, on dark)   priceDark Inter_700 26 (ink)
 ```
 
 ---
@@ -90,7 +91,7 @@ radius  = { sharp:2, sm:8, md:10, lg:14, xl:20, pill:999, circle:9999 }
 ## Components
 
 - **TopBar** — deep-teal (`forestDark`) header, white centered title, "Express" wordmark.
-- **Service card** (Home) — `mint` bg, 1px teal border, radius lg. Inset blocks use `linen` (white).
+- **Service card** (Home) — white bg, 1px hairline border (`rgba(15,23,42,0.08)`), radius lg. Inset blocks use `mint` (warm cream).
 - **Primary button / CTAButton** — `forestDark` bg, `moss` text. Secondary: `moss` bg, `forestDark` text.
 - **ActiveOrderCard** ("Pågående ärenden") — white bg, **3px gold (`earth`) border**, gold
   section label, teal 5-step stepper (Bokad → Hämtad → Rengörs → Klar → Levererad).

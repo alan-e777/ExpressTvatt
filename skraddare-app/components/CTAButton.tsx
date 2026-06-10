@@ -37,7 +37,7 @@ export default function CTAButton({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? '#B7DCD7' : colors.forestDark} />
+        <ActivityIndicator color={isPrimary ? '#FFFFFF' : colors.forestDark} />
       ) : (
         <View style={styles.inner}>
           {icon}
@@ -59,6 +59,6 @@ const styles = StyleSheet.create({
   secondary:       { backgroundColor: colors.moss },
   disabled:        { opacity: 0.45 },
   inner:           { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label:           { fontFamily: 'Poppins_500', fontSize: 14, color: '#B7DCD7' },
+  label:           { fontFamily: 'Inter_600', fontSize: 14, color: '#FFFFFF' },
   labelSecondary:  { color: colors.forestDark },
 });

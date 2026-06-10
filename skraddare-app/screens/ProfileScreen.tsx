@@ -465,8 +465,8 @@ const infoStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md },
   rowBorder: { borderBottomWidth: 0.5, borderBottomColor: 'rgba(14,92,91,0.1)' },
   iconWrap: { width: 24, alignItems: 'center' },
-  label: { fontFamily: 'Poppins_400', fontSize: 13, color: colors.textMuted, width: 64 },
-  value: { flex: 1, textAlign: 'right', fontFamily: 'Poppins_500', fontSize: 13, color: colors.textDark },
+  label: { fontFamily: 'Inter_400', fontSize: 13, color: colors.textMuted, width: 64 },
+  value: { flex: 1, textAlign: 'right', fontFamily: 'Inter_500', fontSize: 13, color: colors.textDark },
 });
 
 // ── AuthInput ─────────────────────────────────────────────────────────────────
@@ -510,7 +510,7 @@ const inputStyles = StyleSheet.create({
     borderRadius:      radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical:   13,
-    fontFamily:        'Poppins_400',
+    fontFamily:        'Inter_400',
     fontSize:          15,
     color:             colors.textDark,
   },
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     marginBottom:    spacing.sm,
   },
   initials: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   28,
     color:      colors.forestDark,
   },
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical:   6,
   },
-  addBtnText: { fontFamily: 'Poppins_500', fontSize: 12, color: colors.forestDark },
+  addBtnText: { fontFamily: 'Inter_500', fontSize: 12, color: colors.forestDark },
 
   emptyCard: {
     backgroundColor: colors.white,
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  removeX: { fontFamily: 'Poppins_400', fontSize: 20, color: colors.textMuted, paddingHorizontal: 6, lineHeight: 22 },
+  removeX: { fontFamily: 'Inter_400', fontSize: 20, color: colors.textMuted, paddingHorizontal: 6, lineHeight: 22 },
 
   addForm: {
     backgroundColor: colors.white,
@@ -627,14 +627,14 @@ const styles = StyleSheet.create({
     borderRadius:      radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical:   13,
-    fontFamily:        'Poppins_400',
+    fontFamily:        'Inter_400',
     fontSize:          15,
     color:             colors.textDark,
   },
 
   error: {
     color:        '#dc2626',
-    fontFamily:   'Poppins_400',
+    fontFamily:   'Inter_400',
     fontSize:     13,
     marginBottom: spacing.sm,
     marginTop:    spacing.sm,
@@ -645,5 +645,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop:      spacing.lg,
   },
-  link: { color: colors.forestDark, fontFamily: 'Poppins_500' },
+  link: { color: colors.forestDark, fontFamily: 'Inter_500' },
 });

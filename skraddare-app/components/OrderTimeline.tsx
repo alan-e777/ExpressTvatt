@@ -107,13 +107,13 @@ const styles = StyleSheet.create({
   circleActive: { backgroundColor: colors.forestLight },
 
   stepNum: {
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   11,
     color:      colors.textMuted,
   },
-  stepNumActive: { color: colors.forestDark, fontFamily: 'Poppins_500' },
+  stepNumActive: { color: colors.forestDark, fontFamily: 'Inter_500' },
 
   stepLabel:     { color: colors.textMuted },
   labelDone:     { color: colors.textMid },
-  labelActive:   { color: colors.textDark, fontFamily: 'Poppins_500' },
+  labelActive:   { color: colors.textDark, fontFamily: 'Inter_500' },
 });

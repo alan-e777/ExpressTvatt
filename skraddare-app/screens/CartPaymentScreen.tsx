@@ -124,7 +124,7 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
         </View>
 
         {/* Card input */}
-        <Text style={[typography.label, { marginBottom: spacing.md }]}>Kortuppgifter</Text>
+        <Text style={[typography.label, { marginBottom: spacing.md, color: colors.moss }]}>Kortuppgifter</Text>
 
         {loadError ? (
           <Text style={[typography.small, { color: '#c0392b', marginBottom: spacing.lg }]}>
@@ -150,21 +150,21 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
         <CTAButton
           label={`Betala ${total} kr`}
           onPress={handlePay}
-          icon={<IconLock size={14} color="#B7DCD7" strokeWidth={1.5} />}
+          icon={<IconLock size={14} color="#FFFFFF" strokeWidth={1.5} />}
           disabled={!cardReady || !clientSecret}
           loading={status === 'processing'}
         />
 
         {/* Trust signals */}
         <View style={styles.trustRow}>
-          <IconShieldCheck size={13} color={colors.textMuted} strokeWidth={1.5} />
-          <Text style={[typography.micro, { marginLeft: spacing.xs }]}>256-bit SSL</Text>
-          <Text style={[typography.micro, { marginHorizontal: spacing.sm }]}>·</Text>
-          <Text style={typography.micro}>Säkrad via </Text>
-          <Text style={[typography.micro, { color: '#635bff' }]}>stripe</Text>
+          <IconShieldCheck size={13} color={colors.moss} strokeWidth={1.5} />
+          <Text style={[typography.micro, { marginLeft: spacing.xs, color: colors.moss }]}>256-bit SSL</Text>
+          <Text style={[typography.micro, { marginHorizontal: spacing.sm, color: colors.moss }]}>·</Text>
+          <Text style={[typography.micro, { color: colors.moss }]}>Säkrad via </Text>
+          <Text style={[typography.micro, { color: '#B7DCD7' }]}>stripe</Text>
         </View>
 
-        <Text style={[typography.micro, { textAlign: 'center', marginTop: spacing.lg }]}>
+        <Text style={[typography.micro, { textAlign: 'center', marginTop: spacing.lg, color: colors.moss }]}>
           Testkort: 4242 4242 4242 4242 · valfri exp/cvv
         </Text>
       </ScrollView>
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     marginVertical:  spacing.md,
   },
   totalValue: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   18,
     color:      colors.textDark,
   },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     marginBottom:    spacing.xl,
   },
   successCheck: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   28,
     color:      colors.forestDark,
   },

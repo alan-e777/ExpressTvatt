@@ -1,19 +1,21 @@
-// Express Tvätt — brand palette (mirrors the website's app/globals.css tokens).
-// Deep teal + gold. Never hardcode hex in components — always read from here.
+// Express Tvätt — brand palette. Mirrors the website's RENDERED design system,
+// i.e. the `.site-shell` overrides in app/globals.css (Inter, deep teal #083F41,
+// gold #D4AF37, ink text, white cards on a deep-teal canvas).
+// Never hardcode hex in components — always read from here.
 export const colors = {
-  forestDark:  '#063F41',  // deep teal — page bg, topbar, primary buttons, active nav
-  forestMid:   '#0E5C5B',  // teal — icons, borders, slider fill, primary CTA
-  forestLight: '#6BB3AC',  // light teal — accents, muted text on dark surfaces
-  moss:        '#B7DCD7',  // pale teal — chips, avatar bg, button/text on dark
+  forestDark:  '#083F41',  // primary deep teal — buttons, header, glyphs, active nav
+  forestMid:   '#0E5C5B',  // teal — icons, slider fill, borders
+  forestLight: '#6BB3AC',  // light teal — accents, secondary text on dark
+  moss:        '#B7DCD7',  // pale teal — chips, avatar bg, text/icons on dark
 
-  cream:       '#063F41',  // page background (deep teal — matches website body)
-  linen:       '#FFFFFF',  // cards, inputs, left chat bubbles
+  cream:       '#063F41',  // page background (deep-teal canvas — website body)
+  linen:       '#FFFFFF',  // cards, left chat bubbles
   white:       '#FFFFFF',  // nav bar, Stripe fields, white surfaces
-  mint:        '#E6F3F2',  // service-card surface, inset blocks on white cards
+  mint:        '#F7F5F0',  // warm-cream input / inset fill on white cards
 
-  textDark:    '#063F41',  // headings / primary text on light surfaces
-  textMid:     '#0E5C5B',  // secondary text
-  textMuted:   '#6BB3AC',  // labels, metadata, placeholder
+  textDark:    '#0F172A',  // ink — headings / primary text on light cards
+  textMid:     '#334155',  // slate — secondary text
+  textMuted:   '#64748B',  // slate gray — labels, metadata, placeholder
 
   earth:       '#D4AF37',  // gold accent — active-order border, highlights
   amber:       '#fde8a0',  // status: pending

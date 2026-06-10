@@ -38,12 +38,12 @@ const styles = StyleSheet.create({
   },
   priceLabel: { color: 'rgba(183,220,215,0.55)', letterSpacing: 1.5 },
   breakdown:  {
-    fontFamily: 'Poppins_300',
+    fontFamily: 'Inter_400',
     fontSize:   9,
     color:      'rgba(183,220,215,0.4)',
     marginTop:  2,
   },
   right:    { alignItems: 'flex-end' },
-  pickup:   { fontFamily: 'Poppins_400', fontSize: 12, color: 'rgba(183,220,215,0.55)' },
-  delivery: { fontFamily: 'Poppins_300', fontSize: 9,  color: 'rgba(183,220,215,0.3)', marginTop: 2 },
+  pickup:   { fontFamily: 'Inter_400', fontSize: 12, color: 'rgba(183,220,215,0.55)' },
+  delivery: { fontFamily: 'Inter_400', fontSize: 9,  color: 'rgba(183,220,215,0.3)', marginTop: 2 },
 });

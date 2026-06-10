@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical:   13,
     paddingRight:      40,
-    fontFamily:        'Poppins_400',
+    fontFamily:        'Inter_400',
     fontSize:          15,
     color:             colors.textDark,
     borderWidth:       0.5,
@@ -170,12 +170,12 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(14,92,91,0.1)',
   },
   main: {
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   14,
     color:      colors.textDark,
   },
   sub: {
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   12,
     color:      colors.textMuted,
     marginTop:  2,

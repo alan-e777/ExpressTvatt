@@ -163,7 +163,7 @@ function Row({ label, value, bold = false }: { label: string; value: string; bol
   return (
     <View style={styles.row}>
       <Text style={typography.small}>{label}</Text>
-      <Text style={[typography.small, bold && { fontFamily: 'Poppins_600', color: colors.textDark }]}>
+      <Text style={[typography.small, bold && { fontFamily: 'Inter_600', color: colors.textDark }]}>
         {value}
       </Text>
     </View>

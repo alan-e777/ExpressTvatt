@@ -4,8 +4,8 @@
   "main": "index.js",
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
+    "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/playfair-display": "^0.4.2",
-    "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/metro-runtime": "~56.0.13",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-google-signin/google-signin": "^16.1.2",

@@ -233,9 +233,9 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderColor:       'rgba(14,92,91,0.12)',
   },
-  title:        { fontFamily: 'Poppins_600', fontSize: 14, color: colors.textDark },
-  cancel:       { fontFamily: 'Poppins_400',          fontSize: 14, color: colors.textMuted },
-  done:         { fontFamily: 'Poppins_500',          fontSize: 14, color: colors.forestDark },
+  title:        { fontFamily: 'Inter_600', fontSize: 14, color: colors.textDark },
+  cancel:       { fontFamily: 'Inter_400',          fontSize: 14, color: colors.textMuted },
+  done:         { fontFamily: 'Inter_500',          fontSize: 14, color: colors.forestDark },
   doneDisabled: { opacity: 0.35 },
 
   // Month navigation
@@ -247,7 +247,7 @@ const s = StyleSheet.create({
     paddingVertical:   spacing.md,
   },
   monthLabel: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   16,
     color:      colors.textDark,
   },
@@ -263,7 +263,7 @@ const s = StyleSheet.create({
   dayLabel: {
     flex:          1,
     textAlign:     'center',
-    fontFamily:    'Poppins_400',
+    fontFamily:    'Inter_400',
     fontSize:      11,
     color:         colors.textMuted,
     letterSpacing: 0.4,
@@ -297,8 +297,8 @@ const s = StyleSheet.create({
   },
 
   // Day number text
-  dayNum:      { fontFamily: 'Poppins_400', fontSize: 14, color: colors.textDark },
+  dayNum:      { fontFamily: 'Inter_400', fontSize: 14, color: colors.textDark },
   dayNumPast:  { color: colors.textMuted, opacity: 0.45 },
-  dayNumToday: { fontFamily: 'Poppins_500', color: colors.forestMid },
-  dayNumSel:   { fontFamily: 'Poppins_500', color: colors.moss },
+  dayNumToday: { fontFamily: 'Inter_500', color: colors.forestMid },
+  dayNumSel:   { fontFamily: 'Inter_500', color: colors.moss },
 });

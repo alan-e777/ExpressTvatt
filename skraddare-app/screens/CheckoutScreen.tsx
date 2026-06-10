@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     marginBottom:    spacing.xl,
   },
   summaryTitle: {
-    fontFamily:   'Poppins_500',
+    fontFamily:   'Inter_500',
     fontSize:     13,
     color:        colors.textDark,
     marginBottom: spacing.md,
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   summaryPrice: {
-    fontFamily:        'Poppins_500',
+    fontFamily:        'Inter_500',
     fontSize:          13,
     color:             colors.textMid,
     fontVariant:       ['tabular-nums'] as any,
@@ -200,25 +200,25 @@ const styles = StyleSheet.create({
     marginVertical:  spacing.sm,
   },
   totalLabel: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   14,
     color:      colors.textDark,
   },
   totalValue: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   20,
     color:      colors.textDark,
   },
 
   // ─ Form ─
   sectionHeading: {
-    fontFamily:   'Poppins_600',
+    fontFamily:   'Inter_600',
     fontSize:     16,
     color:        colors.white,
     marginBottom: spacing.lg,
   },
   fieldLabel: {
-    fontFamily:    'Poppins_400',
+    fontFamily:    'Inter_400',
     fontSize:      10,
     color:         colors.moss,
     letterSpacing: 1,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     borderColor:      'rgba(14,92,91,0.15)',
     paddingVertical:  spacing.md,
     paddingHorizontal: spacing.md,
-    fontFamily:       'Poppins_400',
+    fontFamily:       'Inter_400',
     fontSize:         14,
     color:            colors.textDark,
     marginBottom:     spacing.lg,
@@ -243,8 +243,8 @@ const styles = StyleSheet.create({
   },
 
   pickerBtn:         { justifyContent: 'center' },
-  pickerValue:       { fontFamily: 'Poppins_400', fontSize: 14, color: colors.textDark },
-  pickerPlaceholder: { fontFamily: 'Poppins_400', fontSize: 14, color: colors.textMuted },
+  pickerValue:       { fontFamily: 'Inter_400', fontSize: 14, color: colors.textDark },
+  pickerPlaceholder: { fontFamily: 'Inter_400', fontSize: 14, color: colors.textMuted },
 
   // ─ Footer CTA ─
   footer: {
@@ -261,8 +261,8 @@ const styles = StyleSheet.create({
     alignItems:      'center',
   },
   btnText: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_600',
     fontSize:   15,
-    color:      colors.moss,
+    color:      colors.white,
   },
 });

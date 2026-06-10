@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     borderColor:     colors.forestDark,
   },
   label: {
-    fontFamily:    'Poppins_400',
+    fontFamily:    'Inter_400',
     fontSize:      11,
     color:         colors.textMuted,
     letterSpacing: 1.2,

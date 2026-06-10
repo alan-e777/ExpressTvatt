@@ -118,17 +118,18 @@ const subStyles = StyleSheet.create({
     marginBottom:  spacing.md,
   },
   iconCircle: {
-    width:          28,
-    height:         28,
-    borderRadius:   radius.circle,
-    borderWidth:    0.5,
-    borderColor:    'rgba(14,92,91,0.2)',
-    alignItems:     'center',
-    justifyContent: 'center',
-    flexShrink:     0,
+    width:           28,
+    height:          28,
+    borderRadius:    radius.circle,
+    backgroundColor: colors.mint,
+    borderWidth:     0.5,
+    borderColor:     'rgba(15,23,42,0.06)',
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
   },
-  title:    { fontFamily: 'Poppins_500',     fontSize: 15, color: colors.textDark },
-  subtitle: { fontFamily: 'Poppins_400',     fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  title:    { fontFamily: 'Inter_600',     fontSize: 15, color: colors.textDark },
+  subtitle: { fontFamily: 'Inter_400',     fontSize: 12, color: colors.textMuted, marginTop: 2 },
 
   row: {
     flexDirection:     'row',
@@ -139,14 +140,15 @@ const subStyles = StyleSheet.create({
     gap:               spacing.md,
   },
   rowIcon: {
-    width:          32,
-    height:         32,
-    borderRadius:   radius.circle,
-    borderWidth:    0.5,
-    borderColor:    colors.linen,
-    alignItems:     'center',
-    justifyContent: 'center',
-    flexShrink:     0,
+    width:           32,
+    height:          32,
+    borderRadius:    radius.circle,
+    backgroundColor: colors.mint,
+    borderWidth:     0.5,
+    borderColor:     'rgba(15,23,42,0.06)',
+    alignItems:      'center',
+    justifyContent:  'center',
+    flexShrink:      0,
   },
   stepper: {
     flexDirection: 'row',
@@ -155,7 +157,7 @@ const subStyles = StyleSheet.create({
     flexShrink:    0,
   },
   priceLabel: {
-    fontFamily:        'Poppins_500',
+    fontFamily:        'Inter_500',
     fontSize:          13,
     color:             colors.textMid,
     minWidth:          52,
@@ -171,7 +173,7 @@ const subStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepCount: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   13,
     color:      colors.textDark,
     minWidth:   18,
@@ -473,30 +475,30 @@ const styles = StyleSheet.create({
   content:   { padding: spacing.lg, paddingBottom: 100 },
   section:   { marginBottom: spacing.xl },
 
-  // ─ Service section cards ─
+  // ─ Service section cards ─ (white surfaces, hairline border)
   serviceCard: {
-    backgroundColor: colors.mint,
+    backgroundColor: colors.white,
     borderRadius:    radius.lg,
     padding:         spacing.xl,
     borderWidth:     1,
-    borderColor:     'rgba(14,92,91,0.18)',
+    borderColor:     'rgba(15,23,42,0.08)',
     marginBottom:    spacing.lg,
   },
 
-  // ─ Mattvätt ─
+  // ─ Mattvätt ─ (warm-cream inset on the white card)
   sliderBox: {
-    backgroundColor: colors.linen,
+    backgroundColor: colors.mint,
     borderRadius:    radius.md,
     padding:         spacing.md,
-    borderWidth:     0.5,
-    borderColor:     'rgba(14,92,91,0.1)',
+    borderWidth:     1,
+    borderColor:     'rgba(15,23,42,0.08)',
     marginBottom:    spacing.md,
   },
   priceRow: {
     marginBottom: spacing.md,
   },
   priceLabel: {
-    fontFamily:    'Poppins_400',
+    fontFamily:    'Inter_400',
     fontSize:      10,
     color:         colors.textMuted,
     letterSpacing: 1,
@@ -504,7 +506,7 @@ const styles = StyleSheet.create({
     marginBottom:  2,
   } as any,
   priceValue: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   22,
     color:      colors.textDark,
   },
@@ -516,9 +518,9 @@ const styles = StyleSheet.create({
     alignItems:      'center',
   },
   primaryBtnText: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_600',
     fontSize:   14,
-    color:      colors.moss,
+    color:      colors.white,
   },
 
   mattStepper: {
@@ -538,14 +540,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mattStepCount: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   15,
     color:      colors.textDark,
     minWidth:   20,
     textAlign:  'center',
   },
   mattInCartLabel: {
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   12,
     color:      colors.textMuted,
   },
@@ -565,12 +567,12 @@ const styles = StyleSheet.create({
     paddingBottom:     spacing.xxl,
   },
   cartCount: {
-    fontFamily: 'Poppins_400',
+    fontFamily: 'Inter_400',
     fontSize:   11,
     color:      'rgba(183,220,215,0.6)',
   },
   cartTotal: {
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   22,
     color:      colors.moss,
   },
@@ -581,7 +583,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   } as any,
   cartBtnText: {
-    fontFamily: 'Poppins_500',
+    fontFamily: 'Inter_500',
     fontSize:   13,
     color:      colors.forestDark,
   },

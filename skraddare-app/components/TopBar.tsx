@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   titlePlaceholder: { flex: 1 },
 
   logo: {
-    fontFamily:     'Poppins_300',
+    fontFamily:     'Inter_400',
     fontSize:       11,
     color:          colors.moss,
     opacity:        0.6,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   title: {
     flex:       1,
     textAlign:  'center',
-    fontFamily: 'Poppins_600',
+    fontFamily: 'Inter_600',
     fontSize:   17,
     color:      colors.white,
     letterSpacing: 0.2,
