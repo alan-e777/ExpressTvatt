@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import {
   Inter_400Regular,
@@ -25,10 +26,12 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StripeProvider publishableKey={STRIPE_KEY} merchantIdentifier="merchant.com.amosskradderi">
-        <StatusBar style="light" />
-        <RootNavigator />
-      </StripeProvider>
+      <SafeAreaProvider>
+        <StripeProvider publishableKey={STRIPE_KEY} merchantIdentifier="merchant.com.amosskradderi">
+          <StatusBar style="light" />
+          <RootNavigator />
+        </StripeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

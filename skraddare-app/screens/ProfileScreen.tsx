@@ -3,19 +3,11 @@ import {
   View, Text, TextInput, ScrollView, StyleSheet,
   ActivityIndicator, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import {
-  IconUser, IconMail, IconLock, IconEye, IconEyeOff, IconPhone, IconMapPin, IconPlus,
-} from '@tabler/icons-react-native';
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
-  signOut,
-  User,
-} from 'firebase/auth';
+import { IconUser, IconMail, IconPhone, IconMapPin, IconPlus } from '@tabler/icons-react-native';
+import { signOut, type User } from 'firebase/auth';
 import {
   doc, setDoc, updateDoc, collection, query, where, onSnapshot,
-  Timestamp, serverTimestamp, arrayUnion, arrayRemove,
+  Timestamp, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { type Order } from '../types';
@@ -27,27 +19,16 @@ import CTAButton from '../components/CTAButton';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ActiveOrderCard from '../components/home/ActiveOrderCard';
 
-type ViewMode = 'loading' | 'login' | 'signup' | 'profile';
 type SavedAddress = { address: string; postalCode: string; deliveryNote?: string };
 
 // Only active orders are surfaced in the app (order history is out of scope).
 const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
 
 export default function ProfileScreen() {
-  const [view, setView]       = useState<ViewMode>('loading');
-  const [user, setUser]       = useState<User | null>(null);
+  const [user, setUser]       = useState<User | null>(auth.currentUser);
   const [orders, setOrders]   = useState<Order[]>([]);
   const [phone, setPhone]     = useState('');
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
-
-  // Auth form state
-  const [name, setName]               = useState('');
-  const [email, setEmail]             = useState('');
-  const [signupPhone, setSignupPhone] = useState('');
-  const [password, setPassword]       = useState('');
-  const [showPass, setShowPass]       = useState(false);
-  const [formError, setFormError]     = useState('');
-  const [submitting, setSubmitting]   = useState(false);
 
   // Address form state
   const [showAddForm, setShowAddForm]           = useState(false);
@@ -59,33 +40,29 @@ export default function ProfileScreen() {
   const [savingAddr, setSavingAddr]             = useState(false);
   const [deletingIdx, setDeletingIdx]           = useState<number | null>(null);
 
-  // ── Auth + live orders ───────────────────────────────────────────────────────
+  // ── Live orders ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(currentUser => {
-      setUser(currentUser);
-      setView(currentUser ? 'profile' : 'login');
-
-      if (currentUser) {
-        const q = query(collection(db, 'orders'), where('customerId', '==', currentUser.uid));
-        const unsubOrders = onSnapshot(q, snap => {
-          const list = snap.docs.map(d => {
-            const data = d.data();
-            return {
-              ...data,
-              createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
-            } as Order;
-          });
-          setOrders(list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
-        });
-        return unsubOrders;
-      } else {
-        setOrders([]);
-      }
-    });
+    const unsub = auth.onAuthStateChanged(setUser);
     return unsub;
   }, []);
 
-  // ── Customer profile doc (phone + saved addresses) ─────────────────────────────
+  useEffect(() => {
+    if (!user) { setOrders([]); return; }
+    const q = query(collection(db, 'orders'), where('customerId', '==', user.uid));
+    const unsub = onSnapshot(q, snap => {
+      const list = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          ...data,
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        } as Order;
+      });
+      setOrders(list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
+    });
+    return unsub;
+  }, [user]);
+
+  // ── Customer doc (phone + saved addresses) ─────────────────────────────────────
   useEffect(() => {
     if (!user) { setPhone(''); setAddresses([]); return; }
     const unsub = onSnapshot(doc(db, 'customers', user.uid), snap => {
@@ -96,61 +73,7 @@ export default function ProfileScreen() {
     return unsub;
   }, [user]);
 
-  function clearForm() {
-    setName(''); setEmail(''); setSignupPhone(''); setPassword(''); setFormError(''); setShowPass(false);
-  }
-
-  async function handleLogin() {
-    if (!email.trim() || !password) { setFormError('Fyll i e-post och lösenord.'); return; }
-    setSubmitting(true); setFormError('');
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      clearForm();
-    } catch (e: any) {
-      const code = e?.code ?? '';
-      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setFormError('Fel e-post eller lösenord.');
-      } else {
-        setFormError('Inloggning misslyckades. Försök igen.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSignup() {
-    if (!name.trim())        { setFormError('Ange ditt namn.'); return; }
-    if (!email.trim())       { setFormError('Ange din e-post.'); return; }
-    if (!signupPhone.trim()) { setFormError('Ange ditt telefonnummer.'); return; }
-    if (password.length < 6) { setFormError('Lösenordet måste vara minst 6 tecken.'); return; }
-    setSubmitting(true); setFormError('');
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      await updateProfile(cred.user, { displayName: name.trim() });
-      // Save customer profile to Firestore for admin visibility
-      await setDoc(doc(db, 'customers', cred.user.uid), {
-        uid:       cred.user.uid,
-        name:      name.trim(),
-        email:     email.trim(),
-        phone:     signupPhone.trim(),
-        createdAt: serverTimestamp(),
-      });
-      clearForm();
-    } catch (e: any) {
-      const code = e?.code ?? '';
-      if (code === 'auth/email-already-in-use') {
-        setFormError('E-postadressen används redan.');
-      } else if (code === 'auth/invalid-email') {
-        setFormError('Ogiltig e-postadress.');
-      } else {
-        setFormError('Kontot kunde inte skapas. Försök igen.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSignOut() {
+  function handleSignOut() {
     Alert.alert('Logga ut', 'Är du säker på att du vill logga ut?', [
       { text: 'Avbryt', style: 'cancel' },
       { text: 'Logga ut', style: 'destructive', onPress: () => signOut(auth) },
@@ -183,146 +106,6 @@ export default function ProfileScreen() {
     }
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
-  if (view === 'loading') {
-    return (
-      <View style={styles.container}>
-        <TopBar title="Min profil" />
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.moss} />
-        </View>
-      </View>
-    );
-  }
-
-  // ── Login ────────────────────────────────────────────────────────────────────
-  if (view === 'login') {
-    return (
-      <View style={styles.container}>
-        <TopBar title="Min profil" />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={styles.authContent} keyboardShouldPersistTaps="handled">
-            <View style={styles.authCard}>
-              <View style={styles.avatarCircle}>
-                <IconUser size={34} color={colors.forestMid} strokeWidth={1.5} />
-              </View>
-              <Text style={[typography.h2, styles.authTitle]}>Logga in</Text>
-              <Text style={[typography.body, styles.authSub]}>Välkommen tillbaka!</Text>
-
-              <AuthInput
-                icon={<IconMail size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                placeholder="E-postadress"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <AuthInput
-                icon={<IconLock size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                placeholder="Lösenord"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPass}
-                rightIcon={
-                  <TouchableOpacity onPress={() => setShowPass(v => !v)}>
-                    {showPass
-                      ? <IconEyeOff size={16} color={colors.textMuted} strokeWidth={1.5} />
-                      : <IconEye    size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                  </TouchableOpacity>
-                }
-              />
-
-              {formError ? <Text style={styles.error}>{formError}</Text> : null}
-
-              <CTAButton
-                label={submitting ? 'Loggar in…' : 'Logga in'}
-                onPress={handleLogin}
-                disabled={submitting}
-              />
-
-              <TouchableOpacity style={styles.switchRow} onPress={() => { clearForm(); setView('signup'); }}>
-                <Text style={typography.small}>Har du inget konto? </Text>
-                <Text style={[typography.small, styles.link]}>Skapa konto</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
-    );
-  }
-
-  // ── Sign up ──────────────────────────────────────────────────────────────────
-  if (view === 'signup') {
-    return (
-      <View style={styles.container}>
-        <TopBar title="Skapa konto" onBack={() => { clearForm(); setView('login'); }} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={styles.authContent} keyboardShouldPersistTaps="handled">
-            <View style={styles.authCard}>
-              <View style={styles.avatarCircle}>
-                <IconUser size={34} color={colors.forestMid} strokeWidth={1.5} />
-              </View>
-              <Text style={[typography.h2, styles.authTitle]}>Skapa konto</Text>
-              <Text style={[typography.body, styles.authSub]}>Spara dina ordrar och följ din tvätt.</Text>
-
-              <AuthInput
-                icon={<IconUser size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                placeholder="Fullständigt namn"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-              />
-              <AuthInput
-                icon={<IconMail size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                placeholder="E-postadress"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <AuthInput
-                icon={<IconPhone size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                placeholder="Telefonnummer"
-                value={signupPhone}
-                onChangeText={setSignupPhone}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-              />
-              <AuthInput
-                icon={<IconLock size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                placeholder="Lösenord (minst 6 tecken)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPass}
-                rightIcon={
-                  <TouchableOpacity onPress={() => setShowPass(v => !v)}>
-                    {showPass
-                      ? <IconEyeOff size={16} color={colors.textMuted} strokeWidth={1.5} />
-                      : <IconEye    size={16} color={colors.textMuted} strokeWidth={1.5} />}
-                  </TouchableOpacity>
-                }
-              />
-
-              {formError ? <Text style={styles.error}>{formError}</Text> : null}
-
-              <CTAButton
-                label={submitting ? 'Skapar konto…' : 'Skapa konto'}
-                onPress={handleSignup}
-                disabled={submitting}
-              />
-
-              <TouchableOpacity style={styles.switchRow} onPress={() => { clearForm(); setView('login'); }}>
-                <Text style={typography.small}>Har du redan ett konto? </Text>
-                <Text style={[typography.small, styles.link]}>Logga in</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
-    );
-  }
-
-  // ── Profile ──────────────────────────────────────────────────────────────────
   const initials = user?.displayName
     ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : '?';
@@ -330,7 +113,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <TopBar title="Min profil" />
+      <TopBar />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -463,59 +246,10 @@ function InfoRow({ icon, label, value, last }: { icon: React.ReactNode; label: s
 
 const infoStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md },
-  rowBorder: { borderBottomWidth: 0.5, borderBottomColor: 'rgba(14,92,91,0.1)' },
+  rowBorder: { borderBottomWidth: 0.5, borderBottomColor: 'rgba(15,23,42,0.1)' },
   iconWrap: { width: 24, alignItems: 'center' },
   label: { fontFamily: 'Inter_400', fontSize: 13, color: colors.textMuted, width: 64 },
   value: { flex: 1, textAlign: 'right', fontFamily: 'Inter_500', fontSize: 13, color: colors.textDark },
-});
-
-// ── AuthInput ─────────────────────────────────────────────────────────────────
-
-function AuthInput({
-  icon, rightIcon, placeholder, value, onChangeText,
-  secureTextEntry, keyboardType, autoCapitalize,
-}: {
-  icon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  placeholder: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: any;
-  autoCapitalize?: any;
-}) {
-  return (
-    <View style={inputStyles.wrap}>
-      {icon && <View style={inputStyles.iconLeft}>{icon}</View>}
-      <TextInput
-        style={[inputStyles.input, icon ? { paddingLeft: 40 } : null, rightIcon ? { paddingRight: 40 } : null]}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize ?? 'none'}
-        autoCorrect={false}
-      />
-      {rightIcon && <View style={inputStyles.iconRight}>{rightIcon}</View>}
-    </View>
-  );
-}
-
-const inputStyles = StyleSheet.create({
-  wrap:      { position: 'relative', marginBottom: spacing.sm },
-  input: {
-    backgroundColor:   colors.mint,
-    borderRadius:      radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   13,
-    fontFamily:        'Inter_400',
-    fontSize:          15,
-    color:             colors.textDark,
-  },
-  iconLeft:  { position: 'absolute', left: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
-  iconRight: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 1 },
 });
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -523,127 +257,46 @@ const inputStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content:   { padding: spacing.lg, paddingBottom: spacing.xxl },
-  centered:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Auth
-  authContent: { padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xxl },
-  authCard: {
-    backgroundColor: colors.white,
-    borderRadius:    radius.lg,
-    padding:         spacing.xl,
-  },
-  authTitle: { textAlign: 'center', marginTop: spacing.lg, marginBottom: spacing.xs },
-  authSub:   { textAlign: 'center', color: colors.textMuted, marginBottom: spacing.xl },
-
-  // Avatar
   avatarBlock:  { alignItems: 'center', marginBottom: spacing.xl, paddingTop: spacing.sm },
   avatarCircle: {
-    width:           80,
-    height:          80,
-    borderRadius:    radius.pill,
-    backgroundColor: colors.moss,
-    alignItems:      'center',
-    justifyContent:  'center',
-    alignSelf:       'center',
-    marginBottom:    spacing.sm,
+    width: 80, height: 80, borderRadius: radius.pill, backgroundColor: colors.moss,
+    alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: spacing.sm,
   },
-  initials: {
-    fontFamily: 'Inter_600',
-    fontSize:   28,
-    color:      colors.forestDark,
-  },
+  initials: { fontFamily: 'Inter_700', fontSize: 28, color: colors.forestDark },
 
-  // Sections
-  sectionTitle: {
-    ...typography.h3,
-    color:        colors.white,
-    marginTop:    spacing.lg,
-    marginBottom: spacing.md,
-  } as any,
+  sectionTitle: { ...typography.h3, color: colors.white, marginTop: spacing.lg, marginBottom: spacing.md } as any,
   sectionHeaderRow: {
-    flexDirection:  'row',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    marginTop:      spacing.lg,
-    marginBottom:   spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: spacing.lg, marginBottom: spacing.md,
   },
   addBtn: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    gap:               4,
-    backgroundColor:   colors.moss,
-    borderRadius:      radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical:   6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: colors.moss, borderRadius: radius.pill,
+    paddingHorizontal: spacing.md, paddingVertical: 6,
   },
   addBtnText: { fontFamily: 'Inter_500', fontSize: 12, color: colors.forestDark },
 
-  emptyCard: {
-    backgroundColor: colors.white,
-    borderRadius:    radius.lg,
-    padding:         spacing.lg,
-    marginBottom:    spacing.md,
-  },
-  infoCard: {
-    backgroundColor:   colors.white,
-    borderRadius:      radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   spacing.xs,
-    marginBottom:      spacing.md,
-  },
+  emptyCard: { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.md },
+  infoCard:  { backgroundColor: colors.white, borderRadius: radius.lg, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, marginBottom: spacing.md },
 
-  // Addresses
   addressCard: {
-    backgroundColor: colors.white,
-    borderRadius:    radius.lg,
-    padding:         spacing.md,
-    flexDirection:   'row',
-    alignItems:      'center',
-    gap:             spacing.md,
-    marginBottom:    spacing.sm,
+    backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm,
   },
   addressIcon: {
-    width:           36,
-    height:          36,
-    borderRadius:    radius.circle,
-    backgroundColor: colors.mint,
-    alignItems:      'center',
-    justifyContent:  'center',
+    width: 36, height: 36, borderRadius: radius.circle, backgroundColor: colors.mint,
+    alignItems: 'center', justifyContent: 'center',
   },
   removeX: { fontFamily: 'Inter_400', fontSize: 20, color: colors.textMuted, paddingHorizontal: 6, lineHeight: 22 },
 
-  addForm: {
-    backgroundColor: colors.white,
-    borderRadius:    radius.lg,
-    padding:         spacing.lg,
-    marginBottom:    spacing.sm,
-  },
-  fieldLabel: {
-    ...typography.label,
-    marginBottom: spacing.sm,
-  } as any,
+  addForm: { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, marginBottom: spacing.sm },
+  fieldLabel: { ...typography.label, marginBottom: spacing.sm } as any,
   noteInput: {
-    backgroundColor:   colors.mint,
-    borderRadius:      radius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical:   13,
-    fontFamily:        'Inter_400',
-    fontSize:          15,
-    color:             colors.textDark,
+    backgroundColor: colors.mint, borderRadius: radius.md,
+    paddingHorizontal: spacing.lg, paddingVertical: 13,
+    fontFamily: 'Inter_400', fontSize: 15, color: colors.textDark,
   },
 
-  error: {
-    color:        '#dc2626',
-    fontFamily:   'Inter_400',
-    fontSize:     13,
-    marginBottom: spacing.sm,
-    marginTop:    spacing.sm,
-    textAlign:    'center',
-  },
-  switchRow: {
-    flexDirection:  'row',
-    justifyContent: 'center',
-    marginTop:      spacing.lg,
-  },
-  link: { color: colors.forestDark, fontFamily: 'Inter_500' },
+  error: { color: '#dc2626', fontFamily: 'Inter_400', fontSize: 13, marginTop: spacing.sm, textAlign: 'center' },
 });

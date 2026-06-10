@@ -4,10 +4,9 @@ import {
   StyleSheet, ActivityIndicator,
 } from 'react-native';
 import {
-  IconSteam, IconNeedle, IconWash,
-  IconShirt, IconHanger, IconStar, IconMountain,
+  IconSteam, IconNeedle, IconShirt, IconHanger, IconStar, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconPlus, IconMinus,
+  IconSpray, IconWash, IconPlus, IconMinus,
 } from '@tabler/icons-react-native';
 import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
@@ -16,8 +15,6 @@ import type { HomeStackParamList } from '../navigation/RootNavigator';
 import { auth, db } from '../lib/firebase';
 import { registerPushToken } from '../lib/notifications';
 import { type Order, type Service, type CartItem } from '../types';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
@@ -26,13 +23,22 @@ import EcoTrustBanner from '../components/EcoTrustBanner';
 import ActiveOrderCard from '../components/home/ActiveOrderCard';
 import SquareMeterSlider from '../components/SquareMeterSlider';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type StrukenProduct = { id: string; name: string; price: number; category: string; order: number };
 type IconComp       = React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 type Nav            = NativeStackNavigationProp<HomeStackParamList>;
+type SectionId      = 'mattvätt' | 'struken' | 'kladvard';
 
 const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
+
+const SERVICES: { id: SectionId; label: string; desc: string; Icon: IconComp }[] = [
+  { id: 'mattvätt',  label: 'Mattvätt', desc: 'Djuptvätt av mattor', Icon: IconSpray },
+  { id: 'struken',   label: 'Struken',  desc: 'Skjortor & kostym',   Icon: IconSteam },
+  { id: 'kladvard',  label: 'Klädvård', desc: 'Lagning & ändring',   Icon: IconNeedle },
+];
 
 // ─── Icon helpers ─────────────────────────────────────────────────────────────
 
@@ -62,123 +68,159 @@ function serviceIcon(name: string): IconComp {
   return IconScissors;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Progress steps (mirrors the website /order header) ─────────────────────────
 
-function SectionHeader({
-  Icon, title, subtitle,
-}: { Icon: IconComp; title: string; subtitle: string }) {
+function ProgressSteps() {
   return (
-    <View style={subStyles.header}>
-      <View style={subStyles.iconCircle}>
-        <Icon size={14} color={colors.forestMid} strokeWidth={1.5} />
+    <View style={ps.row}>
+      <View style={ps.step}>
+        <View style={[ps.bubble, ps.bubbleActive]}><Text style={ps.bubbleNumActive}>1</Text></View>
+        <Text style={ps.labelActive}>Välj tjänster</Text>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={subStyles.title}>{title}</Text>
-        <Text style={subStyles.subtitle}>{subtitle}</Text>
+      <Text style={ps.dash}>—</Text>
+      <View style={ps.step}>
+        <View style={[ps.bubble, ps.bubbleUpcoming]}><Text style={ps.bubbleNum}>2</Text></View>
+        <Text style={ps.label}>Uppgifter &amp; datum</Text>
       </View>
     </View>
   );
 }
 
-function ItemRow({
-  icon: Icon, name, price, qty, onAdd, onRemove,
-}: {
-  icon: IconComp; name: string; price: number;
-  qty: number; onAdd: () => void; onRemove: () => void;
+const ps = StyleSheet.create({
+  row:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  step:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bubble: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  bubbleActive:   { backgroundColor: colors.moss },
+  bubbleUpcoming: { backgroundColor: 'rgba(183,220,215,0.18)', borderWidth: 1, borderColor: 'rgba(183,220,215,0.35)' },
+  bubbleNumActive: { fontFamily: 'Inter_600', fontSize: 12, color: colors.forestDark },
+  bubbleNum:       { fontFamily: 'Inter_600', fontSize: 12, color: colors.moss },
+  labelActive: { fontFamily: 'Inter_500', fontSize: 13, color: colors.white },
+  label:       { fontFamily: 'Inter_400', fontSize: 13, color: 'rgba(183,220,215,0.7)' },
+  dash:        { color: 'rgba(183,220,215,0.4)', fontSize: 13 },
+});
+
+// ─── Service toggle card ────────────────────────────────────────────────────────
+
+function ToggleCard({ Icon, label, desc, open, onPress }: {
+  Icon: IconComp; label: string; desc: string; open: boolean; onPress: () => void;
 }) {
   return (
-    <View style={subStyles.row}>
-      <View style={subStyles.rowIcon}>
-        <Icon size={15} color={colors.forestMid} strokeWidth={1.5} />
+    <TouchableOpacity
+      style={[tc.card, open ? tc.cardOpen : tc.cardClosed]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={[tc.iconCircle, open ? tc.iconCircleOpen : tc.iconCircleClosed]}>
+        <Icon size={18} color={open ? colors.forestDark : colors.forestMid} strokeWidth={1.5} />
       </View>
-      <Text style={[typography.body, { flex: 1 }]}>{name}</Text>
-      <View style={subStyles.stepper}>
-        <Text style={subStyles.priceLabel}>{qty > 0 ? `${price * qty} kr` : `${price} kr`}</Text>
-        <TouchableOpacity
-          style={[subStyles.stepBtn, qty === 0 && { opacity: 0.35 }]}
-          onPress={qty > 0 ? onRemove : undefined}
-          activeOpacity={0.7}
-        >
-          <IconMinus size={11} color={colors.forestMid} strokeWidth={2.5} />
-        </TouchableOpacity>
-        <Text style={subStyles.stepCount}>{qty}</Text>
-        <TouchableOpacity style={subStyles.stepBtn} onPress={onAdd} activeOpacity={0.7}>
-          <IconPlus size={11} color={colors.forestMid} strokeWidth={2.5} />
-        </TouchableOpacity>
+      <Text style={[tc.label, open && { color: colors.forestDark }]} numberOfLines={1}>{label}</Text>
+      <Text style={[tc.desc, open && { color: 'rgba(8,63,65,0.72)' }]} numberOfLines={2}>{desc}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const tc = StyleSheet.create({
+  card: {
+    flex: 1,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+  },
+  cardClosed: { backgroundColor: colors.white, borderColor: 'rgba(15,23,42,0.08)' },
+  cardOpen:   { backgroundColor: colors.forestLight, borderColor: colors.forestLight },
+  iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  iconCircleClosed: { backgroundColor: colors.mint, borderColor: 'rgba(15,23,42,0.06)' },
+  iconCircleOpen:   { backgroundColor: 'rgba(8,63,65,0.12)', borderColor: 'rgba(8,63,65,0.22)' },
+  label: { fontFamily: 'Inter_600', fontSize: 13, color: colors.textDark, textAlign: 'center' },
+  desc:  { fontFamily: 'Inter_400', fontSize: 10, color: colors.textMuted, textAlign: 'center', lineHeight: 14 },
+});
+
+// ─── Section header (inside the open white card) ────────────────────────────────
+
+function SectionHeader({ Icon, title, subtitle }: { Icon: IconComp; title: string; subtitle: string }) {
+  return (
+    <View style={sub.header}>
+      <View style={sub.iconCircle}><Icon size={15} color={colors.forestMid} strokeWidth={1.5} /></View>
+      <View style={{ flex: 1 }}>
+        <Text style={sub.title}>{title}</Text>
+        <Text style={sub.subtitle}>{subtitle}</Text>
       </View>
     </View>
   );
 }
 
-const subStyles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems:    'flex-start',
-    gap:           spacing.sm,
-    marginBottom:  spacing.md,
+// ─── Product tile (2-column grid — mirrors website .prod-tile) ──────────────────
+
+function ProductTile({ Icon, name, price, qty, onAdd, onRemove }: {
+  Icon: IconComp; name: string; price: number; qty: number; onAdd: () => void; onRemove: () => void;
+}) {
+  return (
+    <View style={pt.tile}>
+      <View style={pt.iconCircle}><Icon size={22} color={colors.forestMid} strokeWidth={1.5} /></View>
+      <Text style={pt.name} numberOfLines={2}>{name}</Text>
+      <View style={pt.foot}>
+        <Text style={pt.price}>{price} kr<Text style={pt.per}> /st</Text></Text>
+        <View style={pt.stepper}>
+          <TouchableOpacity
+            style={[pt.stepBtn, qty === 0 && { opacity: 0.4 }]}
+            onPress={qty > 0 ? onRemove : undefined}
+            activeOpacity={0.7}
+          >
+            <IconMinus size={13} color={colors.forestDark} strokeWidth={2.5} />
+          </TouchableOpacity>
+          <Text style={pt.qty}>{qty}</Text>
+          <TouchableOpacity style={pt.stepBtn} onPress={onAdd} activeOpacity={0.7}>
+            <IconPlus size={13} color={colors.forestDark} strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const pt = StyleSheet.create({
+  tile: {
+    width: '48%',
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   iconCircle: {
-    width:           28,
-    height:          28,
-    borderRadius:    radius.circle,
-    backgroundColor: colors.mint,
-    borderWidth:     0.5,
-    borderColor:     'rgba(15,23,42,0.06)',
-    alignItems:      'center',
-    justifyContent:  'center',
-    flexShrink:      0,
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: colors.mint, borderWidth: 1, borderColor: 'rgba(15,23,42,0.06)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  title:    { fontFamily: 'Inter_600',     fontSize: 15, color: colors.textDark },
-  subtitle: { fontFamily: 'Inter_400',     fontSize: 12, color: colors.textMuted, marginTop: 2 },
-
-  row: {
-    flexDirection:     'row',
-    alignItems:        'center',
-    paddingVertical:   13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(6,63,65,0.08)',
-    gap:               spacing.md,
-  },
-  rowIcon: {
-    width:           32,
-    height:          32,
-    borderRadius:    radius.circle,
-    backgroundColor: colors.mint,
-    borderWidth:     0.5,
-    borderColor:     'rgba(15,23,42,0.06)',
-    alignItems:      'center',
-    justifyContent:  'center',
-    flexShrink:      0,
-  },
-  stepper: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.xs,
-    flexShrink:    0,
-  },
-  priceLabel: {
-    fontFamily:        'Inter_500',
-    fontSize:          13,
-    color:             colors.textMid,
-    minWidth:          52,
-    textAlign:         'right',
-  },
+  name: { fontFamily: 'Inter_600', fontSize: 14, color: colors.textDark, textAlign: 'center', lineHeight: 18 },
+  foot: { alignItems: 'center', gap: spacing.md, width: '100%' },
+  price: { fontFamily: 'Inter_700', fontSize: 18, color: colors.textDark },
+  per:   { fontFamily: 'Inter_500', fontSize: 11, color: colors.textMuted },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   stepBtn: {
-    width:          26,
-    height:         26,
-    borderRadius:   radius.circle,
-    borderWidth:    0.5,
-    borderColor:    'rgba(14,92,91,0.3)',
-    alignItems:     'center',
-    justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(8,63,65,0.25)', backgroundColor: colors.white,
+    alignItems: 'center', justifyContent: 'center',
   },
-  stepCount: {
-    fontFamily: 'Inter_500',
-    fontSize:   13,
-    color:      colors.textDark,
-    minWidth:   18,
-    textAlign:  'center',
+  qty: { fontFamily: 'Inter_600', fontSize: 15, color: colors.textDark, minWidth: 20, textAlign: 'center' },
+});
+
+const sub = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.lg },
+  iconCircle: {
+    width: 32, height: 32, borderRadius: radius.circle,
+    backgroundColor: colors.mint, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.06)',
+    alignItems: 'center', justifyContent: 'center',
   },
+  title:    { fontFamily: 'Inter_600', fontSize: 16, color: colors.textDark },
+  subtitle: { fontFamily: 'Inter_400', fontSize: 12, color: colors.textMuted, marginTop: 2 },
 });
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
@@ -186,36 +228,26 @@ const subStyles = StyleSheet.create({
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
 
-  // Active order & auth
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-  const [userName, setUserName]       = useState('');
-
-  // Catalog data
   const [strukenCatalog, setStrukenCatalog] = useState<StrukenProduct[]>([]);
   const [services, setServices]             = useState<Service[]>([]);
   const [loading, setLoading]               = useState(true);
 
-  // Cart state
-  const [mattKvm, setMattKvm]       = useState(5);
-  const [mattItems, setMattItems]   = useState<{ sqm: number; qty: number }[]>([]);
-  const [basket, setBasket]         = useState<Record<string, number>>({}); // id → qty
+  const [openSection, setOpenSection] = useState<SectionId | null>('mattvätt');
+  const [mattKvm, setMattKvm]   = useState(5);
+  const [mattItems, setMattItems] = useState<{ sqm: number; qty: number }[]>([]);
+  const [basket, setBasket]     = useState<Record<string, number>>({});
 
   // ── Auth + live order ──────────────────────────────────────────────────────
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(user => {
-      setUserName(user?.displayName?.split(' ')[0] ?? '');
       if (!user) { setActiveOrder(null); return; }
-
       registerPushToken(user.uid).catch(() => {});
-
       const q = query(collection(db, 'orders'), where('customerId', '==', user.uid));
       const unsubOrders = onSnapshot(q, snap => {
         const all = snap.docs.map(d => ({
-          ...d.data(),
-          id:        d.id,
-          createdAt: d.data().createdAt instanceof Timestamp
-            ? d.data().createdAt.toDate()
-            : new Date(),
+          ...d.data(), id: d.id,
+          createdAt: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toDate() : new Date(),
         } as Order));
         const active = all
           .filter(o => ACTIVE_STATUSES.includes(o.status))
@@ -227,7 +259,7 @@ export default function HomeScreen() {
     return unsubAuth;
   }, []);
 
-  // ── Catalog fetching (via API — no auth required) ─────────────────────────
+  // ── Catalog fetching ───────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}/api/struken-tvatt`).then(r => r.json()),
@@ -242,224 +274,175 @@ export default function HomeScreen() {
   }, []);
 
   // ── Cart helpers ───────────────────────────────────────────────────────────
-  function addItem(id: string) {
-    setBasket(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
-  }
+  function addItem(id: string)    { setBasket(p => ({ ...p, [id]: (p[id] ?? 0) + 1 })); }
   function removeItem(id: string) {
-    setBasket(prev => {
-      const next = { ...prev };
-      if ((next[id] ?? 0) <= 1) delete next[id];
-      else next[id] -= 1;
-      return next;
-    });
+    setBasket(p => { const n = { ...p }; if ((n[id] ?? 0) <= 1) delete n[id]; else n[id] -= 1; return n; });
   }
   function addMatt(sqm: number) {
-    setMattItems(prev => {
-      const hit = prev.find(m => m.sqm === sqm);
-      if (hit) return prev.map(m => m.sqm === sqm ? { ...m, qty: m.qty + 1 } : m);
-      return [...prev, { sqm, qty: 1 }];
+    setMattItems(p => {
+      const hit = p.find(m => m.sqm === sqm);
+      return hit ? p.map(m => m.sqm === sqm ? { ...m, qty: m.qty + 1 } : m) : [...p, { sqm, qty: 1 }];
     });
   }
   function removeMatt(sqm: number) {
-    setMattItems(prev => {
-      const hit = prev.find(m => m.sqm === sqm);
-      if (!hit) return prev;
-      if (hit.qty <= 1) return prev.filter(m => m.sqm !== sqm);
-      return prev.map(m => m.sqm === sqm ? { ...m, qty: m.qty - 1 } : m);
+    setMattItems(p => {
+      const hit = p.find(m => m.sqm === sqm);
+      if (!hit) return p;
+      if (hit.qty <= 1) return p.filter(m => m.sqm !== sqm);
+      return p.map(m => m.sqm === sqm ? { ...m, qty: m.qty - 1 } : m);
     });
   }
 
-  // ── Checkout ───────────────────────────────────────────────────────────────
   function handleCheckout() {
     const cartItems: CartItem[] = [];
-
     for (const m of mattItems) {
-      cartItems.push({
-        id:    `matta-${m.sqm}`,
-        name:  `Matta ${m.sqm} m²`,
-        price: m.sqm * 90,
-        qty:   m.qty,
-        type:  'mattvätt',
-      });
+      cartItems.push({ id: `matta-${m.sqm}`, name: `Matta ${m.sqm} m²`, price: m.sqm * 90, qty: m.qty, type: 'mattvätt' });
     }
-
     for (const p of strukenCatalog) {
       const qty = basket[p.id] ?? 0;
       if (qty > 0) cartItems.push({ id: p.id, name: p.name, price: p.price, qty, type: 'struken' });
     }
-
     for (const svc of services) {
       const qty = basket[svc.id] ?? 0;
       if (qty > 0) cartItems.push({ id: svc.id, name: svc.name, price: svc.price_ore / 100, qty, type: 'service' });
     }
-
     if (cartItems.length === 0) return;
     navigation.navigate('Checkout', { items: cartItems, total: cartTotal });
   }
 
   // ── Totals ─────────────────────────────────────────────────────────────────
-  const mattPrice       = mattKvm * 90;
-  const currentMattQty  = mattItems.find(m => m.sqm === mattKvm)?.qty ?? 0;
-  const mattTotalCount  = mattItems.reduce((s, m) => s + m.qty, 0);
-  const mattTotal       = mattItems.reduce((s, m) => s + m.sqm * 90 * m.qty, 0);
-  const strukenTotal    = strukenCatalog.reduce((s, p) => s + (basket[p.id] ?? 0) * p.price, 0);
-  const svcTotal        = services.reduce((s, svc) => s + (basket[svc.id] ?? 0) * (svc.price_ore / 100), 0);
-  const cartTotal       = mattTotal + strukenTotal + svcTotal;
-  const cartCount       = mattTotalCount + Object.values(basket).reduce((s, n) => s + n, 0);
+  const mattPrice      = mattKvm * 90;
+  const currentMattQty = mattItems.find(m => m.sqm === mattKvm)?.qty ?? 0;
+  const mattTotalCount = mattItems.reduce((s, m) => s + m.qty, 0);
+  const mattTotal      = mattItems.reduce((s, m) => s + m.sqm * 90 * m.qty, 0);
+  const strukenTotal   = strukenCatalog.reduce((s, p) => s + (basket[p.id] ?? 0) * p.price, 0);
+  const svcTotal       = services.reduce((s, svc) => s + (basket[svc.id] ?? 0) * (svc.price_ore / 100), 0);
+  const cartTotal      = mattTotal + strukenTotal + svcTotal;
+  const cartCount      = mattTotalCount + Object.values(basket).reduce((s, n) => s + n, 0);
+
+  function toggle(id: SectionId) { setOpenSection(prev => prev === id ? null : id); }
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <TopBar title="Express Tvätt" />
+      <TopBar />
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, cartCount > 0 && { paddingBottom: 110 }]}
+        contentContainerStyle={[styles.content, cartCount > 0 && { paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Greeting */}
-        <View style={styles.section}>
-          <Text style={[typography.h1, { color: colors.white }]}>
-            {userName ? `God dag, ${userName}.` : 'Välkommen.'}
-          </Text>
-          <Text style={[typography.small, { marginTop: 4, color: colors.moss }]}>
-            Vad vill du lämna in idag?
-          </Text>
-        </View>
-
-        <EcoTrustBanner />
-
         {activeOrder && (
-          <View style={styles.section}>
+          <View style={{ marginBottom: spacing.lg }}>
             <ActiveOrderCard order={activeOrder} />
           </View>
         )}
 
+        <ProgressSteps />
+
+        {/* Service toggle cards */}
+        <View style={styles.toggleRow}>
+          {SERVICES.map(s => (
+            <ToggleCard
+              key={s.id}
+              Icon={s.Icon}
+              label={s.label}
+              desc={s.desc}
+              open={openSection === s.id}
+              onPress={() => toggle(s.id)}
+            />
+          ))}
+        </View>
+
         {/* ── Mattvätt ──────────────────────────────────────────────────── */}
-        <View style={styles.serviceCard}>
-          <SectionHeader
-            Icon={IconWash}
-            title="Mattvätt"
-            subtitle="Djuptvätt av mattor · Hämtning & leverans ingår alltid"
-          />
+        {openSection === 'mattvätt' && (
+          <View style={styles.serviceCard}>
+            <SectionHeader Icon={IconSpray} title="Mattvätt" subtitle="Djuptvätt av mattor · Hämtning ingår alltid" />
 
-          <View style={styles.sliderBox}>
-            <SquareMeterSlider value={mattKvm} onChange={setMattKvm} />
-          </View>
+            <View style={styles.sliderBox}>
+              <SquareMeterSlider value={mattKvm} onChange={setMattKvm} />
+            </View>
 
-          {/* Price */}
-          <View style={styles.priceRow}>
-            <View>
+            <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>PRIS</Text>
               <Text style={styles.priceValue}>{mattPrice} kr</Text>
               <Text style={typography.micro}>90 kr / m²</Text>
             </View>
-          </View>
 
-          {/* CTA — button when this size not in cart, stepper when it is */}
-          {currentMattQty === 0 ? (
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={() => addMatt(mattKvm)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryBtnText}>
-                Lägg till matta ({mattKvm} m²) — {mattPrice} kr
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.mattStepper}>
-              <TouchableOpacity
-                style={styles.mattStepBtn}
-                onPress={() => removeMatt(mattKvm)}
-                activeOpacity={0.7}
-              >
-                <IconMinus size={14} color={colors.forestMid} strokeWidth={2.5} />
+            {currentMattQty === 0 ? (
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => addMatt(mattKvm)} activeOpacity={0.85}>
+                <Text style={styles.primaryBtnText}>Lägg till matta ({mattKvm} m²) — {mattPrice} kr</Text>
               </TouchableOpacity>
-              <Text style={styles.mattStepCount}>{currentMattQty}</Text>
-              <TouchableOpacity
-                style={styles.mattStepBtn}
-                onPress={() => addMatt(mattKvm)}
-                activeOpacity={0.7}
-              >
-                <IconPlus size={14} color={colors.forestMid} strokeWidth={2.5} />
-              </TouchableOpacity>
-              <Text style={styles.mattInCartLabel}>
-                {mattTotalCount === 1 ? '1 matta i varukorgen' : `${mattTotalCount} mattor i varukorgen`}
-              </Text>
-            </View>
-          )}
-        </View>
+            ) : (
+              <View style={styles.mattStepper}>
+                <TouchableOpacity style={styles.mattStepBtn} onPress={() => removeMatt(mattKvm)} activeOpacity={0.7}>
+                  <IconMinus size={14} color={colors.forestDark} strokeWidth={2.5} />
+                </TouchableOpacity>
+                <Text style={styles.mattStepCount}>{currentMattQty}</Text>
+                <TouchableOpacity style={styles.mattStepBtn} onPress={() => addMatt(mattKvm)} activeOpacity={0.7}>
+                  <IconPlus size={14} color={colors.forestDark} strokeWidth={2.5} />
+                </TouchableOpacity>
+                <Text style={styles.mattInCartLabel}>
+                  {mattTotalCount === 1 ? '1 matta i varukorgen' : `${mattTotalCount} mattor i varukorgen`}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ── Struken tvätt ─────────────────────────────────────────────── */}
-        <View style={styles.serviceCard}>
-          <SectionHeader
-            Icon={IconSteam}
-            title="Struken tvätt"
-            subtitle="Skjortor, kostym & festklädsel — levereras hängda på galge"
-          />
-
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.forestMid} style={{ marginVertical: spacing.lg }} />
-          ) : strukenCatalog.length === 0 ? (
-            <Text style={[typography.small, { color: colors.textMuted, paddingVertical: spacing.md }]}>
-              Inga produkter tillgängliga just nu.
-            </Text>
-          ) : (
-            strukenCatalog.map(p => (
-              <ItemRow
-                key={p.id}
-                icon={strukenIcon(p.name)}
-                name={p.name}
-                price={p.price}
-                qty={basket[p.id] ?? 0}
-                onAdd={() => addItem(p.id)}
-                onRemove={() => removeItem(p.id)}
-              />
-            ))
-          )}
-        </View>
+        {openSection === 'struken' && (
+          <View style={styles.serviceCard}>
+            <SectionHeader Icon={IconSteam} title="Struken tvätt" subtitle="Skjortor, kostym & festklädsel — på galge" />
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.forestMid} style={{ marginVertical: spacing.lg }} />
+            ) : strukenCatalog.length === 0 ? (
+              <Text style={styles.emptyText}>Inga produkter tillgängliga just nu.</Text>
+            ) : (
+              <View style={styles.grid}>
+                {strukenCatalog.map(p => (
+                  <ProductTile
+                    key={p.id} Icon={strukenIcon(p.name)} name={p.name} price={p.price}
+                    qty={basket[p.id] ?? 0} onAdd={() => addItem(p.id)} onRemove={() => removeItem(p.id)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ── Klädvård & textil ──────────────────────────────────────────── */}
-        <View style={[styles.serviceCard, { marginBottom: 0 }]}>
-          <SectionHeader
-            Icon={IconNeedle}
-            title="Klädvård & textil"
-            subtitle="Lagning, ändring, rengöring & skydd för dina textilier"
-          />
+        {openSection === 'kladvard' && (
+          <View style={styles.serviceCard}>
+            <SectionHeader Icon={IconNeedle} title="Klädvård & textil" subtitle="Lagning, ändring, rengöring & skydd" />
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.forestMid} style={{ marginVertical: spacing.lg }} />
+            ) : services.length === 0 ? (
+              <Text style={styles.emptyText}>Inga tjänster tillgängliga just nu.</Text>
+            ) : (
+              <View style={styles.grid}>
+                {services.map(svc => (
+                  <ProductTile
+                    key={svc.id} Icon={serviceIcon(svc.name)} name={svc.name} price={svc.price_ore / 100}
+                    qty={basket[svc.id] ?? 0} onAdd={() => addItem(svc.id)} onRemove={() => removeItem(svc.id)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.forestMid} style={{ marginVertical: spacing.lg }} />
-          ) : services.length === 0 ? (
-            <Text style={[typography.small, { color: colors.textMuted, paddingVertical: spacing.md }]}>
-              Inga tjänster tillgängliga just nu.
-            </Text>
-          ) : (
-            services.map(svc => (
-              <ItemRow
-                key={svc.id}
-                icon={serviceIcon(svc.name)}
-                name={svc.name}
-                price={svc.price_ore / 100}
-                qty={basket[svc.id] ?? 0}
-                onAdd={() => addItem(svc.id)}
-                onRemove={() => removeItem(svc.id)}
-              />
-            ))
-          )}
-        </View>
+        <EcoTrustBanner />
       </ScrollView>
 
-      {/* ── Sticky order total bar ─────────────────────────────────────── */}
+      {/* ── Sticky cart bar ─────────────────────────────────────────────── */}
       {cartCount > 0 && (
         <View style={styles.cartBar}>
           <View>
-            <Text style={styles.cartCount}>
-              {cartCount} {cartCount === 1 ? 'artikel' : 'artiklar'}
-            </Text>
+            <Text style={styles.cartCount}>{cartCount} {cartCount === 1 ? 'artikel' : 'artiklar'}</Text>
             <Text style={styles.cartTotal}>{cartTotal} kr</Text>
           </View>
-          <TouchableOpacity style={styles.cartBtn} onPress={handleCheckout} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.cartBtn} onPress={handleCheckout} activeOpacity={0.85}>
             <Text style={styles.cartBtnText}>Gå vidare →</Text>
           </TouchableOpacity>
         </View>
@@ -472,10 +455,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content:   { padding: spacing.lg, paddingBottom: 100 },
-  section:   { marginBottom: spacing.xl },
+  content:   { padding: spacing.lg, paddingBottom: spacing.xxl },
 
-  // ─ Service section cards ─ (white surfaces, hairline border)
+  toggleRow: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.sm, marginBottom: spacing.lg },
+
   serviceCard: {
     backgroundColor: colors.white,
     borderRadius:    radius.lg,
@@ -485,7 +468,10 @@ const styles = StyleSheet.create({
     marginBottom:    spacing.lg,
   },
 
-  // ─ Mattvätt ─ (warm-cream inset on the white card)
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  emptyText: { ...typography.small, color: colors.textMuted, paddingVertical: spacing.md } as any,
+
+  // Mattvätt
   sliderBox: {
     backgroundColor: colors.mint,
     borderRadius:    radius.md,
@@ -494,97 +480,27 @@ const styles = StyleSheet.create({
     borderColor:     'rgba(15,23,42,0.08)',
     marginBottom:    spacing.md,
   },
-  priceRow: {
-    marginBottom: spacing.md,
-  },
-  priceLabel: {
-    fontFamily:    'Inter_400',
-    fontSize:      10,
-    color:         colors.textMuted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom:  2,
-  } as any,
-  priceValue: {
-    fontFamily: 'Inter_600',
-    fontSize:   22,
-    color:      colors.textDark,
-  },
+  priceRow:   { marginBottom: spacing.md },
+  priceLabel: { fontFamily: 'Inter_500', fontSize: 10, color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 } as any,
+  priceValue: { fontFamily: 'Inter_700', fontSize: 24, color: colors.textDark },
 
-  primaryBtn: {
-    backgroundColor: colors.forestDark,
-    borderRadius:    radius.md,
-    paddingVertical: spacing.md,
-    alignItems:      'center',
-  },
-  primaryBtnText: {
-    fontFamily: 'Inter_600',
-    fontSize:   14,
-    color:      colors.white,
-  },
+  primaryBtn:     { backgroundColor: colors.forestDark, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center' },
+  primaryBtnText: { fontFamily: 'Inter_600', fontSize: 14, color: colors.white },
 
-  mattStepper: {
-    flexDirection: 'row',
-    alignItems:    'center',
-    gap:           spacing.sm,
-    justifyContent: 'center',
-    paddingVertical: spacing.xs,
-  },
-  mattStepBtn: {
-    width:          34,
-    height:         34,
-    borderRadius:   radius.circle,
-    borderWidth:    0.5,
-    borderColor:    'rgba(14,92,91,0.3)',
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
-  mattStepCount: {
-    fontFamily: 'Inter_500',
-    fontSize:   15,
-    color:      colors.textDark,
-    minWidth:   20,
-    textAlign:  'center',
-  },
-  mattInCartLabel: {
-    fontFamily: 'Inter_400',
-    fontSize:   12,
-    color:      colors.textMuted,
-  },
+  mattStepper:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center', paddingVertical: spacing.xs },
+  mattStepBtn:     { width: 34, height: 34, borderRadius: radius.circle, borderWidth: 1, borderColor: 'rgba(8,63,65,0.25)', alignItems: 'center', justifyContent: 'center' },
+  mattStepCount:   { fontFamily: 'Inter_600', fontSize: 15, color: colors.textDark, minWidth: 20, textAlign: 'center' },
+  mattInCartLabel: { fontFamily: 'Inter_400', fontSize: 12, color: colors.textMuted },
 
-  // ─ Cart bar ─
+  // Cart bar
   cartBar: {
-    position:          'absolute',
-    bottom:            0,
-    left:              0,
-    right:             0,
-    backgroundColor:   colors.forestDark,
-    flexDirection:     'row',
-    alignItems:        'center',
-    justifyContent:    'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop:        spacing.md,
-    paddingBottom:     spacing.xxl,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: colors.forestDark,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl,
   },
-  cartCount: {
-    fontFamily: 'Inter_400',
-    fontSize:   11,
-    color:      'rgba(183,220,215,0.6)',
-  },
-  cartTotal: {
-    fontFamily: 'Inter_600',
-    fontSize:   22,
-    color:      colors.moss,
-  },
-  cartBtn: {
-    backgroundColor:   colors.forestLight,
-    borderRadius:      radius.md,
-    paddingVertical:   11,
-    paddingHorizontal: spacing.lg,
-  } as any,
-  cartBtnText: {
-    fontFamily: 'Inter_500',
-    fontSize:   13,
-    color:      colors.forestDark,
-  },
+  cartCount: { fontFamily: 'Inter_400', fontSize: 11, color: 'rgba(183,220,215,0.6)' },
+  cartTotal: { fontFamily: 'Inter_700', fontSize: 22, color: colors.moss },
+  cartBtn:     { backgroundColor: colors.forestLight, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: spacing.lg },
+  cartBtnText: { fontFamily: 'Inter_600', fontSize: 13, color: colors.forestDark },
 });
