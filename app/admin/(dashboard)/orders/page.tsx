@@ -1,4 +1,5 @@
 import { db } from "@/lib/firebase-admin";
+import { FieldPath } from "firebase-admin/firestore";
 import OrdersClient, { type Order } from "./OrdersClient";
 
 export default async function OrdersPage() {
@@ -13,10 +14,9 @@ export default async function OrdersPage() {
   const emailMap: Record<string, string> = {};
   for (let i = 0; i < uids.length; i += 30) {
     const batch = uids.slice(i, i + 30);
-    const customerSnap = await db.collection("customers").where("uid", "in", batch).get();
+    const customerSnap = await db.collection("customers").where(FieldPath.documentId(), "in", batch).get();
     customerSnap.docs.forEach(d => {
-      const data = d.data();
-      if (data.uid && data.email) emailMap[data.uid] = data.email;
+      if (d.data().email) emailMap[d.id] = d.data().email;
     });
   }
 
