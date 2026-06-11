@@ -63,7 +63,7 @@ const PRODUCTS: Product[] = [
 async function seed() {
   console.log(`🌱 Seeding ${PRODUCTS.length} products into StrukenTvatt…`);
 
-  const col = db.collection('StrukenTvatt');
+  const col = db.collection('services').doc('struken-tvatt').collection('StrukenTvatt');
   let count = 0;
 
   for (const product of PRODUCTS) {
