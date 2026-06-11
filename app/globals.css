@@ -2069,10 +2069,11 @@ input, textarea, select { font-family: inherit; }
   box-shadow: 0 18px 50px rgba(8, 63, 65, 0.18);
   transform-origin: top center;
   opacity: 0;
+  pointer-events: none;
   transform: translateY(-8px) scale(0.98);
   transition: opacity 220ms var(--ease), transform 220ms var(--ease);
 }
-.lp-nav-mobile--open { opacity: 1; transform: none; }
+.lp-nav-mobile--open { opacity: 1; pointer-events: auto; transform: none; }
 .lp-nav-mobile-links { display: flex; flex-direction: column; }
 .lp-nav-mobile-links a {
   padding: 13px 14px;
