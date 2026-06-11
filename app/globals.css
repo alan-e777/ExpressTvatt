@@ -2945,3 +2945,39 @@ input, textarea, select { font-family: inherit; }
 
 /* Kassa empty-cart link — readable on dark body */
 .site-shell .form-page.of > .error-msg a { color: #6BB3AC; font-weight: 600; }
+
+/* ── Profile page — dark teal body canvas, light text ─────────────────────
+   Must live after .site-shell rules so the higher cascade position wins.   */
+.site-shell .profile-page .h2,
+.site-shell .profile-page .h3 {
+  color: #ffffff;
+}
+
+.site-shell .profile-page .body,
+.site-shell .profile-page .body-bold {
+  color: #ffffff;
+}
+
+.site-shell .profile-page .small {
+  color: rgba(183, 220, 215, 0.85); /* moss at 85% */
+}
+
+/* "Logga ut" — visible ghost on dark canvas */
+.site-shell .profile-page .btn-secondary {
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.09);
+}
+.site-shell .profile-page .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Order / address cards already have linen backgrounds — text inside is fine */
+.site-shell .profile-page .order-card .body,
+.site-shell .profile-page .order-card .body-bold,
+.site-shell .profile-page .order-card .small {
+  color: var(--text-dark);
+}
