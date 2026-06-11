@@ -14,6 +14,9 @@ import {
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import ActiveOrderCard from '@/components/ActiveOrderCard';
+
+const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
 
 type OrderStatus = 'pending_payment' | 'paid' | 'collected' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
 type SavedAddress = { address: string; postalCode: string; deliveryNote?: string };
@@ -353,8 +356,14 @@ export default function ProfilPage() {
         </button>
       </div>
 
-      {/* Main: orders + addresses */}
+      {/* Main: active orders + orders + addresses */}
       <div>
+        {orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length > 0 && (
+          <div style={{ marginBottom: 'var(--sp-xl)' }}>
+            <ActiveOrderCard orders={orders.filter(o => ACTIVE_STATUSES.includes(o.status))} />
+          </div>
+        )}
+
         <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>Mina ordrar</div>
 
         {orders.length === 0 ? (
@@ -406,9 +415,9 @@ export default function ProfilPage() {
           {addresses.map((a, i) => (
             <div key={i} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-md)', display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
               <div style={{ flex: 1 }}>
-                <div className="body-bold">{a.address}</div>
+                <div className="body-bold" style={{ color: 'var(--text-dark)' }}>{a.address}</div>
                 {(a.postalCode || a.deliveryNote) && (
-                  <div className="small" style={{ marginTop: 2 }}>
+                  <div className="small" style={{ marginTop: 2, color: 'var(--text-muted)' }}>
                     {[a.postalCode, a.deliveryNote || ''].filter(Boolean).join(' · ')}
                   </div>
                 )}

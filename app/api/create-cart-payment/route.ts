@@ -10,6 +10,13 @@ type CartItem = {
   type:  'mattvätt' | 'struken' | 'service';
 };
 
+// Fixed mattvätt sizes — the canonical prices live here, never trusted from the client.
+const MATTVATT_PRICES: Record<string, number> = {
+  'matta-liten': 299,
+  'matta-stor':  499,
+  'matta-akta':  699,
+};
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const {
@@ -68,10 +75,15 @@ export async function POST(request: NextRequest) {
     let priceKr: number | null = null;
 
     if (item.type === 'mattvätt') {
-      // Derive from name "Matta X m²" or trust client price (kvm × 90 is deterministic)
-      const match = item.name.match(/(\d+(?:\.\d+)?)\s*m²/i);
-      const kvm   = match ? parseFloat(match[1]) : null;
-      priceKr     = kvm ? Math.round(kvm) * 90 : null;
+      // Fixed-size mattvätt (matta-liten / matta-stor / matta-akta).
+      // Fall back to the legacy "Matta X m²" (kvm × 90) for older clients.
+      if (MATTVATT_PRICES[item.id] !== undefined) {
+        priceKr = MATTVATT_PRICES[item.id];
+      } else {
+        const match = item.name.match(/(\d+(?:\.\d+)?)\s*m²/i);
+        const kvm   = match ? parseFloat(match[1]) : null;
+        priceKr     = kvm ? Math.round(kvm) * 90 : null;
+      }
     } else if (item.type === 'struken') {
       priceKr = strukenPrices[item.id] ?? null;
     } else if (item.type === 'service') {

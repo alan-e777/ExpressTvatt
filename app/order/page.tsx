@@ -2,21 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
 import {
-  IconWashMachine, IconSteam, IconNeedle,
+  IconSteam, IconNeedle,
   IconShirt, IconHanger, IconStar, IconWash,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconPlus, IconMinus, IconSpray, IconChevronUp, IconChevronDown, IconChevronRight,
+  IconPlus, IconMinus, IconSpray, IconChevronUp, IconChevronRight,
   IconArrowLeft, IconX,
 } from '@tabler/icons-react';
-import { auth, db } from '@/lib/firebase-client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type OrderStatus = 'pending_payment' | 'paid' | 'collected' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
-type Order        = { id: string; serviceName: string; status: OrderStatus; createdAt: Date };
 type StrukenCat   = 'Herr' | 'Dam' | 'Fest' | 'Hem' | 'Utomhus' | 'Skrädderi';
 type StrukenProduct = { id: string; name: string; price: number; category: StrukenCat; order: number };
 type Service      = { id: string; name: string; description: string; price_ore: number };
@@ -24,16 +19,6 @@ type CartItem     = { id: string; name: string; price: number; quantity: number;
 type SectionId    = 'mattvätt' | 'struken' | 'kladavard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
-const BADGE_LABEL: Partial<Record<OrderStatus, string>> = {
-  paid:             'Väntar på hämtning',
-  collected:        'Hos skräddaren',
-  in_progress:      'Hos skräddaren',
-  ready_for_pickup: 'Redo för leverans',
-  completed:        'Levererad',
-};
-const STEPS = ['Bokad', 'Hämtad', 'Rengörs', 'Klar', 'Levererad'];
 
 const STRUKEN_CATS: StrukenCat[] = ['Herr', 'Dam', 'Fest', 'Hem', 'Utomhus', 'Skrädderi'];
 
@@ -43,30 +28,14 @@ const SECTIONS: { id: SectionId; label: string; desc: string; Icon: React.Compon
   { id: 'kladavard', label: 'Klädvård',      Icon: IconNeedle, desc: 'Lagning, ändring & rengöring',     subtitle: 'Lagning, ändring, rengöring & skydd för dina textilier' },
 ];
 
-const MATT_LABELS: Record<number, string> = {
-  1:'1×1 m', 2:'1×2 m', 3:'1.5×2 m', 4:'2×2 m', 5:'2×2.5 m',
-  6:'2×3 m', 8:'2.5×3 m', 10:'2.5×4 m', 12:'3×4 m', 15:'3×5 m',
-  20:'4×5 m', 24:'4×6 m', 25:'5×5 m', 30:'5×6 m',
-};
-function mattLabel(v: number) {
-  const keys = Object.keys(MATT_LABELS).map(Number).sort((a, b) => a - b);
-  let best = keys[0];
-  for (const k of keys) { if (Math.abs(k - v) < Math.abs(best - v)) best = k; }
-  return MATT_LABELS[best] ?? `${v} m²`;
-}
+// Fixed mattvätt sizes (server re-validates these prices in create-cart-payment)
+const MATT_OPTIONS: { id: string; name: string; price: number; Icon: React.ComponentType<{ size: number; stroke: number }> }[] = [
+  { id: 'matta-liten', name: 'Matta liten (< 2 m²)', price: 299, Icon: IconSpray },
+  { id: 'matta-stor',  name: 'Matta stor (> 2 m²)',  price: 499, Icon: IconSpray },
+  { id: 'matta-akta',  name: 'Äkta / orientalisk',    price: 699, Icon: IconStar },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function stateFor(s: OrderStatus): ('done' | 'active' | 'future')[] {
-  switch (s) {
-    case 'paid':             return ['active', 'future', 'future', 'future', 'future'];
-    case 'collected':        return ['done',   'active', 'future', 'future', 'future'];
-    case 'in_progress':      return ['done',   'done',   'active', 'future', 'future'];
-    case 'ready_for_pickup': return ['done',   'done',   'done',   'active', 'future'];
-    case 'completed':        return ['done',   'done',   'done',   'done',   'active'];
-    default:                 return ['active', 'future', 'future', 'future', 'future'];
-  }
-}
 
 function serviceIcon(name: string) {
   const n = name.toLowerCase();
@@ -91,105 +60,6 @@ function strukenIcon(name: string) {
   if (n.includes('gardin') || n.includes('hängare'))                             return IconHanger;
   if (n.includes('klänning') || n.includes('kjol'))                              return IconStar;
   return IconShirt;
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function ActiveOrderCard({ orders }: { orders: Order[] }) {
-  const [displayIdx, setDisplayIdx] = useState(0);
-  const [animClass, setAnimClass]   = useState('');
-
-  // Keep index in bounds if an order disappears
-  useEffect(() => {
-    setDisplayIdx(prev => Math.min(prev, Math.max(0, orders.length - 1)));
-  }, [orders.length]);
-
-  const order  = orders[displayIdx];
-  const extra  = orders.length - 1;
-  const states = stateFor(order.status);
-  const badge  = BADGE_LABEL[order.status] ?? 'Pågår';
-
-  function handleClick() {
-    if (orders.length <= 1) return;
-    setAnimClass('card-swap-exit');
-    setTimeout(() => {
-      setDisplayIdx(i => (i + 1) % orders.length);
-      setAnimClass('card-swap-enter');
-    }, 200);
-  }
-
-  return (
-    <div style={{ position: 'relative' }}>
-
-      {/* +X notification bubble */}
-      {extra > 0 && (
-        <div style={{
-          position: 'absolute', top: -8, right: -8, zIndex: 1,
-          minWidth: 22, height: 22, borderRadius: 9999,
-          padding: '0 5px',
-          background: 'var(--forest-light)', color: 'var(--forest-dark)',
-          fontFamily: 'DM Sans, sans-serif', fontSize: 10, fontWeight: 700,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none',
-        }}>
-          +{extra}
-        </div>
-      )}
-
-      <div
-        className="active-order-card section"
-        data-status={order.status}
-        style={{ cursor: orders.length > 1 ? 'pointer' : 'default', overflow: 'hidden' }}
-        onClick={handleClick}
-      >
-        <div className={animClass} onAnimationEnd={() => setAnimClass('')}>
-          <div className="section-label">PÅGÅENDE RENGÖRINGAR</div>
-          <div className="order-row">
-            <div className="order-icon"><IconWashMachine size={16} stroke={1.5} /></div>
-            <div style={{ flex: 1 }}>
-              <div className="order-name">{order.serviceName}</div>
-              <div className="order-id">#{order.id.slice(-7).toUpperCase()}</div>
-            </div>
-            <div className="order-badge">{badge}</div>
-          </div>
-          <div className="stepper">
-            <div className="nodes-row">
-              {STEPS.map((_, i) => {
-                const s = states[i];
-                const circle = (
-                  <div className={`step-circle step-${s}`}>
-                    {s === 'done' ? (
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: '#fafaf7' }}>
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <span className="step-num" style={{ color: s === 'active' ? '#2d5a3d' : 'rgba(200,223,192,0.35)' }}>{i + 1}</span>
-                    )}
-                  </div>
-                );
-                return (
-                  <div key={i} style={{ display: 'contents' }}>
-                    {i > 0 && <div className={`connector ${states[i-1] === 'done' ? 'connector-done' : 'connector-future'}`} />}
-                    <div className="node-wrap">
-                      {s === 'active' ? <div className="active-ring">{circle}</div> : circle}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="labels-row">
-              {STEPS.map((label, i) => (
-                <div key={label} style={{ display: 'contents' }}>
-                  {i > 0 && <div className="label-gap" />}
-                  <span className={`step-label step-label-${states[i]}`}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function SkeletonRows({ count }: { count: number }) {
@@ -222,37 +92,12 @@ function PulseQty({ value }: { value: number }) {
 export default function HomePage() {
   const router = useRouter();
 
-  const [user, setUser]               = useState<User | null>(null);
-  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [strukenCatalog, setStrukenCatalog] = useState<Partial<Record<StrukenCat, StrukenProduct[]>>>({});
   const [services, setServices]       = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [mattKvm, setMattKvm]         = useState(5);
   const [cart, setCart]               = useState<CartItem[]>([]);
   const [openSection, setOpenSection] = useState<SectionId | null>(null);
   const [sheetOpen, setSheetOpen]     = useState(false);
-
-  // Auth + live order
-  useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, currentUser => {
-      setUser(currentUser);
-      if (!currentUser) { setActiveOrders([]); return; }
-      const q = query(collection(db, 'orders'), where('customerId', '==', currentUser.uid));
-      const unsubOrders = onSnapshot(q, snap => {
-        const all = snap.docs.map(d => {
-          const data = d.data();
-          return { id: d.id, serviceName: data.serviceName, status: data.status as OrderStatus,
-                   createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date() };
-        });
-        // newest → oldest; cycle order matches "latest first"
-        const active = all.filter(o => ACTIVE_STATUSES.includes(o.status))
-                          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        setActiveOrders(active);
-      });
-      return unsubOrders;
-    });
-    return unsubAuth;
-  }, []);
 
   // Fetch services
   useEffect(() => {
@@ -305,20 +150,16 @@ export default function HomePage() {
     return cart.filter(i => i.type === type).reduce((s, i) => s + i.quantity, 0);
   };
 
-  // Mattvätt cart actions
-  const mattId    = `matta-${mattKvm}`;
-  const mattPrice = mattKvm * 90;
-
   // Close the sheet automatically if the cart empties out
   useEffect(() => { if (cartCount === 0 && sheetOpen) setSheetOpen(false); }, [cartCount, sheetOpen]);
 
   const openMeta = openSection ? SECTIONS.find(s => s.id === openSection)! : null;
 
-  // A single product tile (struken + klädvård share the same shape)
+  // A single product tile (mattvätt + struken + klädvård share the same shape)
   function ProductTile({ id, name, price, Icon, type, serviceId }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
-    type: 'struken' | 'service'; serviceId?: string;
+    type: CartItem['type']; serviceId?: string;
   }) {
     const qty = cartQty(id);
     return (
@@ -348,13 +189,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className={`of-flow${cartCount > 0 ? ' has-bar' : ''}`}>
-
-      {activeOrders.length > 0 && (
-        <div style={{ marginBottom: 'var(--sp-xl)' }}>
-          <ActiveOrderCard orders={activeOrders} />
-        </div>
-      )}
+    <div className={`of-flow of-flow-order${cartCount > 0 ? ' has-bar' : ''}`}>
 
       {/* Progress indicator */}
       <div style={{ textAlign: 'center', marginBottom: 'var(--sp-xl)' }}>
@@ -418,107 +253,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Mattvätt — size slider */}
+          {/* Mattvätt — three fixed sizes */}
           {openSection === 'mattvätt' && (
-            <div style={{
-              background: 'var(--linen)', borderRadius: 'var(--radius-lg)',
-              padding: 'var(--sp-xl)', border: '0.5px solid rgba(14,92,91,0.1)',
-            }}>
-              <div className="small" style={{ marginBottom: 'var(--sp-md)', color: 'var(--text-mid)' }}>
-                Välj storlek på mattan
-              </div>
-
-              {/* kvm display — editable */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                    <input
-                      type="number" min={1} max={30} step={1} value={mattKvm}
-                      onChange={e => {
-                        const v = Math.min(30, Math.max(1, Number(e.target.value)));
-                        if (!isNaN(v) && e.target.value !== '') setMattKvm(Math.round(v));
-                      }}
-                      className="matt-kvm-input"
-                      style={{
-                        fontFamily: 'inherit', fontSize: 36, fontWeight: 600,
-                        color: 'var(--text-dark)', background: 'none', border: 'none',
-                        borderBottom: '1.5px solid rgba(14,92,91,0.25)', outline: 'none',
-                        width: 52, padding: '0 2px', lineHeight: 1,
-                      }}
-                    />
-                    <span style={{ fontSize: 36, fontWeight: 600, color: 'var(--text-dark)' }}>m²</span>
-                  </div>
-                  {/* Custom stepper arrows */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
-                    <button
-                      onClick={() => setMattKvm(v => Math.min(30, v + 1))}
-                      style={{
-                        width: 24, height: 24, borderRadius: 6,
-                        border: '0.5px solid rgba(14,92,91,0.2)',
-                        background: 'var(--linen)', color: 'var(--forest-mid)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', transition: 'background 0.12s',
-                      }}
-                    >
-                      <IconChevronUp size={13} stroke={2} />
-                    </button>
-                    <button
-                      onClick={() => setMattKvm(v => Math.max(1, v - 1))}
-                      style={{
-                        width: 24, height: 24, borderRadius: 6,
-                        border: '0.5px solid rgba(14,92,91,0.2)',
-                        background: 'var(--linen)', color: 'var(--forest-mid)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', transition: 'background 0.12s',
-                      }}
-                    >
-                      <IconChevronDown size={13} stroke={2} />
-                    </button>
-                  </div>
-                </div>
-                <span className="small">{mattLabel(mattKvm)}</span>
-              </div>
-
-              {/* Slider */}
-              <input
-                type="range" min={1} max={30} step={1} value={mattKvm}
-                onChange={e => setMattKvm(Number(e.target.value))}
-                style={{ width: '100%', accentColor: 'var(--forest-mid)', marginBottom: 4 }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-lg)' }}>
-                <span className="micro">1 m²</span>
-                <span className="micro">30 m²</span>
-              </div>
-
-              {/* Price row */}
-              <div style={{ marginBottom: 'var(--sp-md)' }}>
-                <div className="micro" style={{ marginBottom: 2, letterSpacing: '1px', textTransform: 'uppercase' }}>Pris</div>
-                <div style={{ fontSize: 29, fontWeight: 600, color: 'var(--text-dark)' }}>
-                  {mattPrice} kr
-                </div>
-                <div className="micro">90 kr / m²</div>
-              </div>
-
-              {/* CTA — full-width below */}
-              {cartQty(mattId) === 0 ? (
-                <button
-                  onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })}
-                  className="btn-primary"
-                  style={{ width: '100%' }}
-                >
-                  Lägg till matta ({mattKvm} m²) — {mattPrice} kr
-                </button>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                  <button onClick={() => removeFromCart(mattId)} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <IconMinus size={13} stroke={2.5} />
-                  </button>
-                  <PulseQty value={cartQty(mattId)} />
-                  <button onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <IconPlus size={13} stroke={2.5} />
-                  </button>
-                </div>
-              )}
+            <div className="of-prod-grid">
+              {MATT_OPTIONS.map(m => (
+                <ProductTile key={m.id} id={m.id} name={m.name} price={m.price} Icon={m.Icon} type="mattvätt" />
+              ))}
             </div>
           )}
 

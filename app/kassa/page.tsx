@@ -449,7 +449,7 @@ function CheckoutForm() {
       </div>
 
       {/* ── Fixed bottom bar — tappable total + pay CTA ──────────────── */}
-      <div className="of-bar">
+      <div className="of-bar of-bar--narrow">
         <div className="of-bar-inner">
           <button type="button" className="of-bar-summary" onClick={() => setSheetOpen(true)} aria-label="Visa bokning">
             <span className="of-bar-count">{items.length} {items.length === 1 ? 'produkt' : 'produkter'}</span>

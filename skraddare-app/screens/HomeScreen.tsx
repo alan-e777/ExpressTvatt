@@ -8,19 +8,16 @@ import {
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
   IconSpray, IconWash, IconPlus, IconMinus, IconChevronRight, IconArrowLeft, IconX,
 } from '@tabler/icons-react-native';
-import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../navigation/RootNavigator';
-import { auth, db } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { registerPushToken } from '../lib/notifications';
-import { type Order, type Service, type CartItem } from '../types';
+import { type Service, type CartItem } from '../types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
-import ActiveOrderCard from '../components/home/ActiveOrderCard';
-import SquareMeterSlider from '../components/SquareMeterSlider';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -31,12 +28,17 @@ type IconComp       = React.ComponentType<{ size: number; color: string; strokeW
 type Nav            = NativeStackNavigationProp<HomeStackParamList>;
 type SectionId      = 'mattvätt' | 'struken' | 'kladvard';
 
-const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
-
 const SERVICES: { id: SectionId; label: string; desc: string; Icon: IconComp }[] = [
   { id: 'mattvätt',  label: 'Mattvätt', desc: 'Djuptvätt av mattor', Icon: IconSpray },
   { id: 'struken',   label: 'Struken',  desc: 'Skjortor & kostym',   Icon: IconSteam },
   { id: 'kladvard',  label: 'Klädvård', desc: 'Lagning & ändring',   Icon: IconNeedle },
+];
+
+// Fixed mattvätt sizes (server re-validates these prices in create-cart-payment)
+const MATT_OPTIONS: { id: string; name: string; price: number; Icon: IconComp }[] = [
+  { id: 'matta-liten', name: 'Matta liten (< 2 m²)', price: 299, Icon: IconSpray },
+  { id: 'matta-stor',  name: 'Matta stor (> 2 m²)',  price: 499, Icon: IconSpray },
+  { id: 'matta-akta',  name: 'Äkta / orientalisk',    price: 699, Icon: IconStar },
 ];
 
 // ─── Icon helpers ─────────────────────────────────────────────────────────────
@@ -197,34 +199,18 @@ const sub = StyleSheet.create({
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
 
-  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [strukenCatalog, setStrukenCatalog] = useState<StrukenProduct[]>([]);
   const [services, setServices]             = useState<Service[]>([]);
   const [loading, setLoading]               = useState(true);
 
   const [openSection, setOpenSection] = useState<SectionId | null>(null);
   const [sheetOpen, setSheetOpen]     = useState(false);
-  const [mattKvm, setMattKvm]   = useState(5);
-  const [mattItems, setMattItems] = useState<{ sqm: number; qty: number }[]>([]);
   const [basket, setBasket]     = useState<Record<string, number>>({});
 
-  // ── Auth + live order ──────────────────────────────────────────────────────
+  // ── Register push token on sign-in (active orders live on the Profile tab) ──
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(user => {
-      if (!user) { setActiveOrders([]); return; }
-      registerPushToken(user.uid).catch(() => {});
-      const q = query(collection(db, 'orders'), where('customerId', '==', user.uid));
-      const unsubOrders = onSnapshot(q, snap => {
-        const all = snap.docs.map(d => ({
-          ...d.data(), id: d.id,
-          createdAt: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toDate() : new Date(),
-        } as Order));
-        const active = all
-          .filter(o => ACTIVE_STATUSES.includes(o.status))
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        setActiveOrders(active);
-      });
-      return unsubOrders;
+      if (user) registerPushToken(user.uid).catch(() => {});
     });
     return unsubAuth;
   }, []);
@@ -248,25 +234,11 @@ export default function HomeScreen() {
   function removeItem(id: string) {
     setBasket(p => { const n = { ...p }; if ((n[id] ?? 0) <= 1) delete n[id]; else n[id] -= 1; return n; });
   }
-  function addMatt(sqm: number) {
-    setMattItems(p => {
-      const hit = p.find(m => m.sqm === sqm);
-      return hit ? p.map(m => m.sqm === sqm ? { ...m, qty: m.qty + 1 } : m) : [...p, { sqm, qty: 1 }];
-    });
-  }
-  function removeMatt(sqm: number) {
-    setMattItems(p => {
-      const hit = p.find(m => m.sqm === sqm);
-      if (!hit) return p;
-      if (hit.qty <= 1) return p.filter(m => m.sqm !== sqm);
-      return p.map(m => m.sqm === sqm ? { ...m, qty: m.qty - 1 } : m);
-    });
-  }
-
   function handleCheckout() {
     const cartItems: CartItem[] = [];
-    for (const m of mattItems) {
-      cartItems.push({ id: `matta-${m.sqm}`, name: `Matta ${m.sqm} m²`, price: m.sqm * 90, qty: m.qty, type: 'mattvätt' });
+    for (const m of MATT_OPTIONS) {
+      const qty = basket[m.id] ?? 0;
+      if (qty > 0) cartItems.push({ id: m.id, name: m.name, price: m.price, qty, type: 'mattvätt' });
     }
     for (const p of strukenCatalog) {
       const qty = basket[p.id] ?? 0;
@@ -281,25 +253,22 @@ export default function HomeScreen() {
   }
 
   // ── Totals ─────────────────────────────────────────────────────────────────
-  const mattPrice      = mattKvm * 90;
-  const currentMattQty = mattItems.find(m => m.sqm === mattKvm)?.qty ?? 0;
-  const mattTotalCount = mattItems.reduce((s, m) => s + m.qty, 0);
-  const mattTotal      = mattItems.reduce((s, m) => s + m.sqm * 90 * m.qty, 0);
+  const mattTotal      = MATT_OPTIONS.reduce((s, m) => s + (basket[m.id] ?? 0) * m.price, 0);
   const strukenTotal   = strukenCatalog.reduce((s, p) => s + (basket[p.id] ?? 0) * p.price, 0);
   const svcTotal       = services.reduce((s, svc) => s + (basket[svc.id] ?? 0) * (svc.price_ore / 100), 0);
   const cartTotal      = mattTotal + strukenTotal + svcTotal;
-  const cartCount      = mattTotalCount + Object.values(basket).reduce((s, n) => s + n, 0);
+  const cartCount      = Object.values(basket).reduce((s, n) => s + n, 0);
 
   // Per-category counts for the row badges
   const countFor = (id: SectionId): number => {
-    if (id === 'mattvätt') return mattTotalCount;
+    if (id === 'mattvätt') return MATT_OPTIONS.reduce((s, m) => s + (basket[m.id] ?? 0), 0);
     if (id === 'struken')  return strukenCatalog.reduce((s, p) => s + (basket[p.id] ?? 0), 0);
     return services.reduce((s, svc) => s + (basket[svc.id] ?? 0), 0);
   };
 
   // Flat list of cart lines for the bottom sheet
   const cartLines = [
-    ...mattItems.map(m => ({ key: `matta-${m.sqm}`, name: `Matta ${m.sqm} m²`, price: m.sqm * 90, qty: m.qty, onAdd: () => addMatt(m.sqm), onRemove: () => removeMatt(m.sqm) })),
+    ...MATT_OPTIONS.filter(m => (basket[m.id] ?? 0) > 0).map(m => ({ key: m.id, name: m.name, price: m.price, qty: basket[m.id], onAdd: () => addItem(m.id), onRemove: () => removeItem(m.id) })),
     ...strukenCatalog.filter(p => (basket[p.id] ?? 0) > 0).map(p => ({ key: p.id, name: p.name, price: p.price, qty: basket[p.id], onAdd: () => addItem(p.id), onRemove: () => removeItem(p.id) })),
     ...services.filter(s => (basket[s.id] ?? 0) > 0).map(s => ({ key: s.id, name: s.name, price: s.price_ore / 100, qty: basket[s.id], onAdd: () => addItem(s.id), onRemove: () => removeItem(s.id) })),
   ];
@@ -314,12 +283,6 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.content, cartCount > 0 && { paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {activeOrders.length > 0 && (
-          <View style={{ marginBottom: spacing.lg }}>
-            <ActiveOrderCard orders={activeOrders} />
-          </View>
-        )}
-
         <ProgressSteps />
 
         {/* ── List view: category navigation rows ───────────────────────── */}
@@ -359,39 +322,18 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* ── Mattvätt ──────────────────────────────────────────────────── */}
+        {/* ── Mattvätt — three fixed sizes ──────────────────────────────── */}
         {openSection === 'mattvätt' && (
           <View style={styles.serviceCard}>
             <SectionHeader Icon={IconSpray} title="Mattvätt" subtitle="Djuptvätt av mattor · Hämtning ingår alltid" />
-
-            <View style={styles.sliderBox}>
-              <SquareMeterSlider value={mattKvm} onChange={setMattKvm} />
+            <View style={styles.grid}>
+              {MATT_OPTIONS.map(m => (
+                <ProductTile
+                  key={m.id} Icon={m.Icon} name={m.name} price={m.price}
+                  qty={basket[m.id] ?? 0} onAdd={() => addItem(m.id)} onRemove={() => removeItem(m.id)}
+                />
+              ))}
             </View>
-
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>PRIS</Text>
-              <Text style={styles.priceValue}>{mattPrice} kr</Text>
-              <Text style={typography.micro}>90 kr / m²</Text>
-            </View>
-
-            {currentMattQty === 0 ? (
-              <TouchableOpacity style={styles.primaryBtn} onPress={() => addMatt(mattKvm)} activeOpacity={0.85}>
-                <Text style={styles.primaryBtnText}>Lägg till matta ({mattKvm} m²) — {mattPrice} kr</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.mattStepper}>
-                <TouchableOpacity style={styles.mattStepBtn} onPress={() => removeMatt(mattKvm)} activeOpacity={0.7}>
-                  <IconMinus size={14} color={colors.forestDark} strokeWidth={2.5} />
-                </TouchableOpacity>
-                <Text style={styles.mattStepCount}>{currentMattQty}</Text>
-                <TouchableOpacity style={styles.mattStepBtn} onPress={() => addMatt(mattKvm)} activeOpacity={0.7}>
-                  <IconPlus size={14} color={colors.forestDark} strokeWidth={2.5} />
-                </TouchableOpacity>
-                <Text style={styles.mattInCartLabel}>
-                  {mattTotalCount === 1 ? '1 matta i varukorgen' : `${mattTotalCount} mattor i varukorgen`}
-                </Text>
-              </View>
-            )}
           </View>
         )}
 

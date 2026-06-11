@@ -2990,8 +2990,10 @@ input, textarea, select { font-family: inherit; }
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* One calm centred column for the whole flow */
-.site-shell .of-flow { max-width: 680px; margin: 0 auto; }
-.site-shell .of-flow.has-bar { padding-bottom: 104px; }
+.site-shell .of-flow { max-width: 720px; margin: 0 auto; }
+.site-shell .of-flow.has-bar { padding-bottom: 110px; }
+/* The order page (product grids) gets more room than the checkout form */
+.site-shell .of-flow-order { max-width: 980px; }
 
 /* ── 1. Category navigation rows ──────────────────────────────────────── */
 .site-shell .of-cat-list { display: flex; flex-direction: column; }
@@ -3032,9 +3034,10 @@ input, textarea, select { font-family: inherit; }
 .site-shell .of-detail-title { font-size: 19px; font-weight: 700; color: #0F172A; letter-spacing: -0.02em; }
 .site-shell .of-detail-sub { font-size: 13px; color: #64748B; margin-top: 3px; }
 
-/* Responsive product grid: 2 → 3 → 4 columns */
+/* Responsive product grid: 2 → 3 → 4 columns, always fits its container */
 .site-shell .of-prod-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 600px)  { .site-shell .of-prod-grid { grid-template-columns: repeat(3, 1fr); } }
+.site-shell .of-prod-grid > * { min-width: 0; }   /* let 1fr tracks shrink — no overflow */
+@media (min-width: 640px)  { .site-shell .of-prod-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1000px) { .site-shell .of-prod-grid { grid-template-columns: repeat(4, 1fr); } }
 
 /* Tile gains a thin theme border once the item is in the cart */
@@ -3054,31 +3057,33 @@ input, textarea, select { font-family: inherit; }
 @keyframes of-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); } }
 .site-shell .of-pulse { animation: of-pulse 0.28s ease; display: inline-block; }
 
-/* ── 3. Fixed bottom bar ──────────────────────────────────────────────── */
+/* ── 3. Fixed bottom bar — full-width, white ──────────────────────────── */
 .site-shell .of-bar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 160;
-  display: flex; justify-content: center; pointer-events: none;
-  padding: 0 var(--page-px) calc(env(safe-area-inset-bottom, 0px) + 14px);
+  display: flex; justify-content: center;
+  background: #fff;
+  border-top: 1px solid rgba(15,23,42,0.08);
+  box-shadow: 0 -6px 26px rgba(8,63,65,0.09);
+  padding: 12px var(--page-px) calc(env(safe-area-inset-bottom, 0px) + 12px);
 }
 .site-shell .of-bar-inner {
-  pointer-events: auto; width: 100%; max-width: 680px;
-  background: #083F41; border-radius: 16px;
-  box-shadow: 0 10px 34px rgba(8,63,65,0.28);
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 14px 12px 18px;
+  width: 100%; max-width: 980px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
+.site-shell .of-bar--narrow .of-bar-inner { max-width: 720px; }
 .site-shell .of-bar-summary {
   background: none; border: none; cursor: pointer; text-align: left;
   display: flex; flex-direction: column; gap: 1px; min-width: 0;
 }
-.site-shell .of-bar-count { font-size: 11px; color: rgba(183,220,215,0.7); }
+.site-shell .of-bar-count { font-size: 12px; color: var(--text-muted); }
 .site-shell .of-bar-total {
-  font-size: 21px; font-weight: 700; color: #B7DCD7; letter-spacing: -0.01em;
+  font-size: 22px; font-weight: 700; color: var(--text-dark); letter-spacing: -0.01em;
   display: flex; align-items: center; gap: 6px;
 }
+.site-shell .of-bar-total svg { color: var(--text-muted); }
 .site-shell .of-bar-cta {
-  background: #6BB3AC; color: #083F41; border: none; cursor: pointer;
-  border-radius: 12px; padding: 0 22px; height: 46px; flex-shrink: 0;
+  background: #083F41; color: #fff; border: none; cursor: pointer;
+  border-radius: 12px; padding: 0 28px; height: 48px; flex-shrink: 0;
   font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
   transition: opacity 0.12s;
 }
@@ -3092,7 +3097,7 @@ input, textarea, select { font-family: inherit; }
 }
 .site-shell .of-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 171;
-  margin: 0 auto; max-width: 680px;
+  margin: 0 auto; max-width: 600px;
   background: #fff; border-radius: 20px 20px 0 0;
   max-height: 80vh; display: flex; flex-direction: column;
   padding: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
