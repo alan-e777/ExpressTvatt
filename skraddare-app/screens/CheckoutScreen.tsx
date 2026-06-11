@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput,
   TouchableOpacity, StyleSheet, Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import { doc, getDoc } from 'firebase/firestore';
 import { HomeStackParamList } from '../navigation/RootNavigator';
 import { type CartItem } from '../types';
+import { auth, db } from '../lib/firebase';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DatePickerModal from '../components/DatePickerModal';
 import TopBar from '../components/TopBar';
+
+type SavedAddress = { address: string; postalCode: string; deliveryNote?: string };
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'Checkout'>;
@@ -32,6 +36,21 @@ export default function CheckoutScreen({ navigation, route }: Props) {
   const [time,             setTime]              = useState('');
   const [notes,            setNotes]             = useState('');
   const [showDatePicker,   setShowDatePicker]    = useState(false);
+  const [savedAddresses,   setSavedAddresses]    = useState<SavedAddress[]>([]);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    getDoc(doc(db, 'customers', uid)).then(snap => {
+      if (snap.exists()) setSavedAddresses((snap.data()?.addresses ?? []) as SavedAddress[]);
+    });
+  }, []);
+
+  function selectSavedAddress(a: SavedAddress) {
+    setAddress(a.address);
+    setPostalCode(a.postalCode);
+    setAddressConfirmed(true);
+  }
 
   function handleNext() {
     if (!addressConfirmed) {
@@ -87,6 +106,28 @@ export default function CheckoutScreen({ navigation, route }: Props) {
         <Text style={styles.sectionHeading}>Hämtningsuppgifter</Text>
 
         <Text style={styles.fieldLabel}>Gatuadress</Text>
+        {savedAddresses.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
+            contentContainerStyle={styles.chipRowContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {savedAddresses.map((a, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[styles.chip, addressConfirmed && address === a.address && styles.chipActive]}
+                onPress={() => selectSavedAddress(a)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.chipText, addressConfirmed && address === a.address && styles.chipTextActive]} numberOfLines={1}>
+                  {a.address}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
@@ -95,6 +136,7 @@ export default function CheckoutScreen({ navigation, route }: Props) {
             setPostalCode(postal);
           }}
           onConfirmChange={setAddressConfirmed}
+          forceConfirmed={addressConfirmed}
           inputStyle={styles.input}
         />
 
@@ -241,6 +283,23 @@ const styles = StyleSheet.create({
     height:     88,
     textAlignVertical: 'top',
   },
+
+  chipRow:        { marginBottom: spacing.sm },
+  chipRowContent: { gap: spacing.sm, paddingVertical: 2 },
+  chip: {
+    backgroundColor:  'rgba(255,255,255,0.1)',
+    borderRadius:     radius.pill,
+    borderWidth:      0.5,
+    borderColor:      'rgba(255,255,255,0.25)',
+    paddingVertical:  6,
+    paddingHorizontal: spacing.md,
+  },
+  chipActive: {
+    backgroundColor: colors.earth,
+    borderColor:     colors.earth,
+  },
+  chipText:       { fontFamily: 'Inter_400', fontSize: 13, color: colors.moss },
+  chipTextActive: { color: colors.textDark, fontFamily: 'Inter_500' },
 
   pickerBtn:         { justifyContent: 'center' },
   pickerValue:       { fontFamily: 'Inter_400', fontSize: 14, color: colors.textDark },

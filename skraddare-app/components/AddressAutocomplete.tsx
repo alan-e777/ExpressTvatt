@@ -18,6 +18,7 @@ type Props = {
   onSelect: (address: string, postalCode: string) => void;
   onConfirmChange?: (confirmed: boolean) => void;
   inputStyle?: object;
+  forceConfirmed?: boolean;
 };
 
 export default function AddressAutocomplete({
@@ -26,11 +27,14 @@ export default function AddressAutocomplete({
   onSelect,
   onConfirmChange,
   inputStyle,
+  forceConfirmed,
 }: Props) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading]         = useState(false);
   const [open, setOpen]               = useState(false);
   const [confirmed, setConfirmed]     = useState(false);
+
+  const isConfirmed = confirmed || (forceConfirmed === true);
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipFetchRef = useRef(false);
 
@@ -79,7 +83,7 @@ export default function AddressAutocomplete({
   }
 
   function handleChangeText(text: string) {
-    if (confirmed) {
+    if (isConfirmed) {
       setConfirmed(false);
       onConfirmChange?.(false);
     }
@@ -91,7 +95,7 @@ export default function AddressAutocomplete({
     <View>
       <View style={styles.inputRow}>
         <TextInput
-          style={[styles.input, confirmed && styles.inputConfirmed, inputStyle]}
+          style={[styles.input, isConfirmed && styles.inputConfirmed, inputStyle]}
           placeholder="t.ex. Storgatan 12"
           placeholderTextColor={colors.textMuted}
           value={value}
@@ -102,7 +106,7 @@ export default function AddressAutocomplete({
         <View style={styles.iconSlot} pointerEvents="none">
           {loading ? (
             <ActivityIndicator size="small" color={colors.forestMid} />
-          ) : confirmed ? (
+          ) : isConfirmed ? (
             <IconCheck size={16} color={colors.forestMid} />
           ) : null}
         </View>

@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import { doc, getDoc } from 'firebase/firestore';
 import { ProductsStackParamList } from '../navigation/RootNavigator';
 import { formatPrice, type CustomField } from '../types';
+import { auth, db } from '../lib/firebase';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
@@ -23,6 +25,8 @@ import DatePickerModal from '../components/DatePickerModal';
 import EcoBadge from '../components/EcoBadge';
 import SquareMeterSlider from '../components/SquareMeterSlider';
 import TopBar from '../components/TopBar';
+
+type SavedAddress = { address: string; postalCode: string; deliveryNote?: string };
 
 type Props = {
   navigation: NativeStackNavigationProp<ProductsStackParamList, 'Book'>;
@@ -217,6 +221,21 @@ export default function BookScreen({ navigation, route }: Props) {
   const [sqmValues, setSqmValues]         = useState<Record<string, number>>({});
   const [showTimePicker, setShowTimePicker]   = useState(false);
   const [showDatePicker, setShowDatePicker]   = useState(false);
+  const [savedAddresses, setSavedAddresses]   = useState<SavedAddress[]>([]);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    getDoc(doc(db, 'customers', uid)).then(snap => {
+      if (snap.exists()) setSavedAddresses((snap.data()?.addresses ?? []) as SavedAddress[]);
+    });
+  }, []);
+
+  function selectSavedAddress(a: SavedAddress) {
+    setAddress(a.address);
+    setPostalCode(a.postalCode);
+    setAddressConfirmed(true);
+  }
 
   function setCustomField(name: string, value: string) {
     setCustomFieldValues((prev) => ({ ...prev, [name]: value }));
@@ -277,6 +296,28 @@ export default function BookScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={styles.fieldLabel}>Gatuadress</Text>
+        {savedAddresses.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
+            contentContainerStyle={styles.chipRowContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {savedAddresses.map((a, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[styles.chip, addressConfirmed && address === a.address && styles.chipActive]}
+                onPress={() => selectSavedAddress(a)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.chipText, addressConfirmed && address === a.address && styles.chipTextActive]} numberOfLines={1}>
+                  {a.address}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
@@ -285,6 +326,7 @@ export default function BookScreen({ navigation, route }: Props) {
             setPostalCode(postal);
           }}
           onConfirmChange={setAddressConfirmed}
+          forceConfirmed={addressConfirmed}
         />
 
         <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>Dropoff Date</Text>
@@ -403,6 +445,20 @@ const styles = StyleSheet.create({
   summaryIconText: { fontSize: 22 },
 
   fieldLabel: [typography.label, { marginTop: spacing.md, marginBottom: spacing.sm }] as any,
+
+  chipRow:        { marginBottom: spacing.sm },
+  chipRowContent: { gap: spacing.sm, paddingVertical: 2 },
+  chip: {
+    backgroundColor:   'rgba(255,255,255,0.1)',
+    borderRadius:      radius.pill,
+    borderWidth:       0.5,
+    borderColor:       'rgba(255,255,255,0.25)',
+    paddingVertical:   6,
+    paddingHorizontal: spacing.md,
+  },
+  chipActive:     { backgroundColor: colors.earth, borderColor: colors.earth },
+  chipText:       { fontFamily: 'Inter_400', fontSize: 13, color: colors.moss },
+  chipTextActive: { color: colors.textDark, fontFamily: 'Inter_500' },
 
   input: {
     backgroundColor:   colors.linen,
