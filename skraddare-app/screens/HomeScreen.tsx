@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator,
+  StyleSheet, ActivityIndicator, Modal, Pressable,
 } from 'react-native';
 import {
   IconSteam, IconNeedle, IconShirt, IconHanger, IconStar, IconMountain,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconSpray, IconWash, IconPlus, IconMinus,
+  IconSpray, IconWash, IconPlus, IconMinus, IconChevronRight, IconArrowLeft, IconX,
 } from '@tabler/icons-react-native';
 import { collection, query, onSnapshot, where, Timestamp } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
@@ -98,45 +98,6 @@ const ps = StyleSheet.create({
   dash:        { color: 'rgba(183,220,215,0.4)', fontSize: 13 },
 });
 
-// ─── Service toggle card ────────────────────────────────────────────────────────
-
-function ToggleCard({ Icon, label, desc, open, onPress }: {
-  Icon: IconComp; label: string; desc: string; open: boolean; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[tc.card, open ? tc.cardOpen : tc.cardClosed]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <View style={[tc.iconCircle, open ? tc.iconCircleOpen : tc.iconCircleClosed]}>
-        <Icon size={18} color={open ? colors.forestDark : colors.forestMid} strokeWidth={1.5} />
-      </View>
-      <Text style={[tc.label, open && { color: colors.forestDark }]} numberOfLines={1}>{label}</Text>
-      <Text style={[tc.desc, open && { color: 'rgba(8,63,65,0.72)' }]} numberOfLines={2}>{desc}</Text>
-    </TouchableOpacity>
-  );
-}
-
-const tc = StyleSheet.create({
-  card: {
-    flex: 1,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.sm,
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-  },
-  cardClosed: { backgroundColor: colors.white, borderColor: 'rgba(15,23,42,0.08)' },
-  cardOpen:   { backgroundColor: colors.forestLight, borderColor: colors.forestLight },
-  iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  iconCircleClosed: { backgroundColor: colors.mint, borderColor: 'rgba(15,23,42,0.06)' },
-  iconCircleOpen:   { backgroundColor: 'rgba(8,63,65,0.12)', borderColor: 'rgba(8,63,65,0.22)' },
-  label: { fontFamily: 'Inter_600', fontSize: 13, color: colors.textDark, textAlign: 'center' },
-  desc:  { fontFamily: 'Inter_400', fontSize: 10, color: colors.textMuted, textAlign: 'center', lineHeight: 14 },
-});
-
 // ─── Section header (inside the open white card) ────────────────────────────────
 
 function SectionHeader({ Icon, title, subtitle }: { Icon: IconComp; title: string; subtitle: string }) {
@@ -157,24 +118,27 @@ function ProductTile({ Icon, name, price, qty, onAdd, onRemove }: {
   Icon: IconComp; name: string; price: number; qty: number; onAdd: () => void; onRemove: () => void;
 }) {
   return (
-    <View style={pt.tile}>
+    <View style={[pt.tile, qty > 0 && pt.tileActive]}>
       <View style={pt.iconCircle}><Icon size={22} color={colors.forestMid} strokeWidth={1.5} /></View>
       <Text style={pt.name} numberOfLines={2}>{name}</Text>
       <View style={pt.foot}>
         <Text style={pt.price}>{price} kr<Text style={pt.per}> /st</Text></Text>
-        <View style={pt.stepper}>
-          <TouchableOpacity
-            style={[pt.stepBtn, qty === 0 && { opacity: 0.4 }]}
-            onPress={qty > 0 ? onRemove : undefined}
-            activeOpacity={0.7}
-          >
-            <IconMinus size={13} color={colors.forestDark} strokeWidth={2.5} />
+        {qty === 0 ? (
+          // Untouched tile shows only a round + (no dead minus / no "0")
+          <TouchableOpacity style={pt.addBtn} onPress={onAdd} activeOpacity={0.85}>
+            <IconPlus size={18} color={colors.white} strokeWidth={2.5} />
           </TouchableOpacity>
-          <Text style={pt.qty}>{qty}</Text>
-          <TouchableOpacity style={pt.stepBtn} onPress={onAdd} activeOpacity={0.7}>
-            <IconPlus size={13} color={colors.forestDark} strokeWidth={2.5} />
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={pt.stepper}>
+            <TouchableOpacity style={pt.stepBtn} onPress={onRemove} activeOpacity={0.7}>
+              <IconMinus size={13} color={colors.forestDark} strokeWidth={2.5} />
+            </TouchableOpacity>
+            <Text style={pt.qty}>{qty}</Text>
+            <TouchableOpacity style={pt.stepBtn} onPress={onAdd} activeOpacity={0.7}>
+              <IconPlus size={13} color={colors.forestDark} strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -193,6 +157,7 @@ const pt = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.md,
   },
+  tileActive: { borderColor: colors.forestDark },
   iconCircle: {
     width: 50, height: 50, borderRadius: 25,
     backgroundColor: colors.mint, borderWidth: 1, borderColor: 'rgba(15,23,42,0.06)',
@@ -202,6 +167,11 @@ const pt = StyleSheet.create({
   foot: { alignItems: 'center', gap: spacing.md, width: '100%' },
   price: { fontFamily: 'Inter_700', fontSize: 18, color: colors.textDark },
   per:   { fontFamily: 'Inter_500', fontSize: 11, color: colors.textMuted },
+  addBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: colors.forestDark,
+    alignItems: 'center', justifyContent: 'center',
+  },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   stepBtn: {
     width: 32, height: 32, borderRadius: 16,
@@ -232,7 +202,8 @@ export default function HomeScreen() {
   const [services, setServices]             = useState<Service[]>([]);
   const [loading, setLoading]               = useState(true);
 
-  const [openSection, setOpenSection] = useState<SectionId | null>('mattvätt');
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const [sheetOpen, setSheetOpen]     = useState(false);
   const [mattKvm, setMattKvm]   = useState(5);
   const [mattItems, setMattItems] = useState<{ sqm: number; qty: number }[]>([]);
   const [basket, setBasket]     = useState<Record<string, number>>({});
@@ -319,7 +290,19 @@ export default function HomeScreen() {
   const cartTotal      = mattTotal + strukenTotal + svcTotal;
   const cartCount      = mattTotalCount + Object.values(basket).reduce((s, n) => s + n, 0);
 
-  function toggle(id: SectionId) { setOpenSection(prev => prev === id ? null : id); }
+  // Per-category counts for the row badges
+  const countFor = (id: SectionId): number => {
+    if (id === 'mattvätt') return mattTotalCount;
+    if (id === 'struken')  return strukenCatalog.reduce((s, p) => s + (basket[p.id] ?? 0), 0);
+    return services.reduce((s, svc) => s + (basket[svc.id] ?? 0), 0);
+  };
+
+  // Flat list of cart lines for the bottom sheet
+  const cartLines = [
+    ...mattItems.map(m => ({ key: `matta-${m.sqm}`, name: `Matta ${m.sqm} m²`, price: m.sqm * 90, qty: m.qty, onAdd: () => addMatt(m.sqm), onRemove: () => removeMatt(m.sqm) })),
+    ...strukenCatalog.filter(p => (basket[p.id] ?? 0) > 0).map(p => ({ key: p.id, name: p.name, price: p.price, qty: basket[p.id], onAdd: () => addItem(p.id), onRemove: () => removeItem(p.id) })),
+    ...services.filter(s => (basket[s.id] ?? 0) > 0).map(s => ({ key: s.id, name: s.name, price: s.price_ore / 100, qty: basket[s.id], onAdd: () => addItem(s.id), onRemove: () => removeItem(s.id) })),
+  ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -339,19 +322,42 @@ export default function HomeScreen() {
 
         <ProgressSteps />
 
-        {/* Service toggle cards */}
-        <View style={styles.toggleRow}>
-          {SERVICES.map(s => (
-            <ToggleCard
-              key={s.id}
-              Icon={s.Icon}
-              label={s.label}
-              desc={s.desc}
-              open={openSection === s.id}
-              onPress={() => toggle(s.id)}
-            />
-          ))}
-        </View>
+        {/* ── List view: category navigation rows ───────────────────────── */}
+        {openSection === null && (
+          <View style={styles.serviceCard}>
+            <View style={catr.list}>
+              {SERVICES.map((s, i) => {
+                const count = countFor(s.id);
+                return (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[catr.row, i < SERVICES.length - 1 && catr.rowBorder]}
+                    onPress={() => setOpenSection(s.id)}
+                    activeOpacity={0.6}
+                  >
+                    <View style={catr.icon}><s.Icon size={20} color={colors.forestMid} strokeWidth={1.5} /></View>
+                    <View style={catr.text}>
+                      <Text style={catr.title}>{s.label}</Text>
+                      <Text style={catr.desc} numberOfLines={1}>{s.desc}</Text>
+                    </View>
+                    {count > 0 && (
+                      <View style={catr.badge}><Text style={catr.badgeText}>{count}</Text></View>
+                    )}
+                    <IconChevronRight size={18} color={colors.textMuted} strokeWidth={1.75} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* ── Detail view: back link (push/pop replaces the list) ───────── */}
+        {openSection !== null && (
+          <TouchableOpacity style={catr.back} onPress={() => setOpenSection(null)} activeOpacity={0.7}>
+            <IconArrowLeft size={16} color={colors.moss} strokeWidth={1.75} />
+            <Text style={catr.backText}>Tillbaka</Text>
+          </TouchableOpacity>
+        )}
 
         {/* ── Mattvätt ──────────────────────────────────────────────────── */}
         {openSection === 'mattvätt' && (
@@ -433,18 +439,63 @@ export default function HomeScreen() {
 
       </ScrollView>
 
-      {/* ── Sticky cart bar ─────────────────────────────────────────────── */}
+      {/* ── Fixed bottom bar (tappable total opens the sheet) ───────────── */}
       {cartCount > 0 && (
         <View style={styles.cartBar}>
-          <View>
+          <TouchableOpacity onPress={() => setSheetOpen(true)} activeOpacity={0.7}>
             <Text style={styles.cartCount}>{cartCount} {cartCount === 1 ? 'artikel' : 'artiklar'}</Text>
-            <Text style={styles.cartTotal}>{cartTotal} kr</Text>
-          </View>
+            <View style={styles.cartTotalRow}>
+              <Text style={styles.cartTotal}>{cartTotal} kr</Text>
+              <IconChevronRight size={15} color={colors.moss} strokeWidth={2} style={{ transform: [{ rotate: '-90deg' }] }} />
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.cartBtn} onPress={handleCheckout} activeOpacity={0.85}>
             <Text style={styles.cartBtnText}>Gå vidare →</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* ── Bottom sheet: line-item list ────────────────────────────────── */}
+      <Modal visible={sheetOpen && cartCount > 0} transparent animationType="slide" onRequestClose={() => setSheetOpen(false)}>
+        <Pressable style={sh.scrim} onPress={() => setSheetOpen(false)} />
+        <View style={sh.sheet}>
+          <View style={sh.grabber} />
+          <View style={sh.head}>
+            <Text style={sh.title}>Din bokning</Text>
+            <TouchableOpacity onPress={() => setSheetOpen(false)} hitSlop={8}>
+              <IconX size={18} color={colors.textMuted} strokeWidth={1.75} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+            {cartLines.map(line => (
+              <View key={line.key} style={sh.row}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={sh.rowName} numberOfLines={1}>{line.name}</Text>
+                  <Text style={sh.rowPer}>{line.price} kr / st</Text>
+                </View>
+                <View style={pt.stepper}>
+                  <TouchableOpacity style={pt.stepBtn} onPress={line.onRemove} activeOpacity={0.7}>
+                    <IconMinus size={13} color={colors.forestDark} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                  <Text style={pt.qty}>{line.qty}</Text>
+                  <TouchableOpacity style={pt.stepBtn} onPress={line.onAdd} activeOpacity={0.7}>
+                    <IconPlus size={13} color={colors.forestDark} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={sh.lineTotal}>{line.price * line.qty} kr</Text>
+              </View>
+            ))}
+            <View style={sh.totalRow}>
+              <Text style={sh.totalLabel}>Hämtning &amp; leverans</Text>
+              <Text style={sh.totalMuted}>Ingår</Text>
+            </View>
+            <View style={[sh.totalRow, sh.totalDivider]}>
+              <Text style={sh.grandLabel}>Totalt</Text>
+              <Text style={sh.grandValue}>{cartTotal} kr</Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -498,7 +549,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl,
   },
   cartCount: { fontFamily: 'Inter_400', fontSize: 11, color: 'rgba(183,220,215,0.6)' },
+  cartTotalRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cartTotal: { fontFamily: 'Inter_700', fontSize: 22, color: colors.moss },
   cartBtn:     { backgroundColor: colors.forestLight, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: spacing.lg },
   cartBtnText: { fontFamily: 'Inter_600', fontSize: 13, color: colors.forestDark },
+});
+
+// ─── Category rows + detail back link ──────────────────────────────────────────
+
+const catr = StyleSheet.create({
+  list: {},
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(15,23,42,0.08)' },
+  icon: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.mint, borderWidth: 1, borderColor: 'rgba(15,23,42,0.06)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  text: { flex: 1, minWidth: 0 },
+  title: { fontFamily: 'Inter_600', fontSize: 16, color: colors.textDark },
+  desc:  { fontFamily: 'Inter_400', fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  badge: {
+    minWidth: 22, height: 22, paddingHorizontal: 7, borderRadius: 11,
+    backgroundColor: colors.forestDark, alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { fontFamily: 'Inter_600', fontSize: 12, color: colors.white },
+  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: spacing.sm, marginBottom: spacing.sm },
+  backText: { fontFamily: 'Inter_500', fontSize: 14, color: colors.moss },
+});
+
+// ─── Bottom sheet ──────────────────────────────────────────────────────────────
+
+const sh = StyleSheet.create({
+  scrim: { flex: 1, backgroundColor: 'rgba(8,30,30,0.42)' },
+  sheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xxl,
+  },
+  grabber: { width: 38, height: 4, borderRadius: 999, backgroundColor: 'rgba(15,23,42,0.18)', alignSelf: 'center', marginVertical: spacing.sm },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  title: { fontFamily: 'Inter_700', fontSize: 16, color: colors.textDark },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, borderBottomWidth: 0.5, borderBottomColor: 'rgba(15,23,42,0.08)' },
+  rowName: { fontFamily: 'Inter_500', fontSize: 14, color: colors.textDark },
+  rowPer:  { fontFamily: 'Inter_400', fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  lineTotal: { fontFamily: 'Inter_600', fontSize: 14, color: colors.textMid, minWidth: 56, textAlign: 'right' },
+  totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.md },
+  totalLabel: { fontFamily: 'Inter_400', fontSize: 13, color: colors.textMid },
+  totalMuted: { fontFamily: 'Inter_400', fontSize: 13, color: colors.textMid },
+  totalDivider: { borderTopWidth: 0.5, borderTopColor: 'rgba(15,23,42,0.1)', marginTop: spacing.sm },
+  grandLabel: { fontFamily: 'Inter_600', fontSize: 14, color: colors.textDark },
+  grandValue: { fontFamily: 'Inter_700', fontSize: 20, color: colors.textDark },
 });

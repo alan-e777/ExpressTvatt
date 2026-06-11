@@ -2982,3 +2982,155 @@ input, textarea, select { font-family: inherit; }
 .site-shell .profile-page .order-card .small {
   color: var(--text-dark);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ORDER FLOW — minimal redesign (checkoutPrompt.md)
+   Full-width category rows → push/pop detail → fixed bottom bar + sheet.
+   Scoped under .site-shell. Reuses existing palette/tokens; no new colours.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* One calm centred column for the whole flow */
+.site-shell .of-flow { max-width: 680px; margin: 0 auto; }
+.site-shell .of-flow.has-bar { padding-bottom: 104px; }
+
+/* ── 1. Category navigation rows ──────────────────────────────────────── */
+.site-shell .of-cat-list { display: flex; flex-direction: column; }
+.site-shell .of-cat-row {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 18px 4px;
+  border: none; background: none; text-align: left; cursor: pointer;
+  border-bottom: 1px solid rgba(15,23,42,0.08);
+  transition: padding 0.12s ease, background 0.12s ease;
+}
+.site-shell .of-cat-row:last-child { border-bottom: none; }
+.site-shell .of-cat-row:hover { background: rgba(8,63,65,0.025); padding-left: 10px; padding-right: 10px; }
+.site-shell .of-cat-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #F7F5F0; border: 1px solid rgba(15,23,42,0.06);
+  display: flex; align-items: center; justify-content: center;
+  color: #083F41; flex-shrink: 0;
+}
+.site-shell .of-cat-text { flex: 1; min-width: 0; }
+.site-shell .of-cat-title { font-size: 16px; font-weight: 600; color: #0F172A; letter-spacing: -0.01em; }
+.site-shell .of-cat-desc { font-size: 13px; color: #64748B; margin-top: 2px; }
+.site-shell .of-cat-badge {
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 9999px;
+  background: #083F41; color: #fff; font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.site-shell .of-cat-chev { color: #94A3B8; flex-shrink: 0; display: flex; }
+
+/* ── 2. Detail view (push/pop) ────────────────────────────────────────── */
+.site-shell .of-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer;
+  color: #64748B; font-size: 14px; font-weight: 500; padding: 4px 0;
+  margin-bottom: 10px;
+}
+.site-shell .of-back:hover { color: #0F172A; }
+.site-shell .of-detail-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 22px; }
+.site-shell .of-detail-title { font-size: 19px; font-weight: 700; color: #0F172A; letter-spacing: -0.02em; }
+.site-shell .of-detail-sub { font-size: 13px; color: #64748B; margin-top: 3px; }
+
+/* Responsive product grid: 2 → 3 → 4 columns */
+.site-shell .of-prod-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 600px)  { .site-shell .of-prod-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .site-shell .of-prod-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* Tile gains a thin theme border once the item is in the cart */
+.site-shell .prod-tile.of-active { border-color: #083F41; box-shadow: 0 0 0 1px #083F41; }
+
+/* Round + button shown on an untouched tile (no dead minus / no "0") */
+.site-shell .of-add-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: #083F41; color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: opacity 0.12s, transform 0.08s;
+}
+.site-shell .of-add-btn:hover { opacity: 0.9; }
+.site-shell .of-add-btn:active { transform: scale(0.94); }
+
+/* Subtle pulse on the quantity when it changes */
+@keyframes of-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); } }
+.site-shell .of-pulse { animation: of-pulse 0.28s ease; display: inline-block; }
+
+/* ── 3. Fixed bottom bar ──────────────────────────────────────────────── */
+.site-shell .of-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 160;
+  display: flex; justify-content: center; pointer-events: none;
+  padding: 0 var(--page-px) calc(env(safe-area-inset-bottom, 0px) + 14px);
+}
+.site-shell .of-bar-inner {
+  pointer-events: auto; width: 100%; max-width: 680px;
+  background: #083F41; border-radius: 16px;
+  box-shadow: 0 10px 34px rgba(8,63,65,0.28);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px 12px 18px;
+}
+.site-shell .of-bar-summary {
+  background: none; border: none; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 1px; min-width: 0;
+}
+.site-shell .of-bar-count { font-size: 11px; color: rgba(183,220,215,0.7); }
+.site-shell .of-bar-total {
+  font-size: 21px; font-weight: 700; color: #B7DCD7; letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 6px;
+}
+.site-shell .of-bar-cta {
+  background: #6BB3AC; color: #083F41; border: none; cursor: pointer;
+  border-radius: 12px; padding: 0 22px; height: 46px; flex-shrink: 0;
+  font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+  transition: opacity 0.12s;
+}
+.site-shell .of-bar-cta:hover { opacity: 0.92; }
+.site-shell .of-bar-cta:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Bottom sheet (line-item list) ────────────────────────────────────── */
+.site-shell .of-sheet-scrim {
+  position: fixed; inset: 0; z-index: 170;
+  background: rgba(8,30,30,0.42); animation: of-fade 0.18s ease;
+}
+.site-shell .of-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 171;
+  margin: 0 auto; max-width: 680px;
+  background: #fff; border-radius: 20px 20px 0 0;
+  max-height: 80vh; display: flex; flex-direction: column;
+  padding: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  animation: of-slide-up 0.26s cubic-bezier(0.22,1,0.36,1);
+}
+.site-shell .of-grabber {
+  width: 38px; height: 4px; border-radius: 9999px;
+  background: rgba(15,23,42,0.18); margin: 4px auto 12px; flex-shrink: 0;
+}
+.site-shell .of-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.site-shell .of-sheet-title { font-size: 16px; font-weight: 700; color: #0F172A; }
+.site-shell .of-sheet-close { background: none; border: none; cursor: pointer; color: #64748B; display: flex; padding: 4px; }
+.site-shell .of-sheet-body { overflow-y: auto; }
+.site-shell .of-sheet-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 0; border-bottom: 0.5px solid rgba(15,23,42,0.08);
+}
+.site-shell .of-sheet-row-name { font-size: 14px; font-weight: 500; color: #0F172A; }
+.site-shell .of-sheet-row-per { font-size: 12px; color: #64748B; margin-top: 1px; }
+.site-shell .of-sheet-line { font-size: 14px; font-weight: 600; color: #334155; min-width: 56px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+@keyframes of-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes of-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .site-shell .of-sheet,
+  .site-shell .of-sheet-scrim,
+  .site-shell .of-pulse,
+  .site-shell .of-add-btn { animation: none; transition: none; }
+}
+
+/* ── 4. Uppgifter & datum — calm sectioned form (no card-in-card) ──────── */
+.site-shell .of-form { display: flex; flex-direction: column; }
+.site-shell .of-section { padding: var(--sp-xl) 0; border-top: 1px solid rgba(15,23,42,0.08); }
+.site-shell .of-section:first-of-type { border-top: none; padding-top: 0; }
+.site-shell .of-section-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: #0F172A;
+  letter-spacing: -0.01em; margin-bottom: var(--sp-md);
+}
+.site-shell .of-section-title svg { color: #64748B; flex-shrink: 0; }

@@ -7,7 +7,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
-import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone, IconShoppingBag, IconArrowRight } from '@tabler/icons-react';
+import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone, IconShoppingBag, IconArrowRight, IconCalendar, IconNotes, IconChevronUp, IconX } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
@@ -104,6 +104,7 @@ function CheckoutForm() {
   const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
   const [profileCard,      setProfileCard]      = useState<{ name: string; email: string; phone: string } | null>(null);
   const [editingContact,   setEditingContact]   = useState(false);
+  const [sheetOpen,        setSheetOpen]        = useState(false);
 
   useEffect(() => {
     try {
@@ -243,10 +244,12 @@ function CheckoutForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="form-page of">
-      <div className="checkout-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)' }}>
-        <Summary />
+    <form onSubmit={handleSubmit} className="form-page of of-flow has-bar">
+      <div className="checkout-card" style={{ padding: 'var(--sp-xl)' }}>
+      <div className="of-form">
 
+      {/* ── Contact ──────────────────────────────────────────────────── */}
+      <div className="of-section">
       {profileCard && !editingContact ? (
         <div style={{
           background: 'var(--linen)',
@@ -349,7 +352,10 @@ function CheckoutForm() {
           </div>
         </>
       )}
+      </div>
 
+      {/* ── Adress ───────────────────────────────────────────────────── */}
+      <div className="of-section">
       <div className="input-group">
         <label className="field-label">
           <IconMapPin size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
@@ -401,7 +407,11 @@ function CheckoutForm() {
           />
         )}
       </div>
+      </div>
 
+      {/* ── Hämtning — datum & tid ───────────────────────────────────── */}
+      <div className="of-section">
+      <div className="of-section-title"><IconCalendar size={15} stroke={1.5} /> Hämtning</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
         <div className="input-group">
           <label className="field-label">Önskad tid för hämtning</label>
@@ -415,21 +425,75 @@ function CheckoutForm() {
           <TimePicker value={time} onChange={setTime} placeholder="Välj tid" />
         </div>
       </div>
+      </div>
 
-      <div className="input-group">
-        <label className="field-label">Anteckning (valfritt)</label>
+      {/* ── Anteckning ───────────────────────────────────────────────── */}
+      <div className="of-section">
+      <div className="input-group" style={{ marginBottom: 0 }}>
+        <label className="field-label">
+          <IconNotes size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+          Anteckning (valfritt)
+        </label>
         <textarea className="input textarea" placeholder="t.ex. C/O, Specialinstruktioner mm..."
           value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
       </div>
-
-        {formError && <p className="error-msg">{formError}</p>}
-        {loadError && <p className="error-msg">{loadError}</p>}
-
-        <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={submitting}>
-          <IconLock size={14} stroke={1.5} />
-          {submitting ? 'Förbereder betalning…' : `Betala ${formatPrice(totalKr)}`}
-        </button>
       </div>
+
+      {(formError || loadError) && (
+        <div style={{ paddingTop: 'var(--sp-md)' }}>
+          {formError && <p className="error-msg">{formError}</p>}
+          {loadError && <p className="error-msg">{loadError}</p>}
+        </div>
+      )}
+      </div>
+      </div>
+
+      {/* ── Fixed bottom bar — tappable total + pay CTA ──────────────── */}
+      <div className="of-bar">
+        <div className="of-bar-inner">
+          <button type="button" className="of-bar-summary" onClick={() => setSheetOpen(true)} aria-label="Visa bokning">
+            <span className="of-bar-count">{items.length} {items.length === 1 ? 'produkt' : 'produkter'}</span>
+            <span className="of-bar-total">{totalKr} kr <IconChevronUp size={15} stroke={2} /></span>
+          </button>
+          <button type="submit" className="of-bar-cta" disabled={submitting}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <IconLock size={14} stroke={1.5} />
+              {submitting ? 'Förbereder…' : `Betala ${formatPrice(totalKr)}`}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Bottom sheet — booking line items ────────────────────────── */}
+      {sheetOpen && (
+        <>
+          <div className="of-sheet-scrim" onClick={() => setSheetOpen(false)} />
+          <div className="of-sheet" role="dialog" aria-modal="true" aria-label="Din bokning">
+            <div className="of-grabber" />
+            <div className="of-sheet-head">
+              <span className="of-sheet-title">Din bokning</span>
+              <button type="button" className="of-sheet-close" onClick={() => setSheetOpen(false)} aria-label="Stäng">
+                <IconX size={18} stroke={1.75} />
+              </button>
+            </div>
+            <div className="of-sheet-body">
+              {items.map(item => (
+                <div key={item.id} className="of-sheet-row">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="of-sheet-row-name">{item.qty}× {item.name}</div>
+                    <div className="of-sheet-row-per">{item.price} kr / st</div>
+                  </div>
+                  <span className="of-sheet-line">{item.price * item.qty} kr</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 'var(--sp-md)' }}>
+                <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{formatPrice(totalKr)}</span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </form>
   );
 }

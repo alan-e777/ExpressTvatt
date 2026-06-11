@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   IconWashMachine, IconSteam, IconNeedle,
-  IconShirt, IconHanger, IconStar, IconWash, IconMountain,
+  IconShirt, IconHanger, IconStar, IconWash,
   IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconPlus, IconMinus, IconSpray, IconChevronUp, IconChevronDown,
+  IconPlus, IconMinus, IconSpray, IconChevronUp, IconChevronDown, IconChevronRight,
+  IconArrowLeft, IconX,
 } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 
@@ -20,6 +21,7 @@ type StrukenCat   = 'Herr' | 'Dam' | 'Fest' | 'Hem' | 'Utomhus' | 'Skrädderi';
 type StrukenProduct = { id: string; name: string; price: number; category: StrukenCat; order: number };
 type Service      = { id: string; name: string; description: string; price_ore: number };
 type CartItem     = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
+type SectionId    = 'mattvätt' | 'struken' | 'kladavard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -34,14 +36,12 @@ const BADGE_LABEL: Partial<Record<OrderStatus, string>> = {
 const STEPS = ['Bokad', 'Hämtad', 'Rengörs', 'Klar', 'Levererad'];
 
 const STRUKEN_CATS: StrukenCat[] = ['Herr', 'Dam', 'Fest', 'Hem', 'Utomhus', 'Skrädderi'];
-const CAT_ICON: Record<StrukenCat, React.ComponentType<{ size: number; stroke: number }>> = {
-  Herr:      IconShirt,
-  Dam:       IconHanger,
-  Fest:      IconStar,
-  Hem:       IconWash,
-  Utomhus:   IconMountain,
-  Skrädderi: IconNeedle,
-};
+
+const SECTIONS: { id: SectionId; label: string; desc: string; Icon: React.ComponentType<{ size: number; stroke: number }>; subtitle: string }[] = [
+  { id: 'mattvätt',  label: 'Mattvätt',      Icon: IconSpray,  desc: 'Djuptvätt av mattor',              subtitle: 'Djuptvätt av mattor · Hämtning & leverans ingår alltid' },
+  { id: 'struken',   label: 'Struken tvätt', Icon: IconSteam,  desc: 'Skjortor, kostym & festklädsel',   subtitle: 'Skjortor, kostym & festklädsel — levereras hängda på galge' },
+  { id: 'kladavard', label: 'Klädvård',      Icon: IconNeedle, desc: 'Lagning, ändring & rengöring',     subtitle: 'Lagning, ändring, rengöring & skydd för dina textilier' },
+];
 
 const MATT_LABELS: Record<number, string> = {
   1:'1×1 m', 2:'1×2 m', 3:'1.5×2 m', 4:'2×2 m', 5:'2×2.5 m',
@@ -194,107 +194,26 @@ function ActiveOrderCard({ orders }: { orders: Order[] }) {
 
 function SkeletonRows({ count }: { count: number }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="of-prod-grid">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: '0.5px solid rgba(30,46,36,0.08)' }}>
-          <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 9999, flexShrink: 0 }} />
-          <div style={{ flex: 1 }}><div className="skeleton" style={{ width: '50%', height: 14 }} /></div>
-          <div className="skeleton" style={{ width: 50, height: 14 }} />
-        </div>
+        <div key={i} className="skeleton" style={{ aspectRatio: '3 / 5', borderRadius: 16 }} />
       ))}
     </div>
   );
 }
 
-// Cart sidebar panel
-function CartPanel({ cart, onAdd, onRemove, onCheckout }: {
-  cart: CartItem[];
-  onAdd: (item: Omit<CartItem, 'quantity'>) => void;
-  onRemove: (id: string) => void;
-  onCheckout: () => void;
-}) {
-  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const isEmpty = cart.length === 0;
-
+// Quantity readout that gives a tiny pulse whenever the value changes
+function PulseQty({ value }: { value: number }) {
+  const [pulse, setPulse] = useState(false);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    setPulse(true);
+  }, [value]);
   return (
-    <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-xl)' }}>
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--sp-md)' }}>
-        <IconWashMachine size={16} stroke={1.5} style={{ color: 'var(--forest-mid)', flexShrink: 0 }} />
-        <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 500, color: 'var(--text-dark)' }}>Din bokning</span>
-      </div>
-
-      {/* Item list */}
-      {isEmpty ? (
-        <p className="small" style={{ color: 'var(--text-muted)', lineHeight: '20px', marginBottom: 'var(--sp-lg)' }}>
-          Välj en tjänst så visas den här.
-        </p>
-      ) : (
-        <div style={{ marginBottom: 'var(--sp-md)' }}>
-          {cart.map(item => (
-            <div key={item.id} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '9px 0', borderBottom: '0.5px solid rgba(30,46,36,0.08)',
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="body-bold" style={{ fontSize: 13 }}>{item.name}</div>
-                <div className="micro">{item.price} kr / st</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                <button
-                  onClick={() => onRemove(item.id)}
-                  style={{ width: 22, height: 22, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <IconMinus size={9} stroke={2.5} />
-                </button>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dark)', minWidth: 16, textAlign: 'center' }}>{item.quantity}</span>
-                <button
-                  onClick={() => onAdd({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId })}
-                  style={{ width: 22, height: 22, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <IconPlus size={9} stroke={2.5} />
-                </button>
-              </div>
-              <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, color: 'var(--text-mid)', minWidth: 52, textAlign: 'right', flexShrink: 0 }}>
-                {item.price * item.quantity} kr
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Totals block — always visible */}
-      <div style={{ marginBottom: 'var(--sp-md)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span className="small" style={{ color: 'var(--text-mid)' }}>Delsumma</span>
-          <span className="small" style={{ color: 'var(--text-mid)' }}>{total} kr</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-md)' }}>
-          <span className="small" style={{ color: 'var(--text-mid)' }}>Hämtning &amp; leverans</span>
-          <span className="small" style={{ color: 'var(--text-mid)' }}>Ingår</span>
-        </div>
-        <div style={{ borderTop: '0.5px solid rgba(30,46,36,0.08)', paddingTop: 'var(--sp-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span className="small" style={{ fontWeight: 500, color: 'var(--text-dark)' }}>Totalt</span>
-          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, color: 'var(--text-dark)' }}>{total} kr</span>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <button
-        className="btn-primary"
-        onClick={onCheckout}
-        disabled={isEmpty}
-        style={{ width: '100%', maxWidth: '100%', ...(isEmpty ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}
-      >
-        Gå vidare →
-      </button>
-
-      {/* Helper text */}
-      <p className="micro" style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: 'var(--sp-sm)' }}>
-        Du anger uppgifter och datum i nästa steg.
-      </p>
-    </div>
+    <span className="prod-step-qty">
+      <span className={pulse ? 'of-pulse' : ''} onAnimationEnd={() => setPulse(false)}>{value}</span>
+    </span>
   );
 }
 
@@ -308,10 +227,10 @@ export default function HomePage() {
   const [strukenCatalog, setStrukenCatalog] = useState<Partial<Record<StrukenCat, StrukenProduct[]>>>({});
   const [services, setServices]       = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [activeCat, setActiveCat]     = useState<StrukenCat>('Herr');
   const [mattKvm, setMattKvm]         = useState(5);
   const [cart, setCart]               = useState<CartItem[]>([]);
-  const [openSection, setOpenSection] = useState<string | null>(null);
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const [sheetOpen, setSheetOpen]     = useState(false);
 
   // Auth + live order
   useEffect(() => {
@@ -369,9 +288,6 @@ export default function HomePage() {
     });
   }
   function cartQty(id: string) { return cart.find(i => i.id === id)?.quantity ?? 0; }
-  function toggleSection(id: string) {
-    setOpenSection(prev => prev === id ? null : id);
-  }
 
   function handleCheckout() {
     if (cart.length === 0) return;
@@ -379,359 +295,324 @@ export default function HomePage() {
     router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}`);
   }
 
-  const firstName = user?.displayName?.split(' ')[0] ?? '';
-  const initials  = user?.displayName
-    ? user.displayName.split(' ').map((w: string) => w[0] ?? '').join('').toUpperCase().slice(0, 2)
-    : '?';
-
-  const strukenProducts    = strukenCatalog[activeCat] ?? [];
-  const ActiveCatIcon      = CAT_ICON[activeCat];
   const allStrukenProducts = STRUKEN_CATS.flatMap(cat => strukenCatalog[cat] ?? []);
   const cartTotal       = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const cartCount       = cart.reduce((s, i) => s + i.quantity, 0);
+
+  // Per-category counts for the row badges
+  const countFor = (id: SectionId) => {
+    const type = id === 'kladavard' ? 'service' : id;
+    return cart.filter(i => i.type === type).reduce((s, i) => s + i.quantity, 0);
+  };
 
   // Mattvätt cart actions
   const mattId    = `matta-${mattKvm}`;
   const mattPrice = mattKvm * 90;
 
-  const sectionHeaderStyle: React.CSSProperties = {
-    display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-    marginBottom: 'var(--sp-md)', gap: 12,
-  };
+  // Close the sheet automatically if the cart empties out
+  useEffect(() => { if (cartCount === 0 && sheetOpen) setSheetOpen(false); }, [cartCount, sheetOpen]);
+
+  const openMeta = openSection ? SECTIONS.find(s => s.id === openSection)! : null;
+
+  // A single product tile (struken + klädvård share the same shape)
+  function ProductTile({ id, name, price, Icon, type, serviceId }: {
+    id: string; name: string; price: number;
+    Icon: React.ComponentType<{ size: number; stroke: number }>;
+    type: 'struken' | 'service'; serviceId?: string;
+  }) {
+    const qty = cartQty(id);
+    return (
+      <div className={`prod-tile${qty > 0 ? ' of-active' : ''}`}>
+        <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
+        <div className="prod-tile-name">{name}</div>
+        <div className="prod-tile-foot">
+          <div className="prod-tile-price">{price} kr<span className="prod-tile-per">/st</span></div>
+          {qty === 0 ? (
+            <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={() => addToCart({ id, name, price, type, serviceId })}>
+              <IconPlus size={18} stroke={2.5} />
+            </button>
+          ) : (
+            <div className="prod-stepper">
+              <button className="prod-step-btn" aria-label={`Ta bort ${name}`} onClick={() => removeFromCart(id)}>
+                <IconMinus size={13} stroke={2.5} />
+              </button>
+              <PulseQty value={qty} />
+              <button className="prod-step-btn" aria-label={`Lägg till ${name}`} onClick={() => addToCart({ id, name, price, type, serviceId })}>
+                <IconPlus size={13} stroke={2.5} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="home-grid of">
+    <div className={`of-flow${cartCount > 0 ? ' has-bar' : ''}`}>
 
-      {/* ── Main column ───────────────────────────────────────────────── */}
-      <div className="home-main">
-
-        {/* Progress indicator */}
-        <div style={{ textAlign: 'center', marginBottom: 'var(--sp-lg)' }}>
-          <ol style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 16, listStyle: 'none', padding: 0, margin: 0 }}>
-            <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{
-                width: 26, height: 26, borderRadius: '50%',
-                background: 'var(--moss)', color: 'var(--forest-dark)',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 600, flexShrink: 0,
-              }}>1</span>
-              <span style={{ color: 'var(--forest-light)', fontWeight: 500 }}>Välj tjänster</span>
-            </li>
-            <li style={{ color: 'var(--forest-light)', opacity: 0.4 }}>—</li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{
-                width: 26, height: 26, borderRadius: '50%',
-                background: 'var(--moss)', color: 'var(--forest-dark)',
-                border: '0.5px solid rgba(14,92,91,0.25)',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 600, flexShrink: 0,
-              }}>2</span>
-              <span style={{ color: 'var(--forest-light)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
-            </li>
-          </ol>
-        </div>
-
-        {/* Service toggle cards */}
-        <div id="services" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-md)', marginBottom: 'var(--sp-lg)' }}>
-          {([
-            { id: 'mattvätt',  label: 'Mattvätt',      Icon: IconSpray, desc: 'Djuptvätt av mattor' },
-            { id: 'struken',   label: 'Struken tvätt', Icon: IconSteam, desc: 'Skjortor, kostym & festklädsel' },
-            { id: 'kladavard', label: 'Klädvård',      Icon: IconNeedle, desc: 'Lagning, ändring & rengöring' },
-          ] as const).map(({ id, label, Icon, desc }) => {
-            const open = openSection === (id);
-            return (
-              <button
-                key={id}
-                onClick={() => toggleSection(id)}
-                style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center', gap: 'var(--sp-md)',
-                  padding: '28px 16px',
-                  background: open ? '#6BB3AC' : 'var(--white)',
-                  borderRadius: 'var(--radius-lg)',
-                  border: open ? '0.5px solid #6BB3AC' : '0.5px solid rgba(14,92,91,0.15)',
-                  boxShadow: open ? '0 6px 20px rgba(8,63,65,0.18)' : '0 1px 4px rgba(30,46,36,0.06)',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                  color: open ? '#083F41' : 'var(--text-dark)',
-                  textAlign: 'center',
-                }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  background: open ? 'rgba(8,63,65,0.12)' : 'var(--linen)',
-                  border: open ? '0.5px solid rgba(8,63,65,0.22)' : '0.5px solid rgba(14,92,91,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                  color: open ? '#083F41' : 'var(--forest-mid)',
-                }}>
-                  <Icon size={18} stroke={1.5} />
-                </div>
-                <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 16, fontWeight: 600, lineHeight: 1.2 }}>{label}</div>
-                <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 11, color: open ? 'rgba(8,63,65,0.72)' : 'var(--text-muted)', lineHeight: 1.5 }}>{desc}</div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Mattvätt ───────────────────────────────────────────────── */}
-        {openSection === ('mattvätt') && <div id="mattvätt" className="section service-card">
-          <div style={sectionHeaderStyle}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <div className="icon-circle" style={{ width: 28, height: 28 }}>
-                  <IconSpray size={14} stroke={1.5} />
-                </div>
-                <div className="h3">Mattvätt</div>
-              </div>
-              <div className="small">Djuptvätt av mattor · Hämtning & leverans ingår alltid</div>
-            </div>
-          </div>
-
-          <div style={{
-            background: 'var(--linen)', borderRadius: 'var(--radius-lg)',
-            padding: 'var(--sp-xl)', border: '0.5px solid rgba(14,92,91,0.1)',
-          }}>
-            <div className="small" style={{ marginBottom: 'var(--sp-md)', color: 'var(--text-mid)' }}>
-              Välj storlek på mattan
-            </div>
-
-            {/* kvm display — editable */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <input
-                    type="number" min={1} max={30} step={1} value={mattKvm}
-                    onChange={e => {
-                      const v = Math.min(30, Math.max(1, Number(e.target.value)));
-                      if (!isNaN(v) && e.target.value !== '') setMattKvm(Math.round(v));
-                    }}
-                    className="matt-kvm-input"
-                    style={{
-                      fontFamily: 'Poppins, sans-serif', fontSize: 36, fontWeight: 600,
-                      color: 'var(--text-dark)', background: 'none', border: 'none',
-                      borderBottom: '1.5px solid rgba(14,92,91,0.25)', outline: 'none',
-                      width: 52, padding: '0 2px', lineHeight: 1,
-                    }}
-                  />
-                  <span style={{ fontFamily: 'Poppins, sans-serif', fontSize: 36, fontWeight: 600, color: 'var(--text-dark)' }}>m²</span>
-                </div>
-                {/* Custom stepper arrows */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
-                  <button
-                    onClick={() => setMattKvm(v => Math.min(30, v + 1))}
-                    style={{
-                      width: 24, height: 24, borderRadius: 6,
-                      border: '0.5px solid rgba(14,92,91,0.2)',
-                      background: 'var(--linen)', color: 'var(--forest-mid)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--moss)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--linen)')}
-                  >
-                    <IconChevronUp size={13} stroke={2} />
-                  </button>
-                  <button
-                    onClick={() => setMattKvm(v => Math.max(1, v - 1))}
-                    style={{
-                      width: 24, height: 24, borderRadius: 6,
-                      border: '0.5px solid rgba(14,92,91,0.2)',
-                      background: 'var(--linen)', color: 'var(--forest-mid)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--moss)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--linen)')}
-                  >
-                    <IconChevronDown size={13} stroke={2} />
-                  </button>
-                </div>
-              </div>
-              <span className="small">{mattLabel(mattKvm)}</span>
-            </div>
-
-            {/* Slider */}
-            <input
-              type="range" min={1} max={30} step={1} value={mattKvm}
-              onChange={e => setMattKvm(Number(e.target.value))}
-              style={{ width: '100%', accentColor: 'var(--forest-mid)', marginBottom: 4 }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-lg)' }}>
-              <span className="micro">1 m²</span>
-              <span className="micro">30 m²</span>
-            </div>
-
-            {/* Price row */}
-            <div style={{ marginBottom: 'var(--sp-md)' }}>
-              <div className="micro" style={{ marginBottom: 2, letterSpacing: '1px', textTransform: 'uppercase' }}>Pris</div>
-              <div style={{ fontFamily: 'Poppins, sans-serif', fontSize: 29, fontWeight: 600, color: 'var(--text-dark)' }}>
-                {mattPrice} kr
-              </div>
-              <div className="micro">90 kr / m²</div>
-            </div>
-
-            {/* CTA — full-width below */}
-            {cartQty(mattId) === 0 ? (
-              <button
-                onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })}
-                className="btn-primary"
-                style={{ width: '100%' }}
-              >
-                Lägg till matta ({mattKvm} m²) — {mattPrice} kr
-              </button>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                <button onClick={() => removeFromCart(mattId)} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <IconMinus size={13} stroke={2.5} />
-                </button>
-                <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-dark)', minWidth: 20, textAlign: 'center' }}>{cartQty(mattId)}</span>
-                <button onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <IconPlus size={13} stroke={2.5} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>}
-
-        {/* ── Struken tvätt ─────────────────────────────────────────── */}
-        {openSection === ('struken') && <div id="struken" className="section service-card">
-          <div style={sectionHeaderStyle}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <div className="icon-circle" style={{ width: 28, height: 28 }}>
-                  <IconSteam size={14} stroke={1.5} />
-                </div>
-                <div className="h3">Struken tvätt</div>
-              </div>
-              <div className="small">Skjortor, kostym & festklädsel — levereras hängda på galge</div>
-            </div>
-          </div>
-
-          {loadingServices ? <SkeletonRows count={6} /> : allStrukenProducts.length === 0 ? (
-            <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga plagg tillgängliga just nu.</p>
-          ) : (
-            <div className="prod-grid">
-              {allStrukenProducts.map(p => {
-                const Icon = strukenIcon(p.name);
-                const qty  = cartQty(p.id);
-                return (
-                  <div key={p.id} className="prod-tile">
-                    <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
-                    <div className="prod-tile-name">{p.name}</div>
-                    <div className="prod-tile-foot">
-                      <div className="prod-tile-price">{p.price} kr<span className="prod-tile-per">/st</span></div>
-                      <div className="prod-stepper">
-                        <button className="prod-step-btn" disabled={qty === 0} aria-label={`Ta bort ${p.name}`} onClick={() => removeFromCart(p.id)}>
-                          <IconMinus size={13} stroke={2.5} />
-                        </button>
-                        <span className="prod-step-qty">{qty}</span>
-                        <button className="prod-step-btn" aria-label={`Lägg till ${p.name}`} onClick={() => addToCart({ id: p.id, name: p.name, price: p.price, type: 'struken' })}>
-                          <IconPlus size={13} stroke={2.5} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>}
-
-        {/* ── Klädvård & textil ─────────────────────────────────────── */}
-        {openSection === ('kladavard') && <div id="kladavard" className="section service-card">
-          <div style={sectionHeaderStyle}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <div className="icon-circle" style={{ width: 28, height: 28 }}>
-                  <IconNeedle size={14} stroke={1.5} />
-                </div>
-                <div className="h3">Klädvård & textil</div>
-              </div>
-              <div className="small">Lagning, ändring, rengöring & skydd för dina textilier</div>
-            </div>
-          </div>
-
-          {loadingServices ? <SkeletonRows count={5} /> : services.length === 0 ? (
-            <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga tjänster tillgängliga just nu.</p>
-          ) : (
-            <div className="prod-grid">
-              {services.map(svc => {
-                const Icon  = serviceIcon(svc.name);
-                const price = svc.price_ore / 100;
-                const qty   = cartQty(svc.id);
-                return (
-                  <div key={svc.id} className="prod-tile">
-                    <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
-                    <div className="prod-tile-name">{svc.name}</div>
-                    <div className="prod-tile-foot">
-                      <div className="prod-tile-price">{price} kr<span className="prod-tile-per">/st</span></div>
-                      <div className="prod-stepper">
-                        <button className="prod-step-btn" disabled={qty === 0} aria-label={`Ta bort ${svc.name}`} onClick={() => removeFromCart(svc.id)}>
-                          <IconMinus size={13} stroke={2.5} />
-                        </button>
-                        <span className="prod-step-qty">{qty}</span>
-                        <button className="prod-step-btn" aria-label={`Lägg till ${svc.name}`} onClick={() => addToCart({ id: svc.id, name: svc.name, price, type: 'service', serviceId: svc.id })}>
-                          <IconPlus size={13} stroke={2.5} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>}
-      </div>
-
-      {/* ── Sidebar ───────────────────────────────────────────────────── */}
-      <div className="home-sidebar">
-        <CartPanel
-          cart={cart}
-          onAdd={addToCart}
-          onRemove={removeFromCart}
-          onCheckout={handleCheckout}
-        />
-
-        {activeOrders.length > 0 && (
-          <div style={{ marginTop: 'var(--sp-xl)' }}>
-            <ActiveOrderCard orders={activeOrders} />
-          </div>
-        )}
-      </div>
-
-      {/* ── Mobile sticky cart bar ────────────────────────────────────── */}
-      {cartCount > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 'var(--mobile-nav)', left: '50%',
-          transform: 'translateX(-50%)', width: '100%',
-          maxWidth: 'var(--content-max)',
-          background: 'var(--forest-dark)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 24px', zIndex: 150,
-        }}
-          className="mobile-cart-bar"
-        >
-          <div>
-            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'rgba(200,223,192,0.6)' }}>
-              {cartCount} {cartCount === 1 ? 'produkt' : 'produkter'}
-            </div>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, color: 'var(--moss)' }}>
-              {cartTotal} kr
-            </div>
-          </div>
-          <button onClick={handleCheckout} style={{
-            background: 'var(--forest-light)', borderRadius: 'var(--radius-md)',
-            padding: '11px 20px', fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
-            fontSize: 13, color: 'var(--forest-dark)', border: 'none', cursor: 'pointer',
-          }}>
-            Gå till bokning →
-          </button>
+      {activeOrders.length > 0 && (
+        <div style={{ marginBottom: 'var(--sp-xl)' }}>
+          <ActiveOrderCard orders={activeOrders} />
         </div>
       )}
 
-      {/* Hide mobile cart bar on desktop */}
-      <style>{`.mobile-cart-bar { display: flex; } @media (min-width: 768px) { .mobile-cart-bar { display: none !important; } }`}</style>
+      {/* Progress indicator */}
+      <div style={{ textAlign: 'center', marginBottom: 'var(--sp-xl)' }}>
+        <ol style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 16, listStyle: 'none', padding: 0, margin: 0 }}>
+          <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: '50%',
+              background: 'var(--moss)', color: 'var(--forest-dark)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 600, flexShrink: 0,
+            }}>1</span>
+            <span style={{ color: 'var(--forest-light)', fontWeight: 500 }}>Välj tjänster</span>
+          </li>
+          <li style={{ color: 'var(--forest-light)', opacity: 0.4 }}>—</li>
+          <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: '50%',
+              background: 'var(--moss)', color: 'var(--forest-dark)',
+              border: '0.5px solid rgba(14,92,91,0.25)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 600, flexShrink: 0,
+            }}>2</span>
+            <span style={{ color: 'var(--forest-light)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
+          </li>
+        </ol>
+      </div>
+
+      {/* ── List view: category rows ─────────────────────────────────────── */}
+      {openSection === null && (
+        <div className="service-card" id="services">
+          <div className="of-cat-list">
+            {SECTIONS.map(({ id, label, desc, Icon }) => {
+              const count = countFor(id);
+              return (
+                <button key={id} className="of-cat-row" onClick={() => setOpenSection(id)}>
+                  <span className="of-cat-icon"><Icon size={20} stroke={1.5} /></span>
+                  <span className="of-cat-text">
+                    <span className="of-cat-title">{label}</span>
+                    <span className="of-cat-desc" style={{ display: 'block' }}>{desc}</span>
+                  </span>
+                  {count > 0 && <span className="of-cat-badge">{count}</span>}
+                  <span className="of-cat-chev"><IconChevronRight size={18} stroke={1.75} /></span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail view: the opened category replaces the list ───────────── */}
+      {openMeta && (
+        <div className="service-card" id={openMeta.id}>
+          <button className="of-back" onClick={() => setOpenSection(null)}>
+            <IconArrowLeft size={16} stroke={1.75} /> Tillbaka
+          </button>
+          <div className="of-detail-head">
+            <span className="icon-circle" style={{ width: 36, height: 36 }}><openMeta.Icon size={16} stroke={1.5} /></span>
+            <div>
+              <div className="of-detail-title">{openMeta.label}</div>
+              <div className="of-detail-sub">{openMeta.subtitle}</div>
+            </div>
+          </div>
+
+          {/* Mattvätt — size slider */}
+          {openSection === 'mattvätt' && (
+            <div style={{
+              background: 'var(--linen)', borderRadius: 'var(--radius-lg)',
+              padding: 'var(--sp-xl)', border: '0.5px solid rgba(14,92,91,0.1)',
+            }}>
+              <div className="small" style={{ marginBottom: 'var(--sp-md)', color: 'var(--text-mid)' }}>
+                Välj storlek på mattan
+              </div>
+
+              {/* kvm display — editable */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <input
+                      type="number" min={1} max={30} step={1} value={mattKvm}
+                      onChange={e => {
+                        const v = Math.min(30, Math.max(1, Number(e.target.value)));
+                        if (!isNaN(v) && e.target.value !== '') setMattKvm(Math.round(v));
+                      }}
+                      className="matt-kvm-input"
+                      style={{
+                        fontFamily: 'inherit', fontSize: 36, fontWeight: 600,
+                        color: 'var(--text-dark)', background: 'none', border: 'none',
+                        borderBottom: '1.5px solid rgba(14,92,91,0.25)', outline: 'none',
+                        width: 52, padding: '0 2px', lineHeight: 1,
+                      }}
+                    />
+                    <span style={{ fontSize: 36, fontWeight: 600, color: 'var(--text-dark)' }}>m²</span>
+                  </div>
+                  {/* Custom stepper arrows */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+                    <button
+                      onClick={() => setMattKvm(v => Math.min(30, v + 1))}
+                      style={{
+                        width: 24, height: 24, borderRadius: 6,
+                        border: '0.5px solid rgba(14,92,91,0.2)',
+                        background: 'var(--linen)', color: 'var(--forest-mid)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'background 0.12s',
+                      }}
+                    >
+                      <IconChevronUp size={13} stroke={2} />
+                    </button>
+                    <button
+                      onClick={() => setMattKvm(v => Math.max(1, v - 1))}
+                      style={{
+                        width: 24, height: 24, borderRadius: 6,
+                        border: '0.5px solid rgba(14,92,91,0.2)',
+                        background: 'var(--linen)', color: 'var(--forest-mid)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', transition: 'background 0.12s',
+                      }}
+                    >
+                      <IconChevronDown size={13} stroke={2} />
+                    </button>
+                  </div>
+                </div>
+                <span className="small">{mattLabel(mattKvm)}</span>
+              </div>
+
+              {/* Slider */}
+              <input
+                type="range" min={1} max={30} step={1} value={mattKvm}
+                onChange={e => setMattKvm(Number(e.target.value))}
+                style={{ width: '100%', accentColor: 'var(--forest-mid)', marginBottom: 4 }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-lg)' }}>
+                <span className="micro">1 m²</span>
+                <span className="micro">30 m²</span>
+              </div>
+
+              {/* Price row */}
+              <div style={{ marginBottom: 'var(--sp-md)' }}>
+                <div className="micro" style={{ marginBottom: 2, letterSpacing: '1px', textTransform: 'uppercase' }}>Pris</div>
+                <div style={{ fontSize: 29, fontWeight: 600, color: 'var(--text-dark)' }}>
+                  {mattPrice} kr
+                </div>
+                <div className="micro">90 kr / m²</div>
+              </div>
+
+              {/* CTA — full-width below */}
+              {cartQty(mattId) === 0 ? (
+                <button
+                  onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })}
+                  className="btn-primary"
+                  style={{ width: '100%' }}
+                >
+                  Lägg till matta ({mattKvm} m²) — {mattPrice} kr
+                </button>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                  <button onClick={() => removeFromCart(mattId)} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconMinus size={13} stroke={2.5} />
+                  </button>
+                  <PulseQty value={cartQty(mattId)} />
+                  <button onClick={() => addToCart({ id: mattId, name: `Matta ${mattKvm} m²`, price: mattPrice, type: 'mattvätt' })} style={{ width: 34, height: 34, borderRadius: 9999, border: '0.5px solid rgba(14,92,91,0.25)', background: 'none', color: 'var(--forest-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconPlus size={13} stroke={2.5} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Struken tvätt — product grid */}
+          {openSection === 'struken' && (
+            loadingServices ? <SkeletonRows count={6} /> : allStrukenProducts.length === 0 ? (
+              <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga plagg tillgängliga just nu.</p>
+            ) : (
+              <div className="of-prod-grid">
+                {allStrukenProducts.map(p => (
+                  <ProductTile key={p.id} id={p.id} name={p.name} price={p.price} Icon={strukenIcon(p.name)} type="struken" />
+                ))}
+              </div>
+            )
+          )}
+
+          {/* Klädvård & textil — product grid */}
+          {openSection === 'kladavard' && (
+            loadingServices ? <SkeletonRows count={5} /> : services.length === 0 ? (
+              <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga tjänster tillgängliga just nu.</p>
+            ) : (
+              <div className="of-prod-grid">
+                {services.map(svc => (
+                  <ProductTile key={svc.id} id={svc.id} name={svc.name} price={svc.price_ore / 100} Icon={serviceIcon(svc.name)} type="service" serviceId={svc.id} />
+                ))}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* ── Fixed bottom bar ─────────────────────────────────────────────── */}
+      {cartCount > 0 && (
+        <div className="of-bar">
+          <div className="of-bar-inner">
+            <button className="of-bar-summary" onClick={() => setSheetOpen(true)} aria-label="Visa bokning">
+              <span className="of-bar-count">{cartCount} {cartCount === 1 ? 'produkt' : 'produkter'}</span>
+              <span className="of-bar-total">{cartTotal} kr <IconChevronUp size={15} stroke={2} /></span>
+            </button>
+            <button className="of-bar-cta" onClick={handleCheckout}>Gå till bokning →</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bottom sheet: line-item list ─────────────────────────────────── */}
+      {sheetOpen && cartCount > 0 && (
+        <>
+          <div className="of-sheet-scrim" onClick={() => setSheetOpen(false)} />
+          <div className="of-sheet" role="dialog" aria-modal="true" aria-label="Din bokning">
+            <div className="of-grabber" />
+            <div className="of-sheet-head">
+              <span className="of-sheet-title">Din bokning</span>
+              <button className="of-sheet-close" onClick={() => setSheetOpen(false)} aria-label="Stäng">
+                <IconX size={18} stroke={1.75} />
+              </button>
+            </div>
+            <div className="of-sheet-body">
+              {cart.map(item => (
+                <div key={item.id} className="of-sheet-row">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="of-sheet-row-name">{item.name}</div>
+                    <div className="of-sheet-row-per">{item.price} kr / st</div>
+                  </div>
+                  <div className="prod-stepper">
+                    <button className="prod-step-btn" aria-label={`Ta bort ${item.name}`} onClick={() => removeFromCart(item.id)}>
+                      <IconMinus size={13} stroke={2.5} />
+                    </button>
+                    <PulseQty value={item.quantity} />
+                    <button className="prod-step-btn" aria-label={`Lägg till ${item.name}`} onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId })}>
+                      <IconPlus size={13} stroke={2.5} />
+                    </button>
+                  </div>
+                  <span className="of-sheet-line">{item.price * item.quantity} kr</span>
+                </div>
+              ))}
+
+              <div style={{ paddingTop: 'var(--sp-md)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>Delsumma</span>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>{cartTotal} kr</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-md)' }}>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>Hämtning &amp; leverans</span>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>Ingår</span>
+                </div>
+                <div style={{ borderTop: '0.5px solid rgba(15,23,42,0.1)', paddingTop: 'var(--sp-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{cartTotal} kr</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );

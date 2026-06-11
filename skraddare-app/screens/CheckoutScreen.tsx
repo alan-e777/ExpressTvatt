@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput,
-  TouchableOpacity, StyleSheet, Alert,
+  TouchableOpacity, StyleSheet, Alert, Modal, Pressable,
 } from 'react-native';
-import { IconMapPin, IconClock, IconCalendar, IconLock } from '@tabler/icons-react-native';
+import { IconMapPin, IconClock, IconCalendar, IconLock, IconChevronUp, IconX } from '@tabler/icons-react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { doc, getDoc } from 'firebase/firestore';
@@ -39,6 +39,7 @@ export default function CheckoutScreen({ navigation, route }: Props) {
   const [showTimePicker,   setShowTimePicker]    = useState(false);
   const [savedAddresses,   setSavedAddresses]    = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]         = useState<SavedAddress | null>(null);
+  const [sheetOpen,        setSheetOpen]         = useState(false);
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -93,34 +94,8 @@ export default function CheckoutScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── One white card holds the whole booking form (mirrors website .checkout-card) ── */}
+        {/* ── One calm white card holds the booking form (sections split by hairlines) ── */}
         <View style={styles.card}>
-
-          {/* ── Order summary (cream inset) ───────────────────────────── */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Din bokning</Text>
-
-            {items.map(item => (
-              <View key={item.id} style={styles.summaryRow}>
-                <Text style={styles.summaryName} numberOfLines={1}>
-                  {item.qty}× {item.name}
-                </Text>
-                <Text style={styles.summaryPrice}>{item.price * item.qty} kr</Text>
-              </View>
-            ))}
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryName}>Hämtning & leverans</Text>
-              <Text style={styles.summaryPrice}>Ingår</Text>
-            </View>
-
-            <View style={styles.summaryDivider} />
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>Totalt</Text>
-              <Text style={styles.totalValue}>{total} kr</Text>
-            </View>
-          </View>
 
           {/* ── Contact (read-only — comes from the account) ──────────── */}
           {user && (
@@ -222,13 +197,53 @@ export default function CheckoutScreen({ navigation, route }: Props) {
             numberOfLines={3}
           />
 
-          {/* ── CTA (inside the card → teal, faithful to website btn-primary) ── */}
-          <TouchableOpacity style={styles.btn} onPress={handleNext} activeOpacity={0.85}>
-            <IconLock size={14} color={colors.white} strokeWidth={1.5} />
-            <Text style={styles.btnText}>Gå till betalning — {total} kr</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* ── Fixed bottom bar (tappable total opens the sheet) ───────────── */}
+      <View style={styles.bar}>
+        <TouchableOpacity onPress={() => setSheetOpen(true)} activeOpacity={0.7}>
+          <Text style={styles.barCount}>{items.length} {items.length === 1 ? 'artikel' : 'artiklar'}</Text>
+          <View style={styles.barTotalRow}>
+            <Text style={styles.barTotal}>{total} kr</Text>
+            <IconChevronUp size={15} color={colors.moss} strokeWidth={2} />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.barBtn} onPress={handleNext} activeOpacity={0.85}>
+          <IconLock size={14} color={colors.forestDark} strokeWidth={1.75} />
+          <Text style={styles.barBtnText}>Gå till betalning</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Bottom sheet: booking summary ───────────────────────────────── */}
+      <Modal visible={sheetOpen} transparent animationType="slide" onRequestClose={() => setSheetOpen(false)}>
+        <Pressable style={sh.scrim} onPress={() => setSheetOpen(false)} />
+        <View style={sh.sheet}>
+          <View style={sh.grabber} />
+          <View style={sh.head}>
+            <Text style={sh.title}>Din bokning</Text>
+            <TouchableOpacity onPress={() => setSheetOpen(false)} hitSlop={8}>
+              <IconX size={18} color={colors.textMuted} strokeWidth={1.75} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+            {items.map(item => (
+              <View key={item.id} style={sh.row}>
+                <Text style={sh.rowName} numberOfLines={1}>{item.qty}× {item.name}</Text>
+                <Text style={sh.rowPrice}>{item.price * item.qty} kr</Text>
+              </View>
+            ))}
+            <View style={sh.row}>
+              <Text style={sh.rowName}>Hämtning &amp; leverans</Text>
+              <Text style={sh.rowPrice}>Ingår</Text>
+            </View>
+            <View style={[sh.row, sh.rowTotal]}>
+              <Text style={sh.grandLabel}>Totalt</Text>
+              <Text style={sh.grandValue}>{total} kr</Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       <DatePickerModal
         visible={showDatePicker}
@@ -256,7 +271,7 @@ function formatDateDisplay(str: string): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  content:   { padding: spacing.lg, paddingBottom: spacing.xxl },
+  content:   { padding: spacing.lg, paddingBottom: 110 },
 
   // ─ Outer white card (mirrors website .checkout-card) ─
   card: {
@@ -417,4 +432,41 @@ const styles = StyleSheet.create({
     fontSize:   15,
     color:      colors.white,
   },
+
+  // ─ Fixed bottom bar ─
+  bar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: colors.forestDark,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl,
+  },
+  barCount: { fontFamily: 'Inter_400', fontSize: 11, color: 'rgba(183,220,215,0.6)' },
+  barTotalRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  barTotal: { fontFamily: 'Inter_700', fontSize: 22, color: colors.moss },
+  barBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.forestLight, borderRadius: radius.md,
+    paddingVertical: 11, paddingHorizontal: spacing.lg,
+  },
+  barBtnText: { fontFamily: 'Inter_600', fontSize: 13, color: colors.forestDark },
+});
+
+// ─── Bottom sheet ──────────────────────────────────────────────────────────────
+
+const sh = StyleSheet.create({
+  scrim: { flex: 1, backgroundColor: 'rgba(8,30,30,0.42)' },
+  sheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xxl,
+  },
+  grabber: { width: 38, height: 4, borderRadius: 999, backgroundColor: 'rgba(15,23,42,0.18)', alignSelf: 'center', marginVertical: spacing.sm },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  title: { fontFamily: 'Inter_700', fontSize: 16, color: colors.textDark },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 0.5, borderBottomColor: 'rgba(15,23,42,0.08)' },
+  rowName: { fontFamily: 'Inter_400', fontSize: 14, color: colors.textMid, flex: 1, marginRight: spacing.sm },
+  rowPrice: { fontFamily: 'Inter_500', fontSize: 14, color: colors.textMid },
+  rowTotal: { borderBottomWidth: 0, paddingTop: spacing.md },
+  grandLabel: { fontFamily: 'Inter_600', fontSize: 14, color: colors.textDark },
+  grandValue: { fontFamily: 'Inter_700', fontSize: 20, color: colors.textDark },
 });
