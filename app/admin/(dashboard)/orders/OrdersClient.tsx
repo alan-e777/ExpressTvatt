@@ -4,6 +4,7 @@ import { useState, useRef, Fragment, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import * as XLSX from "xlsx";
+import { IconDeviceMobile, IconDeviceDesktop } from "@tabler/icons-react";
 
 export type BasketItem = { id: string; name: string; price: number; qty: number };
 
@@ -15,6 +16,7 @@ export type Order = {
   status: string;
   customerId: string;
   customerEmail: string | null;
+  platform: 'mobile' | 'web';
   createdAt: string | null;
   notes: string;
   adminNotes: string;
@@ -149,6 +151,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           status:          data.status ?? "paid",
           customerId:      uid,
           customerEmail:   data.customerEmail ?? null,
+          platform:        (data.platform === 'mobile' ? 'mobile' : 'web') as 'mobile' | 'web',
           createdAt:       data.createdAt?.toDate?.()?.toISOString() ?? null,
           notes:           data.notes ?? "",
           adminNotes:      data.adminNotes ?? "",
@@ -677,12 +680,18 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                       <Td>{order.serviceName}</Td>
                       <Td style={{ fontWeight: 600 }}>{formatAmount(order.amount)}</Td>
                       <Td style={{ fontSize: "0.8rem" }}>
-                        {order.customerId === "anonymous"
-                          ? <span style={{ color: "#aaa" }}>Guest</span>
-                          : order.customerEmail
-                            ? <span style={{ color: "#333" }}>{order.customerEmail}</span>
-                            : <span style={{ color: "#aaa", fontFamily: "monospace" }}>{order.customerId.slice(0, 12)}…</span>
-                        }
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                          {order.platform === "mobile"
+                            ? <IconDeviceMobile size={14} color="#888" />
+                            : <IconDeviceDesktop size={14} color="#888" />
+                          }
+                          {order.customerId === "anonymous"
+                            ? <span style={{ color: "#aaa" }}>Guest</span>
+                            : order.customerEmail
+                              ? <span style={{ color: "#333" }}>{order.customerEmail}</span>
+                              : <span style={{ color: "#aaa", fontFamily: "monospace" }}>{order.customerId.slice(0, 12)}…</span>
+                          }
+                        </span>
                       </Td>
                       <Td>
                         <StatusSelect

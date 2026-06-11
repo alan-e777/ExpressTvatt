@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     date,
     time,
     notes,
+    platform,
   }: {
     items: CartItem[];
     customerId?: string;
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
     date: string;
     time: string;
     notes?: string;
+    platform?: string;
   } = body;
 
   if (!items?.length) {
@@ -125,6 +127,7 @@ export async function POST(request: NextRequest) {
     dropoffTime:     time,
     notes:           notes ?? '',
     items:           validatedItems,
+    platform:        platform === 'mobile' ? 'mobile' : 'web',
     createdAt:       new Date(),
   });
 

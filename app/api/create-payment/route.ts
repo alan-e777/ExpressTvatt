@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     time,
     notes,
     customFields,
+    platform,
   } = body;
 
   if (!serviceId) {
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
     dropoffTime:  time        ?? '',
     notes:        notes       ?? '',
     customFields: customFields ?? {},
+    platform:     platform === 'mobile' ? 'mobile' : 'web',
     createdAt: new Date(),
   });
 

@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
     time,
     notes,
     items,
+    platform,
   }: {
     customerId?: string;
     address: string;
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
     time: string;
     notes: string;
     items: BasketItem[];
+    platform?: string;
   } = body;
 
   if (!items?.length) {
@@ -81,6 +83,7 @@ export async function POST(request: NextRequest) {
     dropoffTime:    time,
     notes,
     items:          validatedItems,
+    platform:       platform === 'mobile' ? 'mobile' : 'web',
     createdAt:      new Date(),
   });
 

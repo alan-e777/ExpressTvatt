@@ -27,7 +27,7 @@ async function createPaymentIntentFull(params: {
   const res = await fetch(`${API_URL}/api/create-payment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify({ ...params, platform: 'mobile' }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
