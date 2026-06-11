@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     borderColor:    'rgba(14,92,91,0.1)',
   },
   btn: {
-    backgroundColor: colors.forestDark,
+    backgroundColor: colors.earth,
     borderRadius:    radius.md,
     paddingVertical: spacing.md,
     alignItems:      'center',
@@ -263,6 +263,6 @@ const styles = StyleSheet.create({
   btnText: {
     fontFamily: 'Inter_600',
     fontSize:   15,
-    color:      colors.white,
+    color:      colors.textDark,
   },
 });

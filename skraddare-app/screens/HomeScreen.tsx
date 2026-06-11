@@ -19,7 +19,6 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
-import EcoTrustBanner from '../components/EcoTrustBanner';
 import ActiveOrderCard from '../components/home/ActiveOrderCard';
 import SquareMeterSlider from '../components/SquareMeterSlider';
 
@@ -432,7 +431,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <EcoTrustBanner />
       </ScrollView>
 
       {/* ── Sticky cart bar ─────────────────────────────────────────────── */}

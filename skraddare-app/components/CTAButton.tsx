@@ -37,7 +37,7 @@ export default function CTAButton({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? '#FFFFFF' : colors.forestDark} />
+        <ActivityIndicator color={isPrimary ? colors.textDark : colors.forestDark} />
       ) : (
         <View style={styles.inner}>
           {icon}
@@ -55,10 +55,10 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
-  primary:         { backgroundColor: colors.forestDark },
+  primary:         { backgroundColor: colors.earth },
   secondary:       { backgroundColor: colors.moss },
   disabled:        { opacity: 0.45 },
   inner:           { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label:           { fontFamily: 'Inter_600', fontSize: 14, color: '#FFFFFF' },
+  label:           { fontFamily: 'Inter_600', fontSize: 14, color: colors.textDark },
   labelSecondary:  { color: colors.forestDark },
 });
