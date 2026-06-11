@@ -66,7 +66,7 @@ export default function LandingHeader() {
     <header className={`lp-nav${scrolled ? ' lp-nav--scrolled' : ''}${menuOpen ? ' lp-nav--menu-open' : ''}`}>
       <div className="lp-nav-inner">
         <Link href="/" className="lp-nav-logo" aria-label="Express Tvätt" onClick={() => setMenuOpen(false)}>
-          <Image src="/logo-icon.png" alt="" width={34} height={34} priority />
+          <Image src="/logo-icon.png" alt="" width={42} height={42} priority />
           <span className="lp-nav-wordmark">
             <span className="lp-nav-express">EXPRESS</span>
             <span className="lp-nav-tvatt">TVÄTT</span>

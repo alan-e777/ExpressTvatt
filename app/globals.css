@@ -209,11 +209,11 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   font-family: 'Poppins', sans-serif;
-  font-weight: 500;
-  font-size: 25px;
-  letter-spacing: 4px;
+  font-weight: 600;
+  font-size: 27px;
+  letter-spacing: 5px;
   text-transform: uppercase;
   user-select: none;
   white-space: nowrap;
@@ -1620,16 +1620,16 @@ input, textarea, select { font-family: inherit; }
   color: var(--moss);
 }
 
-/* "Logga ut" button — ghost style for dark background */
+/* "Logga ut" button — visible ghost on dark background */
 .profile-page .btn-secondary {
-  color: var(--moss);
-  border-color: rgba(183, 220, 215, 0.4);
-  background: rgba(183, 220, 215, 0.06);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .profile-page .btn-secondary:hover {
-  background: rgba(183, 220, 215, 0.12);
-  border-color: var(--moss);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.55);
   color: #ffffff;
   opacity: 1;
 }
@@ -1974,7 +1974,7 @@ input, textarea, select { font-family: inherit; }
 .lp-nav-wordmark {
   display: flex;
   gap: 4px;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -2232,7 +2232,7 @@ input, textarea, select { font-family: inherit; }
 }
 .lp-hero-mark {
   position: relative;
-  width: 62%;
+  width: 70%;
   height: auto;
 }
 /* Gentle float for the brand mark + rings */

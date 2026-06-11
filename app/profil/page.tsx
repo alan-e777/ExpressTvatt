@@ -341,7 +341,7 @@ export default function ProfilPage() {
             width: 88, height: 88, borderRadius: 9999, background: 'var(--moss)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
           }}>
-            <span style={{ fontFamily: 'Playfair Display, serif', fontWeight: 500, fontSize: 30, color: 'var(--forest-dark)' }}>
+            <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, fontSize: 30, color: 'var(--forest-dark)' }}>
               {initials}
             </span>
           </div>
