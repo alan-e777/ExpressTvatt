@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { IconCheck, IconWash } from '@tabler/icons-react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -64,15 +64,14 @@ function StepCircle({ state, number }: { state: StepState; number: number }) {
   return inner;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── One order's content (driven by the currently displayed order) ──────────────
 
-export default function ActiveOrderCard({ order }: { order: Order }) {
+function OrderContent({ order }: { order: Order }) {
   const states = statesForStatus(order.status);
   const badgeText = BADGE_LABEL[order.status] ?? 'Pågår';
 
   return (
-    <View style={styles.card}>
-
+    <>
       <Text style={styles.sectionLabel}>PÅGÅENDE RENGÖRINGAR</Text>
 
       {/* Order row */}
@@ -132,6 +131,67 @@ export default function ActiveOrderCard({ order }: { order: Order }) {
         </View>
 
       </View>
+    </>
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+// Mirrors the website `/order` ActiveOrderCard: a single card that cycles through
+// all active orders on tap (newest first), with a "+X" badge and a smooth swap
+// animation. Accepts either an `orders` array or a single `order` (back-compat).
+export default function ActiveOrderCard({ orders, order }: { orders?: Order[]; order?: Order }) {
+  const list = orders ?? (order ? [order] : []);
+
+  const [displayIdx, setDisplayIdx] = useState(0);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const opacity    = useRef(new Animated.Value(1)).current;
+
+  // Keep index in bounds if an order disappears
+  useEffect(() => {
+    setDisplayIdx(prev => Math.min(prev, Math.max(0, list.length - 1)));
+  }, [list.length]);
+
+  if (list.length === 0) return null;
+
+  const current = list[Math.min(displayIdx, list.length - 1)];
+  const extra   = list.length - 1;
+
+  function handlePress() {
+    if (list.length <= 1) return;
+    // Exit: slide left + fade out, then swap content and enter from the right.
+    Animated.parallel([
+      Animated.timing(translateX, { toValue: -28, duration: 180, easing: Easing.in(Easing.ease),  useNativeDriver: true }),
+      Animated.timing(opacity,    { toValue: 0,   duration: 180, easing: Easing.in(Easing.ease),  useNativeDriver: true }),
+    ]).start(() => {
+      setDisplayIdx(i => (i + 1) % list.length);
+      translateX.setValue(28);
+      Animated.parallel([
+        Animated.timing(translateX, { toValue: 0, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(opacity,    { toValue: 1, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start();
+    });
+  }
+
+  return (
+    <View style={{ position: 'relative' }}>
+      {/* +X notification bubble */}
+      {extra > 0 && (
+        <View style={styles.extraBadge} pointerEvents="none">
+          <Text style={styles.extraBadgeText}>+{extra}</Text>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={list.length > 1 ? 0.9 : 1}
+        onPress={handlePress}
+        disabled={list.length <= 1}
+      >
+        <Animated.View style={{ transform: [{ translateX }], opacity }}>
+          <OrderContent order={current} />
+        </Animated.View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -148,6 +208,27 @@ const styles = StyleSheet.create({
     borderWidth:     3,
     borderColor:     colors.earth,
     padding:         spacing.lg,
+    overflow:        'hidden',
+  },
+
+  // "+X more orders" bubble — light teal, top-right (mirrors the website)
+  extraBadge: {
+    position:        'absolute',
+    top:             -8,
+    right:           -8,
+    zIndex:          1,
+    minWidth:        22,
+    height:          22,
+    borderRadius:    radius.circle,
+    paddingHorizontal: 5,
+    backgroundColor: colors.forestLight,
+    alignItems:      'center',
+    justifyContent:  'center',
+  },
+  extraBadgeText: {
+    fontFamily: 'Inter_700',
+    fontSize:   10,
+    color:      colors.forestDark,
   },
 
   sectionLabel: {

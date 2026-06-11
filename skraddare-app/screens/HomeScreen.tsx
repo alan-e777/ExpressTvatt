@@ -227,7 +227,7 @@ const sub = StyleSheet.create({
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
 
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [strukenCatalog, setStrukenCatalog] = useState<StrukenProduct[]>([]);
   const [services, setServices]             = useState<Service[]>([]);
   const [loading, setLoading]               = useState(true);
@@ -240,7 +240,7 @@ export default function HomeScreen() {
   // ── Auth + live order ──────────────────────────────────────────────────────
   useEffect(() => {
     const unsubAuth = auth.onAuthStateChanged(user => {
-      if (!user) { setActiveOrder(null); return; }
+      if (!user) { setActiveOrders([]); return; }
       registerPushToken(user.uid).catch(() => {});
       const q = query(collection(db, 'orders'), where('customerId', '==', user.uid));
       const unsubOrders = onSnapshot(q, snap => {
@@ -251,7 +251,7 @@ export default function HomeScreen() {
         const active = all
           .filter(o => ACTIVE_STATUSES.includes(o.status))
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        setActiveOrder(active[0] ?? null);
+        setActiveOrders(active);
       });
       return unsubOrders;
     });
@@ -331,9 +331,9 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.content, cartCount > 0 && { paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        {activeOrder && (
+        {activeOrders.length > 0 && (
           <View style={{ marginBottom: spacing.lg }}>
-            <ActiveOrderCard order={activeOrder} />
+            <ActiveOrderCard orders={activeOrders} />
           </View>
         )}
 

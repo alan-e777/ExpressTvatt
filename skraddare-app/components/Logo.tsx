@@ -10,8 +10,8 @@ type Props = { size?: 'sm' | 'lg' };
 // wordmark (white + light teal), tuned for the deep-teal surfaces.
 export default function Logo({ size = 'sm' }: Props) {
   const lg = size === 'lg';
-  const chip = lg ? 60 : 34;
-  const img  = lg ? 44 : 26;
+  const chip = lg ? 60 : 34;          // chip box size — unchanged
+  const img  = lg ? 54 : 31;          // logo mark inside — enlarged for prominence
   const fs   = lg ? 22 : 15;
 
   return (

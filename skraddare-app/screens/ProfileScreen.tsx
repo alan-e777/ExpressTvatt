@@ -140,11 +140,9 @@ export default function ProfileScreen() {
               </Text>
             </View>
           ) : (
-            activeOrders.map(order => (
-              <View key={order.id} style={{ marginBottom: spacing.md }}>
-                <ActiveOrderCard order={order} />
-              </View>
-            ))
+            <View style={{ marginBottom: spacing.md }}>
+              <ActiveOrderCard orders={activeOrders} />
+            </View>
           )}
 
           {/* Account info */}
