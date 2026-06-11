@@ -143,5 +143,5 @@ export async function POST(request: NextRequest) {
     createdAt:       new Date(),
   });
 
-  return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+  return NextResponse.json({ clientSecret: paymentIntent.client_secret, orderId: paymentIntent.id });
 }

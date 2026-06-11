@@ -2727,8 +2727,8 @@ input, textarea, select { font-family: inherit; }
   font-weight: 500;
 }
 
-/* Order summary block — cream */
-.site-shell .order-summary { background: #F7F5F0; border-radius: 12px; }
+/* Order summary block — white, hairline (consistent with the sheet) */
+.site-shell .order-summary { background: #fff; border: 1px solid rgba(15,23,42,0.08); border-radius: 12px; }
 .site-shell .summary-total { color: var(--text-dark); font-weight: 700; }
 
 /* Progress indicator step bubbles — deep teal active, hairline upcoming */
@@ -3139,3 +3139,39 @@ input, textarea, select { font-family: inherit; }
   letter-spacing: -0.01em; margin-bottom: var(--sp-md);
 }
 .site-shell .of-section-title svg { color: #64748B; flex-shrink: 0; }
+
+/* ── 5. Success card — order number pill + confetti ───────────────────── */
+.site-shell .order-num-pill {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: #F7F5F0; border: 1px dashed rgba(8,63,65,0.35);
+  border-radius: 12px; padding: 12px 22px; margin-top: 4px;
+}
+.site-shell .order-num-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #64748B;
+}
+.site-shell .order-num-value {
+  font-size: 22px; font-weight: 700; letter-spacing: 0.04em;
+  color: #083F41; font-variant-numeric: tabular-nums;
+}
+
+.site-shell .of-confetti {
+  position: absolute; inset: 0; overflow: hidden;
+  pointer-events: none; border-radius: 16px; z-index: 1;
+}
+.site-shell .of-confetti-piece {
+  position: absolute; top: -28px; opacity: 0;
+  animation-name: of-confetti-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.5, 1);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+@keyframes of-confetti-fall {
+  0%   { transform: translate(0, -10%) rotate(0deg); opacity: 0; }
+  8%   { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translate(var(--drift, 0), 520px) rotate(var(--rot, 360deg)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-shell .of-confetti { display: none; }
+}

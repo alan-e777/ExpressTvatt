@@ -12,6 +12,7 @@ import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
+import Confetti from '@/components/Confetti';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -20,7 +21,36 @@ type SavedAddress = { address: string; postalCode: string; deliveryNote?: string
 
 function formatPrice(kr: number) { return `${kr} kr`; }
 
-function PaymentForm({ totalKr, onBack }: { totalKr: number; onBack: () => void }) {
+function SuccessCard({ orderId }: { orderId: string | null }) {
+  const orderNo = orderId ? `#${orderId.slice(-7).toUpperCase()}` : '—';
+  return (
+    <div className="success-box" style={{ position: 'relative', overflow: 'hidden' }}>
+      <Confetti />
+      <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        <div className="success-icon-circle">✓</div>
+        <div className="h2" style={{ marginBottom: 10, textAlign: 'center' }}>Din beställning är mottagen</div>
+        <p className="body" style={{ color: 'var(--text-muted)', textAlign: 'center', marginBottom: 20, maxWidth: 340 }}>
+          Vi har tagit hand om din order och bekräftat din upphämtning.
+        </p>
+
+        <div className="order-num-pill">
+          <span className="order-num-label">Viktigt! Spara detta</span>
+          <span className="order-num-value">{orderNo}</span>
+        </div>
+
+        <p className="small" style={{ color: 'var(--text-muted)', textAlign: 'center', margin: '20px 0 28px', maxWidth: 320, lineHeight: 1.6 }}>
+          Du får uppdateringar i varje steg: upphämtning → tvätt → leverans.
+        </p>
+
+        <Link href="/" className="btn-primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          Tillbaka till startsidan
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function PaymentForm({ totalKr, orderId, onBack, onPaid }: { totalKr: number; orderId: string | null; onBack: () => void; onPaid: () => void }) {
   const stripe   = useStripe();
   const elements = useElements();
   const [status,   setStatus]   = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
@@ -37,22 +67,11 @@ function PaymentForm({ totalKr, onBack }: { totalKr: number; onBack: () => void 
       redirect: 'if_required',
     });
     if (error) { setErrorMsg(error.message ?? 'Betalningen misslyckades.'); setStatus('error'); }
-    else setStatus('success');
+    else { setStatus('success'); onPaid(); }
   }
 
   if (status === 'success') {
-    return (
-      <div className="success-box">
-        <div className="success-icon-circle">✓</div>
-        <div className="h2" style={{ marginBottom: 12, textAlign: 'center' }}>Betalning mottagen!</div>
-        <p className="body" style={{ color: 'var(--text-muted)', textAlign: 'center', marginBottom: 32 }}>
-          Tack! Vi hämtar upp dina saker och hör av oss.
-        </p>
-        <Link href="/" className="btn-primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          Tillbaka till startsidan
-        </Link>
-      </div>
-    );
+    return <SuccessCard orderId={orderId} />;
   }
 
   return (
@@ -60,7 +79,12 @@ function PaymentForm({ totalKr, onBack }: { totalKr: number; onBack: () => void 
       <span className="label">Kortuppgifter</span>
       <div className="stripe-wrap"><PaymentElement /></div>
       {errorMsg && <p className="error-msg">{errorMsg}</p>}
-      <button type="submit" className="btn-primary" disabled={!stripe || status === 'processing'}>
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={!stripe || status === 'processing'}
+        style={{ background: 'var(--forest-light)', color: 'var(--forest-dark)' }}
+      >
         <IconLock size={14} stroke={1.5} />
         {status === 'processing' ? 'Behandlar…' : `Betala ${formatPrice(totalKr)}`}
       </button>
@@ -86,6 +110,8 @@ function CheckoutForm() {
   const [userId,       setUserId]       = useState<string | undefined>();
   const [step,         setStep]         = useState<'form' | 'payment'>('form');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [orderId,      setOrderId]      = useState<string | null>(null);
+  const [paid,         setPaid]         = useState(false);
   const [loadError,    setLoadError]    = useState<string | null>(null);
   const [submitting,   setSubmitting]   = useState(false);
 
@@ -171,6 +197,7 @@ function CheckoutForm() {
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
       setClientSecret(data.clientSecret);
+      setOrderId(data.orderId ?? null);
       setStep('payment');
       if (userId) {
         setDoc(doc(db, 'customers', userId), {
@@ -235,9 +262,9 @@ function CheckoutForm() {
   if (step === 'payment' && clientSecret) {
     return (
       <div className="form-page of">
-        <Summary />
+        {!paid && <Summary />}
         <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <PaymentForm totalKr={totalKr} onBack={() => setStep('form')} />
+          <PaymentForm totalKr={totalKr} orderId={orderId} onBack={() => setStep('form')} onPaid={() => setPaid(true)} />
         </Elements>
       </div>
     );
