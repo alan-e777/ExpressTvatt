@@ -114,12 +114,15 @@ const styles = StyleSheet.create({
   emptyWrap: { paddingTop: spacing.xxl, paddingHorizontal: spacing.xl },
 
   bubble: { maxWidth: '78%', borderRadius: radius.xl, padding: spacing.md, marginBottom: spacing.md },
-  bubbleLeft:  { backgroundColor: colors.linen,      alignSelf: 'flex-start', borderBottomLeftRadius: radius.sm },
-  bubbleRight: { backgroundColor: colors.forestDark, alignSelf: 'flex-end',   borderBottomRightRadius: radius.sm },
-  textLeft:  { color: colors.textDark, lineHeight: 21 },
-  textRight: { color: '#FFFFFF', lineHeight: 21 },
+  // Mirrors the website's authenticated (.site-shell) chat: left = white card,
+  // right = light-teal (forestLight) with dark-teal text. The old forestDark
+  // right bubble was nearly invisible against the deep-teal page canvas.
+  bubbleLeft:  { backgroundColor: colors.linen,       alignSelf: 'flex-start', borderBottomLeftRadius: radius.sm },
+  bubbleRight: { backgroundColor: colors.forestLight, alignSelf: 'flex-end',   borderBottomRightRadius: radius.sm },
+  textLeft:  { color: colors.textDark,   lineHeight: 21 },
+  textRight: { color: colors.forestDark, lineHeight: 21 },
   timeLeft:  { marginTop: spacing.xs, color: colors.textMuted },
-  timeRight: { marginTop: spacing.xs, color: 'rgba(255,255,255,0.6)', alignSelf: 'flex-end' },
+  timeRight: { marginTop: spacing.xs, color: 'rgba(8,63,65,0.55)', alignSelf: 'flex-end' },
 
   inputRow: {
     flexDirection: 'row', gap: spacing.sm, padding: spacing.md,

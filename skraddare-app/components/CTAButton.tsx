@@ -55,6 +55,10 @@ const styles = StyleSheet.create({
     alignItems:      'center',
     justifyContent:  'center',
   },
+  // Gold primary is an intentional mobile adaptation: it reads on BOTH white cards
+  // and the deep-teal page canvas, where a forestDark fill would vanish (#083F41 on
+  // the #063F41 canvas). Gold is a brand color (deep teal + gold). The website's
+  // teal .btn-primary only works there because its buttons always sit on white.
   primary:         { backgroundColor: colors.earth },
   secondary:       { backgroundColor: colors.moss },
   disabled:        { opacity: 0.45 },

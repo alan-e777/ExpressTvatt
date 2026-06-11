@@ -95,7 +95,8 @@ radius  = { sharp:2, sm:8, md:10, lg:14, xl:20, pill:999, circle:9999 }
 - **Primary button / CTAButton** — `forestDark` bg, `moss` text. Secondary: `moss` bg, `forestDark` text.
 - **ActiveOrderCard** ("Pågående ärenden") — white bg, **3px gold (`earth`) border**, gold
   section label, teal 5-step stepper (Bokad → Hämtad → Rengörs → Klar → Levererad).
-- **Chat bubbles** — left: `linen` (white) + `textDark`; right: `forestDark` + `moss` text.
+- **Chat bubbles** — left: `linen` (white) + `textDark`; right: `forestLight` + `forestDark` text
+  (mirrors the website `.site-shell`; never `forestDark` bg — it vanishes on the deep-teal canvas).
 - **Inputs** — on white cards use `mint` bg; floating on the page use `linen` (white).
 
 ---
