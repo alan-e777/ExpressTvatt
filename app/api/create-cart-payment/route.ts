@@ -68,6 +68,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Varukorgen är tom.' }, { status: 400 });
   }
 
+  // ── Availability: reject pickup/delivery on an admin-blocked date ─────────────
+  const availSnap = await db.collection('settings').doc('availability').get();
+  const blockedDates: string[] = (availSnap.exists ? availSnap.data()?.blockedDates : []) ?? [];
+  if (blockedDates.includes(date) || (deliveryDate && blockedDates.includes(deliveryDate))) {
+    return NextResponse.json({ error: 'Ett av de valda datumen är inte längre tillgängligt. Välj ett annat datum.' }, { status: 400 });
+  }
+
   // ── Schedule validation: delivery must be ≥ 72h after pickup ─────────────────
   if (deliveryDate && deliveryTime) {
     const toDate = (d: string, t: string) => {

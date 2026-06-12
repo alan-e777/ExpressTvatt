@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 
+// Statuses that still count as a live booking when warning about a blocked day.
+const ACTIVE_FOR_WARNING = new Set(["paid", "collected", "in_progress", "ready_for_pickup"]);
+
 export type CalendarOrder = {
   id: string;
   serviceName: string;
@@ -44,13 +47,47 @@ function parseLocalDate(ymd: string) {
   return new Date(y, m - 1, d);
 }
 
-export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) {
+export default function CalendarClient({ orders, initialBlockedDates = [] }: { orders: CalendarOrder[]; initialBlockedDates?: string[] }) {
   const today = new Date();
   const todayYmd = toYmd(today);
 
   const [year, setYear]   = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+
+  const [blockedDates, setBlockedDates] = useState<Set<string>>(() => new Set(initialBlockedDates));
+  const [togglingDate, setTogglingDate] = useState<string | null>(null);
+
+  async function toggleBlocked(ymd: string) {
+    const blocked = !blockedDates.has(ymd);
+    setTogglingDate(ymd);
+    // Optimistic update
+    setBlockedDates(prev => {
+      const next = new Set(prev);
+      blocked ? next.add(ymd) : next.delete(ymd);
+      return next;
+    });
+    try {
+      const res = await fetch("/api/admin/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: ymd, blocked }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setBlockedDates(new Set(data.blockedDates ?? []));
+    } catch {
+      // Revert
+      setBlockedDates(prev => {
+        const next = new Set(prev);
+        blocked ? next.delete(ymd) : next.add(ymd);
+        return next;
+      });
+      alert("Failed to update availability. Try again.");
+    } finally {
+      setTogglingDate(null);
+    }
+  }
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear(y => y - 1); }
@@ -82,6 +119,8 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
   const selectedOrders_sorted = [...selectedOrders].sort((a, b) =>
     (a.dropoffTime || "").localeCompare(b.dropoffTime || "")
   );
+  const selectedBlocked = blockedDates.has(selectedYmd);
+  const selectedActiveCount = selectedOrders.filter(o => ACTIVE_FOR_WARNING.has(o.status)).length;
 
   function fmtSelectedDate() {
     const d = parseLocalDate(selectedYmd);
@@ -132,15 +171,19 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
               const ymd = dayYmd(day);
               const isToday = ymd === todayYmd;
               const isSelected = ymd === selectedYmd;
-              const hasOrders = !!ordersByDate[ymd]?.length;
               const orderList = ordersByDate[ymd] ?? [];
+              const hasOrders = orderList.length > 0;
               const hasCancelled = orderList.every(o => o.status === "cancelled");
               const dotColor = hasCancelled ? "#e5e5e5" : "#378ADD";
+              const isBlocked = blockedDates.has(ymd);
+              const activeCount = orderList.filter(o => ACTIVE_FOR_WARNING.has(o.status)).length;
+              const isConflict = isBlocked && activeCount > 0; // booked on a closed day
 
               return (
                 <button
                   key={day}
                   onClick={() => setSelectedYmd(ymd)}
+                  title={isConflict ? `${activeCount} booking(s) on a blocked day` : isBlocked ? "Blocked for booking" : undefined}
                   style={{
                     aspectRatio: "1",
                     display: "flex",
@@ -148,22 +191,34 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: "8px",
-                    border: "none",
+                    border: isConflict
+                      ? "2px solid #dc2626"
+                      : isSelected
+                        ? "2px solid #1a1a1a"
+                        : "2px solid transparent",
                     background: isSelected
                       ? "#1a1a1a"
-                      : isToday
-                        ? "#f0f0f0"
-                        : "transparent",
-                    color: isSelected ? "#fff" : isToday ? "#1a1a1a" : hasOrders ? "#1a1a1a" : "#999",
-                    fontWeight: hasOrders || isToday || isSelected ? 600 : 400,
+                      : isBlocked
+                        ? "#fee2e2"
+                        : isToday
+                          ? "#f0f0f0"
+                          : "transparent",
+                    color: isSelected
+                      ? "#fff"
+                      : isBlocked
+                        ? "#dc2626"
+                        : isToday ? "#1a1a1a" : hasOrders ? "#1a1a1a" : "#999",
+                    fontWeight: hasOrders || isToday || isSelected || isBlocked ? 600 : 400,
                     fontSize: "0.825rem",
                     cursor: "pointer",
                     position: "relative",
                     paddingBottom: hasOrders ? "4px" : undefined,
+                    textDecoration: isBlocked && !isConflict ? "line-through" : "none",
                     transition: "background 0.1s",
                   }}
                 >
                   {day}
+                  {/* Conflict gets a red warning marker; otherwise the usual order dot. */}
                   {hasOrders && (
                     <span style={{
                       position: "absolute",
@@ -171,8 +226,14 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
                       width: "4px",
                       height: "4px",
                       borderRadius: "50%",
-                      background: isSelected ? "rgba(255,255,255,0.7)" : dotColor,
+                      background: isConflict ? "#dc2626" : isSelected ? "rgba(255,255,255,0.7)" : dotColor,
                     }} />
+                  )}
+                  {isConflict && (
+                    <span style={{
+                      position: "absolute", top: "2px", right: "3px",
+                      fontSize: "0.6rem", lineHeight: 1, color: "#dc2626", fontWeight: 700,
+                    }}>!</span>
                   )}
                 </button>
               );
@@ -187,6 +248,10 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
                 return y === year && m === month + 1;
               });
               const active = monthOrders.filter(o => o.status !== "cancelled" && o.status !== "completed").length;
+              const blockedThisMonth = [...blockedDates].filter(ymd => {
+                const [y, m] = ymd.split("-").map(Number);
+                return y === year && m === month + 1;
+              }).length;
               return (
                 <>
                   <span style={{ fontSize: "0.75rem", color: "#999" }}>
@@ -197,6 +262,11 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
                       <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{active}</span> active
                     </span>
                   )}
+                  {blockedThisMonth > 0 && (
+                    <span style={{ fontSize: "0.75rem", color: "#dc2626" }}>
+                      <span style={{ fontWeight: 600 }}>{blockedThisMonth}</span> blocked
+                    </span>
+                  )}
                 </>
               );
             })()}
@@ -205,7 +275,7 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
 
         {/* Day detail panel */}
         <div style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1rem 1.25rem", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "1rem 1.25rem", borderBottom: "1px solid #f0f0f0" }}>
             <div>
               <span style={{ fontWeight: 600, fontSize: "0.95rem", color: "#1a1a1a" }}>
                 Orders — {fmtSelectedDate()}
@@ -216,7 +286,53 @@ export default function CalendarClient({ orders }: { orders: CalendarOrder[] }) 
                 </span>
               )}
             </div>
+
+            {/* Availability toggle */}
+            <button
+              onClick={() => toggleBlocked(selectedYmd)}
+              disabled={togglingDate === selectedYmd}
+              style={{
+                display: "flex", alignItems: "center", gap: "0.4rem",
+                padding: "0.4rem 0.8rem", borderRadius: "7px", cursor: "pointer",
+                fontSize: "0.78rem", fontWeight: 600, whiteSpace: "nowrap",
+                border: selectedBlocked ? "1px solid #bbf7d0" : "1px solid #fca5a5",
+                background: "#fff",
+                color: selectedBlocked ? "#15803d" : "#dc2626",
+                opacity: togglingDate === selectedYmd ? 0.6 : 1,
+              }}
+            >
+              {togglingDate === selectedYmd
+                ? "Saving…"
+                : selectedBlocked ? "↺ Reopen this day" : "⊘ Block this day"}
+            </button>
           </div>
+
+          {/* Blocked / conflict banners */}
+          {selectedBlocked && (
+            selectedActiveCount > 0 ? (
+              <div style={{
+                display: "flex", alignItems: "flex-start", gap: "0.5rem",
+                padding: "0.75rem 1.25rem", background: "#fef2f2",
+                borderBottom: "1px solid #fee2e2", color: "#b91c1c", fontSize: "0.8rem",
+              }}>
+                <span style={{ fontSize: "1rem", lineHeight: 1.2 }}>⚠️</span>
+                <span>
+                  <strong>Warning:</strong> this day is blocked but already has{" "}
+                  <strong>{selectedActiveCount} active booking{selectedActiveCount !== 1 ? "s" : ""}</strong>.
+                  Existing customers are still expecting service — contact them or reopen the day.
+                </span>
+              </div>
+            ) : (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "0.5rem",
+                padding: "0.65rem 1.25rem", background: "#fafafa",
+                borderBottom: "1px solid #f0f0f0", color: "#888", fontSize: "0.8rem",
+              }}>
+                <span>⊘</span>
+                <span>This day is blocked — customers can't book it for pickup or dropoff.</span>
+              </div>
+            )
+          )}
 
           {selectedOrders_sorted.length === 0 ? (
             <div style={{ padding: "3rem 1.25rem", textAlign: "center", color: "#ccc" }}>

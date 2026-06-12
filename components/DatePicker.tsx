@@ -9,6 +9,21 @@ const MONTHS_SV = [
   'Juli','Augusti','September','Oktober','November','December',
 ];
 
+// Blocked (admin-disabled) booking dates. Fetched once and shared across every
+// DatePicker instance on the page (the cart has two: pickup + delivery).
+let _blockedCache: string[] | null = null;
+let _blockedInflight: Promise<string[]> | null = null;
+function fetchBlockedDates(): Promise<string[]> {
+  if (_blockedCache) return Promise.resolve(_blockedCache);
+  if (_blockedInflight) return _blockedInflight;
+  _blockedInflight = fetch('/api/availability')
+    .then(r => (r.ok ? r.json() : { blockedDates: [] }))
+    .then(d => { _blockedCache = (d.blockedDates ?? []) as string[]; return _blockedCache; })
+    .catch(() => { _blockedCache = []; return _blockedCache; })
+    .finally(() => { _blockedInflight = null; });
+  return _blockedInflight;
+}
+
 function parseYMD(s: string): Date | null {
   if (!s) return null;
   const [y, m, d] = s.split('-').map(Number);
@@ -43,8 +58,16 @@ export default function DatePicker({
   const [open, setOpen] = useState(false);
   const [viewYear,  setViewYear]  = useState(() => parseYMD(value)?.getFullYear()  ?? today.getFullYear());
   const [viewMonth, setViewMonth] = useState(() => parseYMD(value)?.getMonth()     ?? today.getMonth());
+  const [blocked, setBlocked] = useState<Set<string>>(() => new Set(_blockedCache ?? []));
 
   const ref = useRef<HTMLDivElement>(null);
+
+  // Load admin-blocked dates so they can't be picked for pickup or dropoff.
+  useEffect(() => {
+    let active = true;
+    fetchBlockedDates().then(d => { if (active) setBlocked(new Set(d)); });
+    return () => { active = false; };
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -167,7 +190,9 @@ export default function DatePicker({
               const ymd        = toYMD(new Date(viewYear, viewMonth, day));
               const isSelected = ymd === value;
               const isToday    = ymd === todayYMD;
-              const isDisabled = minD ? new Date(viewYear, viewMonth, day) < minD : false;
+              const beforeMin  = minD ? new Date(viewYear, viewMonth, day) < minD : false;
+              const isBlocked  = blocked.has(ymd);
+              const isDisabled = beforeMin || isBlocked;
 
               return (
                 <button
@@ -175,16 +200,20 @@ export default function DatePicker({
                   type="button"
                   disabled={isDisabled}
                   onClick={() => selectDay(day)}
+                  title={isBlocked && !beforeMin ? 'Ej tillgänglig' : undefined}
                   style={{
                     ...btnBase,
                     border: isToday && !isSelected ? '1px solid var(--forest-mid)' : '1px solid transparent',
-                    background: isSelected ? 'var(--forest-dark)' : 'transparent',
+                    background: isSelected ? 'var(--forest-dark)' : isBlocked && !beforeMin ? '#fbe9e9' : 'transparent',
                     color: isSelected
                       ? 'var(--moss)'
-                      : isDisabled
-                        ? 'rgba(30,46,36,0.2)'
-                        : 'var(--text-dark)',
+                      : isBlocked && !beforeMin
+                        ? '#c0473f'
+                        : isDisabled
+                          ? 'rgba(30,46,36,0.2)'
+                          : 'var(--text-dark)',
                     fontWeight: isSelected || isToday ? 500 : 400,
+                    textDecoration: isBlocked && !beforeMin ? 'line-through' : 'none',
                     cursor: isDisabled ? 'default' : 'pointer',
                   }}
                   onMouseEnter={e => {
@@ -193,7 +222,7 @@ export default function DatePicker({
                   }}
                   onMouseLeave={e => {
                     if (!isSelected)
-                      (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLButtonElement).style.background = isBlocked && !beforeMin ? '#fbe9e9' : 'transparent';
                   }}
                 >
                   {day}
@@ -215,8 +244,9 @@ export default function DatePicker({
             ) : <span />}
             <button
               type="button"
+              disabled={blocked.has(todayYMD)}
               onClick={() => { onChange(todayYMD); setOpen(false); }}
-              style={{ background: 'none', border: 'none', color: 'var(--forest-mid)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+              style={{ background: 'none', border: 'none', color: blocked.has(todayYMD) ? 'rgba(30,46,36,0.25)' : 'var(--forest-mid)', fontSize: 12, fontWeight: 500, cursor: blocked.has(todayYMD) ? 'default' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}
             >
               Idag
             </button>
