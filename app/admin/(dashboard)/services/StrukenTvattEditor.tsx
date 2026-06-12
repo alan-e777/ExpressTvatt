@@ -10,7 +10,9 @@ export type StrukenProduct = {
   order:    number;
 };
 
-const CATEGORIES = ["Herr", "Dam", "Fest", "Hem", "Utomhus", "Skrädderi"] as const;
+// Mirrors the customer order page (app/order/page.tsx). Mattvätt is omitted here
+// because it uses fixed local sizes, not the StrukenTvatt catalogue.
+const CATEGORIES = ["Hushållstvätt", "Hushållstvätt RUT", "Hem", "Tvätt"] as const;
 type Category = (typeof CATEGORIES)[number];
 
 // ─── Category card ────────────────────────────────────────────────────────────

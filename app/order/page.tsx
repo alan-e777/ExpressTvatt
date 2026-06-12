@@ -1,31 +1,37 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  IconSteam, IconNeedle,
-  IconShirt, IconHanger, IconStar, IconWash,
-  IconScissors, IconDroplet, IconShield, IconBrush, IconWind, IconSparkles, IconTool,
-  IconPlus, IconMinus, IconSpray, IconChevronUp, IconChevronRight,
-  IconArrowLeft, IconX,
+  IconSteam, IconNeedle, IconShirt, IconHanger, IconStar, IconWash,
+  IconScissors, IconSpray, IconSparkles,
+  IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX,
 } from '@tabler/icons-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type StrukenCat   = 'Herr' | 'Dam' | 'Fest' | 'Hem' | 'Utomhus' | 'Skrädderi';
-type StrukenProduct = { id: string; name: string; price: number; category: StrukenCat; order: number };
-type Service      = { id: string; name: string; description: string; price_ore: number };
-type CartItem     = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
-type SectionId    = 'mattvätt' | 'struken' | 'kladavard';
+type CatId         = 'hushallstvatt' | 'hushallstvatt-rut' | 'mattvatt' | 'hem' | 'tvatt';
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number };
+type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Categories — mirrors eriksbergstvätten's five categories ────────────────────
+// `dbCategory` is the value stored on each StrukenTvatt product (null = the
+// category is rendered from a fixed local list rather than Firestore).
+type CatMeta = {
+  id: CatId;
+  label: string;
+  dbCategory: string | null;
+  desc: string;
+  subtitle: string;
+  Icon: React.ComponentType<{ size: number; stroke: number }>;
+};
 
-const STRUKEN_CATS: StrukenCat[] = ['Herr', 'Dam', 'Fest', 'Hem', 'Utomhus', 'Skrädderi'];
-
-const SECTIONS: { id: SectionId; label: string; desc: string; Icon: React.ComponentType<{ size: number; stroke: number }>; subtitle: string }[] = [
-  { id: 'mattvätt',  label: 'Mattvätt',      Icon: IconSpray,  desc: 'Djuptvätt av mattor',              subtitle: 'Djuptvätt av mattor · Hämtning & leverans ingår alltid' },
-  { id: 'struken',   label: 'Struken tvätt', Icon: IconSteam,  desc: 'Skjortor, kostym & festklädsel',   subtitle: 'Skjortor, kostym & festklädsel — levereras hängda på galge' },
-  { id: 'kladavard', label: 'Klädvård',      Icon: IconNeedle, desc: 'Lagning, ändring & rengöring',     subtitle: 'Lagning, ändring, rengöring & skydd för dina textilier' },
+const CATEGORIES: CatMeta[] = [
+  { id: 'hushallstvatt',     label: 'Hushållstvätt',     dbCategory: 'Hushållstvätt',     Icon: IconWash,     desc: 'Tvätt per kilo & plagg',         subtitle: 'Tvätt per kilo och styckvis — hämtning & leverans ingår' },
+  { id: 'hushallstvatt-rut', label: 'Hushållstvätt RUT', dbCategory: 'Hushållstvätt RUT', Icon: IconShirt,    desc: 'Hushållstvätt med RUT-avdrag',   subtitle: 'Hushållstvätt berättigad till RUT-avdrag' },
+  { id: 'mattvatt',          label: 'Mattvätt',          dbCategory: null,                Icon: IconSpray,    desc: 'Djuptvätt av mattor',            subtitle: 'Djuptvätt av mattor — hämtning & leverans ingår alltid' },
+  { id: 'hem',               label: 'Hem',               dbCategory: 'Hem',               Icon: IconSparkles, desc: 'Hemtextil & möbeltextil',        subtitle: 'Täcken, kuddar, gardiner, madrasser & möbeltextil' },
+  { id: 'tvatt',             label: 'Tvätt',             dbCategory: 'Tvätt',             Icon: IconSteam,    desc: 'Kemtvätt & finare plagg',        subtitle: 'Kemtvätt av kostym, klänning, ytterplagg m.m.' },
 ];
 
 // Fixed mattvätt sizes (server re-validates these prices in create-cart-payment)
@@ -37,28 +43,13 @@ const MATT_OPTIONS: { id: string; name: string; price: number; Icon: React.Compo
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function serviceIcon(name: string) {
+function productIcon(name: string) {
   const n = name.toLowerCase();
-  if (n.includes('gardin') || n.includes('hängare'))                             return IconHanger;
-  if (n.includes('plagg') || n.includes('tork'))                                 return IconWash;
-  if (n.includes('fläck') || n.includes('vatten'))                               return IconDroplet;
-  if (n.includes('skydd') || n.includes('impregnering') || n.includes('mott'))  return IconShield;
-  if (n.includes('polstring') || n.includes('möbel'))                            return IconBrush;
-  if (n.includes('press') || n.includes('stryk'))                                return IconWind;
-  if (n.includes('doft'))                                                         return IconSparkles;
-  if (n.includes('tät') || n.includes('matta') || n.includes('djup'))           return IconSpray;
-  if (n.includes('reng'))                                                         return IconBrush;
-  if (n.includes('lagning') || n.includes('reparation') || n.includes('skada')) return IconTool;
-  if (n.includes('ändring') || n.includes('söm'))                                return IconNeedle;
-  return IconScissors;
-}
-
-function strukenIcon(name: string) {
-  const n = name.toLowerCase();
-  if (n.includes('slips') || n.includes('halsduk') || n.includes('sjal'))       return IconNeedle;
-  if (n.includes('byxor') || n.includes('jeans') || n.includes('chino'))        return IconScissors;
-  if (n.includes('gardin') || n.includes('hängare'))                             return IconHanger;
-  if (n.includes('klänning') || n.includes('kjol'))                              return IconStar;
+  if (n.includes('slips') || n.includes('halsduk') || n.includes('scarf') || n.includes('fluga')) return IconNeedle;
+  if (n.includes('byxa') || n.includes('byxor') || n.includes('byxdress'))                         return IconScissors;
+  if (n.includes('gardin') || n.includes('hängare'))                                               return IconHanger;
+  if (n.includes('klänning') || n.includes('kjol') || n.includes('brud'))                          return IconStar;
+  if (n.includes('matta') || n.includes('koskinn') || n.includes('fårskinn'))                      return IconSpray;
   return IconShirt;
 }
 
@@ -92,28 +83,26 @@ function PulseQty({ value }: { value: number }) {
 export default function HomePage() {
   const router = useRouter();
 
-  const [strukenCatalog, setStrukenCatalog] = useState<Partial<Record<StrukenCat, StrukenProduct[]>>>({});
-  const [services, setServices]       = useState<Service[]>([]);
-  const [loadingServices, setLoadingServices] = useState(true);
+  const [strukenCatalog, setStrukenCatalog] = useState<Record<string, StrukenProduct[]>>({});
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [cart, setCart]               = useState<CartItem[]>([]);
-  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const [openCat, setOpenCat]         = useState<CatId | null>(null);
   const [sheetOpen, setSheetOpen]     = useState(false);
 
-  // Fetch services
+  // Fetch the unified product catalogue (all categories live in StrukenTvatt)
   useEffect(() => {
-    Promise.all([
-      fetch('/api/struken-tvatt').then(r => r.json() as Promise<StrukenProduct[]>),
-      fetch('/api/services').then(r => r.json() as Promise<Service[]>),
-    ]).then(([products, svcs]) => {
-      const grouped: Partial<Record<StrukenCat, StrukenProduct[]>> = {};
-      for (const p of products) {
-        if (!grouped[p.category]) grouped[p.category] = [];
-        grouped[p.category]!.push(p);
-      }
-      for (const cat of STRUKEN_CATS) grouped[cat]?.sort((a, b) => a.order - b.order);
-      setStrukenCatalog(grouped);
-      setServices(svcs);
-    }).finally(() => setLoadingServices(false));
+    fetch('/api/struken-tvatt')
+      .then(r => r.json() as Promise<StrukenProduct[]>)
+      .then(products => {
+        const grouped: Record<string, StrukenProduct[]> = {};
+        for (const p of products) {
+          (grouped[p.category] ??= []).push(p);
+        }
+        for (const cat of Object.keys(grouped)) grouped[cat].sort((a, b) => a.order - b.order);
+        setStrukenCatalog(grouped);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingProducts(false));
   }, []);
 
   // Cart helpers
@@ -140,26 +129,34 @@ export default function HomePage() {
     router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}`);
   }
 
-  const allStrukenProducts = STRUKEN_CATS.flatMap(cat => strukenCatalog[cat] ?? []);
-  const cartTotal       = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const cartCount       = cart.reduce((s, i) => s + i.quantity, 0);
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
-  // Per-category counts for the row badges
-  const countFor = (id: SectionId) => {
-    const type = id === 'kladavard' ? 'service' : id;
-    return cart.filter(i => i.type === type).reduce((s, i) => s + i.quantity, 0);
-  };
+  // Map every selectable product id → its category, for the per-category badges.
+  const idToCat = useMemo(() => {
+    const map: Record<string, CatId> = {};
+    for (const m of MATT_OPTIONS) map[m.id] = 'mattvatt';
+    for (const cat of CATEGORIES) {
+      if (!cat.dbCategory) continue;
+      for (const p of strukenCatalog[cat.dbCategory] ?? []) map[p.id] = cat.id;
+    }
+    return map;
+  }, [strukenCatalog]);
+
+  const countFor = (id: CatId) =>
+    cart.filter(i => idToCat[i.id] === id).reduce((s, i) => s + i.quantity, 0);
 
   // Close the sheet automatically if the cart empties out
   useEffect(() => { if (cartCount === 0 && sheetOpen) setSheetOpen(false); }, [cartCount, sheetOpen]);
 
-  const openMeta = openSection ? SECTIONS.find(s => s.id === openSection)! : null;
+  const openMeta = openCat ? CATEGORIES.find(c => c.id === openCat)! : null;
+  const openProducts = openMeta?.dbCategory ? (strukenCatalog[openMeta.dbCategory] ?? []) : [];
 
-  // A single product tile (mattvätt + struken + klädvård share the same shape)
-  function ProductTile({ id, name, price, Icon, type, serviceId }: {
+  // A single product tile (mattvätt + catalogue items share the same shape)
+  function ProductTile({ id, name, price, Icon, type }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
-    type: CartItem['type']; serviceId?: string;
+    type: CartItem['type'];
   }) {
     const qty = cartQty(id);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -170,15 +167,15 @@ export default function HomePage() {
         tabIndex={0}
         aria-label={`Lägg till ${name}`}
         style={{ cursor: 'pointer' }}
-        onClick={() => addToCart({ id, name, price, type, serviceId })}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart({ id, name, price, type, serviceId }); } }}
+        onClick={() => addToCart({ id, name, price, type })}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart({ id, name, price, type }); } }}
       >
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
           <div className="prod-tile-price">{price} kr<span className="prod-tile-per">/st</span></div>
           {qty === 0 ? (
-            <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type, serviceId }); }}>
+            <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type }); }}>
               <IconPlus size={18} stroke={2.5} />
             </button>
           ) : (
@@ -187,7 +184,7 @@ export default function HomePage() {
                 <IconMinus size={13} stroke={2.5} />
               </button>
               <PulseQty value={qty} />
-              <button className="prod-step-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type, serviceId }); }}>
+              <button className="prod-step-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type }); }}>
                 <IconPlus size={13} stroke={2.5} />
               </button>
             </div>
@@ -227,13 +224,13 @@ export default function HomePage() {
       </div>
 
       {/* ── List view: category rows ─────────────────────────────────────── */}
-      {openSection === null && (
+      {openCat === null && (
         <div className="service-card" id="services">
           <div className="of-cat-list">
-            {SECTIONS.map(({ id, label, desc, Icon }) => {
+            {CATEGORIES.map(({ id, label, desc, Icon }) => {
               const count = countFor(id);
               return (
-                <button key={id} className="of-cat-row" onClick={() => setOpenSection(id)}>
+                <button key={id} className="of-cat-row" onClick={() => setOpenCat(id)}>
                   <span className="of-cat-icon"><Icon size={20} stroke={1.5} /></span>
                   <span className="of-cat-text">
                     <span className="of-cat-title">{label}</span>
@@ -251,7 +248,7 @@ export default function HomePage() {
       {/* ── Detail view: the opened category replaces the list ───────────── */}
       {openMeta && (
         <div className="service-card" id={openMeta.id}>
-          <button className="of-back" onClick={() => setOpenSection(null)}>
+          <button className="of-back" onClick={() => setOpenCat(null)}>
             <IconArrowLeft size={16} stroke={1.75} /> Tillbaka
           </button>
           <div className="of-detail-head">
@@ -263,7 +260,7 @@ export default function HomePage() {
           </div>
 
           {/* Mattvätt — three fixed sizes */}
-          {openSection === 'mattvätt' && (
+          {openMeta.id === 'mattvatt' && (
             <div className="of-prod-grid">
               {MATT_OPTIONS.map(m => (
                 <ProductTile key={m.id} id={m.id} name={m.name} price={m.price} Icon={m.Icon} type="mattvätt" />
@@ -271,27 +268,14 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Struken tvätt — product grid */}
-          {openSection === 'struken' && (
-            loadingServices ? <SkeletonRows count={6} /> : allStrukenProducts.length === 0 ? (
-              <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga plagg tillgängliga just nu.</p>
+          {/* Catalogue-backed categories — product grid */}
+          {openMeta.dbCategory && (
+            loadingProducts ? <SkeletonRows count={6} /> : openProducts.length === 0 ? (
+              <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga produkter tillgängliga just nu.</p>
             ) : (
               <div className="of-prod-grid">
-                {allStrukenProducts.map(p => (
-                  <ProductTile key={p.id} id={p.id} name={p.name} price={p.price} Icon={strukenIcon(p.name)} type="struken" />
-                ))}
-              </div>
-            )
-          )}
-
-          {/* Klädvård & textil — product grid */}
-          {openSection === 'kladavard' && (
-            loadingServices ? <SkeletonRows count={5} /> : services.length === 0 ? (
-              <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga tjänster tillgängliga just nu.</p>
-            ) : (
-              <div className="of-prod-grid">
-                {services.map(svc => (
-                  <ProductTile key={svc.id} id={svc.id} name={svc.name} price={svc.price_ore / 100} Icon={serviceIcon(svc.name)} type="service" serviceId={svc.id} />
+                {openProducts.map(p => (
+                  <ProductTile key={p.id} id={p.id} name={p.name} price={p.price} Icon={productIcon(p.name)} type="struken" />
                 ))}
               </div>
             )

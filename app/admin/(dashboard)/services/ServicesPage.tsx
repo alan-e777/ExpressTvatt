@@ -9,13 +9,13 @@ type Tab = "struken" | "ovriga";
 const TABS: { id: Tab; label: string; description: string }[] = [
   {
     id:          "struken",
-    label:       "Struken Tvätt",
-    description: "Plagg per kategori",
+    label:       "Sortiment",
+    description: "Produkter & priser per kategori",
   },
   {
     id:          "ovriga",
     label:       "Övriga tjänster",
-    description: "Rengöring, skrädderi m.m.",
+    description: "Visas ej i bokningsflödet",
   },
 ];
 
