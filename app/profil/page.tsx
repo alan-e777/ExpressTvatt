@@ -15,6 +15,7 @@ import {
 import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import ActiveOrderCard from '@/components/ActiveOrderCard';
+import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 
 const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
 
@@ -103,6 +104,11 @@ export default function ProfilPage() {
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
+  const [rutEnabled,      setRutEnabled]      = useState(false);
+  const [rutPersonnummer, setRutPersonnummer] = useState('');
+  const [savingRut,       setSavingRut]       = useState(false);
+  const [rutError,        setRutError]        = useState('');
+
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(currentUser => {
       setUser(currentUser);
@@ -133,7 +139,10 @@ export default function ProfilPage() {
   useEffect(() => {
     if (!user) { setAddresses([]); return; }
     const unsub = onSnapshot(doc(db, 'customers', user.uid), snap => {
-      setAddresses((snap.data()?.addresses ?? []) as SavedAddress[]);
+      const data = snap.data();
+      setAddresses((data?.addresses ?? []) as SavedAddress[]);
+      setRutEnabled(!!data?.rutEnabled);
+      setRutPersonnummer(formatPersonnummer((data?.personnummer ?? '') as string));
     });
     return unsub;
   }, [user]);
@@ -158,6 +167,41 @@ export default function ProfilPage() {
     } finally {
       setSavingAddr(false);
     }
+  }
+
+  async function persistRut(enabled: boolean, pnr: string) {
+    if (!user) return;
+    setSavingRut(true);
+    try {
+      await setDoc(doc(db, 'customers', user.uid), {
+        rutEnabled: enabled,
+        personnummer: pnr,
+      }, { merge: true });
+    } catch {
+      setRutError('Kunde inte spara. Försök igen.');
+    } finally {
+      setSavingRut(false);
+    }
+  }
+
+  async function toggleRut() {
+    setRutError('');
+    if (rutEnabled) {
+      // Turning off — persist immediately, keep the saved personnummer.
+      setRutEnabled(false);
+      await persistRut(false, rutPersonnummer);
+    } else {
+      // Turning on — reveal the input. Persist now only if a valid number already exists.
+      setRutEnabled(true);
+      if (isValidPersonnummer(rutPersonnummer)) await persistRut(true, rutPersonnummer);
+    }
+  }
+
+  async function handleSaveRut(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isValidPersonnummer(rutPersonnummer)) { setRutError('Ange ett giltigt 10-siffrigt personnummer.'); return; }
+    setRutError('');
+    await persistRut(true, rutPersonnummer);
   }
 
   async function handleDeleteAddress(a: SavedAddress, idx: number) {
@@ -454,6 +498,62 @@ export default function ProfilPage() {
               </button>
             </form>
           )}
+        </div>
+
+        {/* RUT-Avdrag */}
+        <div style={{ marginTop: 'var(--sp-xl)' }}>
+          <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>RUT-Avdrag</div>
+          <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="body-bold" style={{ color: 'var(--text-dark)' }}>Aktivera RUT-avdrag</div>
+                <div className="small" style={{ marginTop: 2, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Få {RUT_DISCOUNT_PERCENT}% i skattereduktion. Spara ditt personnummer så fylls det i automatiskt i kassan.
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={rutEnabled}
+                onClick={toggleRut}
+                disabled={savingRut}
+                style={{
+                  position: 'relative', width: 46, height: 26, flexShrink: 0,
+                  borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0,
+                  background: rutEnabled ? 'var(--moss)' : '#cdd5cd',
+                  transition: 'background 0.18s ease',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: rutEnabled ? 23 : 3,
+                  width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.18s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
+
+            {rutEnabled && (
+              <form onSubmit={handleSaveRut} style={{ marginTop: 'var(--sp-md)', paddingTop: 'var(--sp-md)', borderTop: '0.5px solid rgba(74,124,89,0.15)' }}>
+                <div className="input-group">
+                  <label className="field-label">10-siffrigt Personnummer</label>
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="ÅÅMMDD-XXXX"
+                    value={rutPersonnummer}
+                    onChange={e => { setRutPersonnummer(formatPersonnummer(e.target.value)); setRutError(''); }}
+                    maxLength={11}
+                    autoComplete="off"
+                  />
+                </div>
+                {rutError && <p className="error-msg">{rutError}</p>}
+                <button type="submit" className="btn-primary" disabled={savingRut} style={{ marginTop: 4, width: '100%', maxWidth: 'none' }}>
+                  {savingRut ? 'Sparar…' : 'Spara personnummer'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/firebase-admin';
+import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 
 type CartItem = {
   id:    string;
@@ -34,6 +35,8 @@ export async function POST(request: NextRequest) {
     deliveryTime,
     notes,
     platform,
+    rutAvdrag,
+    personnummer,
   }: {
     items: CartItem[];
     customerId?: string;
@@ -49,7 +52,17 @@ export async function POST(request: NextRequest) {
     deliveryTime?: string;
     notes?: string;
     platform?: string;
+    rutAvdrag?: boolean;
+    personnummer?: string;
   } = body;
+
+  // ── RUT-Avdrag ───────────────────────────────────────────────────────────────
+  // The customer always pays the full price; RUT_DISCOUNT_PERCENT is refunded
+  // manually later. We only persist the request + personnummer for the admin.
+  const rutPersonnummer = rutAvdrag ? formatPersonnummer(personnummer ?? '') : '';
+  if (rutAvdrag && !isValidPersonnummer(rutPersonnummer)) {
+    return NextResponse.json({ error: 'Ogiltigt personnummer för RUT-avdrag.' }, { status: 400 });
+  }
 
   if (!items?.length) {
     return NextResponse.json({ error: 'Varukorgen är tom.' }, { status: 400 });
@@ -133,6 +146,8 @@ export async function POST(request: NextRequest) {
       priceOre:    String(totalOre),
       customerId:  customerId ?? 'anonymous',
       items:       itemsSummary.slice(0, 500), // Stripe metadata limit
+      rutAvdrag:   rutAvdrag ? 'true' : 'false',
+      rutPersonnummer: rutPersonnummer,
     },
   });
 
@@ -163,6 +178,13 @@ export async function POST(request: NextRequest) {
     deliveryTime:    deliveryTime ?? '',
     notes:           notes ?? '',
     items:           validatedItems,
+    // RUT-Avdrag: full amount is still charged; these fields drive the manual
+    // refund + the admin "RUT" tag. `tags` is a free-form list independent of status.
+    rutAvdrag:           !!rutAvdrag,
+    rutPersonnummer:     rutPersonnummer,
+    rutDiscountPercent:  rutAvdrag ? RUT_DISCOUNT_PERCENT : 0,
+    rutRefundOre:        rutAvdrag ? Math.round((totalOre * RUT_DISCOUNT_PERCENT) / 100) : 0,
+    tags:                rutAvdrag ? ['RUT'] : [],
     platform:        platform === 'mobile' ? 'mobile' : 'web',
     createdAt:       new Date(),
   });

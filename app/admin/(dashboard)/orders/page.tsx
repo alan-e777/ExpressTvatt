@@ -41,6 +41,11 @@ export default async function OrdersPage() {
       dropoffTime:   data.dropoffTime ?? "",
       customFields:  data.customFields ?? {},
       items:         data.items ?? [],
+      tags:          data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
+      rutAvdrag:     !!data.rutAvdrag,
+      rutPersonnummer: data.rutPersonnummer ?? "",
+      rutDiscountPercent: data.rutDiscountPercent ?? 0,
+      rutRefundOre:  data.rutRefundOre ?? 0,
     };
   });
 

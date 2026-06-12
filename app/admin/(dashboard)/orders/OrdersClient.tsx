@@ -26,6 +26,11 @@ export type Order = {
   dropoffTime: string;
   customFields: Record<string, string>;
   items: BasketItem[];
+  tags: string[];
+  rutAvdrag: boolean;
+  rutPersonnummer: string;
+  rutDiscountPercent: number;
+  rutRefundOre: number;
 };
 
 const STATUS_OPTIONS = [
@@ -101,6 +106,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       "Postnummer":    o.postalCode ?? "",
       "Belopp (kr)":   parseFloat(((o.amount ?? 0) / 100).toFixed(2)),
       "Status":        o.status ?? "",
+      "RUT":           o.rutAvdrag ? "Ja" : "",
+      "Personnummer":  o.rutPersonnummer ?? "",
+      "RUT återbet. (kr)": o.rutAvdrag ? parseFloat(((o.rutRefundOre ?? 0) / 100).toFixed(2)) : "",
       "Anteckningar":  o.notes ?? "",
     }));
 
@@ -114,6 +122,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       "Postnummer":    "",
       "Belopp (kr)":   parseFloat(total.toFixed(2)),
       "Status":        "",
+      "RUT":           "",
+      "Personnummer":  "",
+      "RUT återbet. (kr)": "",
       "Anteckningar":  "",
     });
 
@@ -161,6 +172,11 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           dropoffTime:     data.dropoffTime ?? "",
           customFields:    data.customFields ?? {},
           items:           data.items ?? [],
+          tags:            data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
+          rutAvdrag:       !!data.rutAvdrag,
+          rutPersonnummer: data.rutPersonnummer ?? "",
+          rutDiscountPercent: data.rutDiscountPercent ?? 0,
+          rutRefundOre:    data.rutRefundOre ?? 0,
         } as Order;
       }));
     });
@@ -663,7 +679,8 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                   <Fragment key={order.id}>
                     <tr style={{
                       borderBottom: isExpanded || !isLast ? "1px solid #f0f0f0" : "none",
-                      backgroundColor: isSelected ? "#f8f8f8" : "transparent",
+                      backgroundColor: isSelected ? "#f8f8f8" : order.rutAvdrag ? "#fff8ec" : "transparent",
+                      boxShadow: order.rutAvdrag ? "inset 3px 0 0 #d4a017" : undefined,
                     }}>
                       <td style={{ padding: "0.9rem 0 0.9rem 1.25rem" }}>
                         <input
@@ -677,7 +694,12 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                         {order.paymentIntentId ? `#${order.paymentIntentId.slice(-7).toUpperCase()}` : "—"}
                       </Td>
                       <Td>{order.createdAt ? formatDate(order.createdAt) : "—"}</Td>
-                      <Td>{order.serviceName}</Td>
+                      <Td>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                          {order.serviceName}
+                          {order.tags.map(tag => <TagPill key={tag} tag={tag} />)}
+                        </span>
+                      </Td>
                       <Td style={{ fontWeight: 600 }}>{formatAmount(order.amount)}</Td>
                       <Td style={{ fontSize: "0.8rem" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
@@ -742,6 +764,22 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                               )}
                               {order.dropoffTime && (
                                 <DetailRow label="Dropoff time" value={order.dropoffTime} />
+                              )}
+                              {order.rutAvdrag && (
+                                <div style={{
+                                  marginTop: "0.25rem", padding: "0.6rem 0.75rem",
+                                  background: "#fff8ec", border: "1px solid #f0d9a8",
+                                  borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.4rem",
+                                }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <TagPill tag="RUT" />
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8a6d1b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                      RUT-Avdrag
+                                    </span>
+                                  </div>
+                                  <DetailRow label="Personnummer" value={order.rutPersonnummer || "—"} />
+                                  <DetailRow label="Refund" value={`${order.rutDiscountPercent || 0}% · ${formatAmount(order.rutRefundOre)}`} />
+                                </div>
                               )}
                               {Object.entries(order.customFields ?? {}).map(([key, value]) => (
                                 <DetailRow key={key} label={key} value={String(value)} />
@@ -888,6 +926,25 @@ function StatusSelect({ value, onChange, disabled }: { value: string; onChange: 
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
+  );
+}
+
+// Free-form order tags (independent of status). Currently only "RUT", but the
+// styling falls back to a neutral pill for any future tag.
+const TAG_STYLE: Record<string, { bg: string; color: string }> = {
+  RUT: { bg: "#fbe6bf", color: "#8a6d1b" },
+};
+function TagPill({ tag }: { tag: string }) {
+  const s = TAG_STYLE[tag] ?? { bg: "#e5e7eb", color: "#374151" };
+  return (
+    <span style={{
+      background: s.bg, color: s.color,
+      borderRadius: "99px", padding: "0.1rem 0.5rem",
+      fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.03em",
+      whiteSpace: "nowrap",
+    }}>
+      {tag}
+    </span>
   );
 }
 

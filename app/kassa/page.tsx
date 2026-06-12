@@ -7,12 +7,13 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import Link from 'next/link';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc, arrayUnion } from 'firebase/firestore';
-import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone, IconShoppingBag, IconArrowRight, IconCalendar, IconNotes, IconChevronUp, IconX } from '@tabler/icons-react';
+import { IconShieldCheck, IconLock, IconMapPin, IconClock, IconUser, IconMail, IconPhone, IconShoppingBag, IconArrowRight, IconCalendar, IconNotes, IconChevronUp, IconX, IconCheck } from '@tabler/icons-react';
 import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
 import Confetti from '@/components/Confetti';
+import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -152,6 +153,8 @@ function CheckoutForm() {
   const [deliveryDate,     setDeliveryDate]     = useState('');
   const [deliveryTime,     setDeliveryTime]     = useState('');
   const [notes,            setNotes]            = useState('');
+  const [rutAvdrag,        setRutAvdrag]        = useState(false);
+  const [personnummer,     setPersonnummer]     = useState('');
   const [formError,        setFormError]        = useState('');
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
@@ -185,6 +188,11 @@ function CheckoutForm() {
         if (n) setName(n);
         if (e) setEmail(e);
         if (p) setPhone(p);
+      }
+      // Pre-fill RUT from the saved profile preference.
+      if (data.rutEnabled) {
+        setRutAvdrag(true);
+        if (data.personnummer) setPersonnummer(formatPersonnummer(data.personnummer));
       }
     }).catch(() => {});
   }, [userId]);
@@ -247,13 +255,17 @@ function CheckoutForm() {
       setFormError('Avlämning måste vara minst 72 timmar efter upphämtning.');
       return;
     }
+    if (rutAvdrag && !isValidPersonnummer(personnummer)) {
+      setFormError('Ange ett giltigt 10-siffrigt personnummer för RUT-avdrag.');
+      return;
+    }
     setFormError('');
     setSubmitting(true);
     try {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes: notes.trim(), items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes: notes.trim(), items, rutAvdrag, personnummer: rutAvdrag ? personnummer : '' }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -549,6 +561,68 @@ function CheckoutForm() {
       </div>
       </div>
 
+      {/* ── RUT-Avdrag ───────────────────────────────────────────────── */}
+      <div className="of-section">
+      <div style={{
+        border: `0.5px solid ${rutAvdrag ? 'var(--moss)' : 'rgba(74,124,89,0.18)'}`,
+        borderRadius: 'var(--radius-md)',
+        background: rutAvdrag ? 'var(--linen)' : 'transparent',
+        padding: 'var(--sp-md) var(--sp-lg)',
+        transition: 'background 0.15s ease, border-color 0.15s ease',
+      }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-md)', cursor: 'pointer' }}>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
+              border: rutAvdrag ? 'none' : '1.5px solid rgba(74,124,89,0.4)',
+              background: rutAvdrag ? 'var(--forest-dark)' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {rutAvdrag && <IconCheck size={14} stroke={2.5} color="var(--moss)" />}
+          </span>
+          <input
+            type="checkbox"
+            checked={rutAvdrag}
+            onChange={e => setRutAvdrag(e.target.checked)}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="body-bold" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              RUT-Avdrag
+              <span style={{
+                background: 'var(--forest-dark)', color: 'var(--moss)',
+                borderRadius: 'var(--radius-pill)', padding: '1px 8px',
+                fontSize: 11, fontWeight: 600, fontFamily: 'DM Sans, sans-serif',
+              }}>
+                −{RUT_DISCOUNT_PERCENT}%
+              </span>
+            </div>
+            <p className="micro" style={{ color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+              Du betalar fullt pris nu och vi återbetalar {RUT_DISCOUNT_PERCENT}% (cirka {rutRefundKr(totalKr)} kr) som skattereduktion i efterhand.
+            </p>
+          </div>
+        </label>
+
+        {rutAvdrag && (
+          <div className="input-group" style={{ marginBottom: 0, marginTop: 'var(--sp-md)' }}>
+            <label className="field-label">10-siffrigt Personnummer</label>
+            <input
+              className="input"
+              type="text"
+              inputMode="numeric"
+              placeholder="ÅÅMMDD-XXXX"
+              value={personnummer}
+              onChange={e => setPersonnummer(formatPersonnummer(e.target.value))}
+              maxLength={11}
+              autoComplete="off"
+            />
+          </div>
+        )}
+      </div>
+      </div>
+
       {(formError || loadError) && (
         <div style={{ paddingTop: 'var(--sp-md)' }}>
           {formError && <p className="error-msg">{formError}</p>}
@@ -600,6 +674,12 @@ function CheckoutForm() {
                 <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
                 <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{formatPrice(totalKr)}</span>
               </div>
+              {rutAvdrag && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
+                  <span className="micro" style={{ color: 'var(--moss)' }}>RUT-avdrag (återbetalas senare)</span>
+                  <span className="micro" style={{ color: 'var(--moss)', fontWeight: 600 }}>−{formatPrice(rutRefundKr(totalKr))}</span>
+                </div>
+              )}
             </div>
           </div>
         </>
