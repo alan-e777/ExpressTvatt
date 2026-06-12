@@ -2605,9 +2605,17 @@ input, textarea, select { font-family: inherit; }
   .lp-hero-visual-col { order: -1; }
   .lp-hero-visual { width: min(280px, 70%); }
   .lp-why-inner { grid-template-columns: 1fr; gap: 40px; }
-  .lp-how-grid { grid-template-columns: repeat(2, 1fr); gap: 40px 32px; }
+  /* Two columns: all icons stacked on the left, each step's text on the right.
+     The parcel animation runs straight down the left icon column. */
+  .lp-how-grid { grid-template-columns: 1fr; gap: 0; margin-top: 40px; }
   .lp-how-line { display: none; }
-  .lp-how-anim { display: none; }   /* 4-col icon row collapses — flow no longer maps */
+  .lp-how-anim { display: block; }
+  .lp-how-step { display: flex; flex-direction: row; align-items: flex-start; gap: 22px; padding: 18px 0; }
+  .lp-how-step:hover { transform: none; }
+  .lp-how-icon { margin-bottom: 0; flex-shrink: 0; }
+  .lp-how-text { min-width: 0; }
+  .lp-how-n { margin-bottom: 6px; }
+  .lp-how-desc { max-width: none; }
   .lp-trust-inner { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
   .lp-trust-item { justify-content: flex-start; }
   .lp-reviews-grid { grid-template-columns: 1fr; gap: 20px; }

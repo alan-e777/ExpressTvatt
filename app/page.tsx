@@ -94,10 +94,6 @@ const HOW_MS: Record<HowPhase, number> = {
 };
 const HOW_ORDER: HowPhase[] = ['initial', 'pickup', 'processing', 'delivery', 'reset'];
 
-// Horizontal centres of the four step icons. Icons are 56px, left-aligned in
-// each 1fr column (gap 32px), so centre_i = i*(colW+32) + 28 = i*25% + (i*8+28)px.
-const ICON_X = ['28px', 'calc(25% + 36px)', 'calc(50% + 44px)', 'calc(75% + 52px)'];
-
 function useHowFlow() {
   const [phase, setPhase] = useState<HowPhase>('initial');
   useEffect(() => {
@@ -129,30 +125,62 @@ export default function LandingPage() {
     howPhase === 'delivery'                           ? 3 : -1;
   const shakeIcon = howPhase === 'processing' ? 2 : -1;
 
-  // before.png: rests behind Hämtning (idx 1), slides behind Rengöring (idx 2).
+  // Measure the live icon centres so the travelling parcel maps to wherever the
+  // icons actually sit — a horizontal row on desktop, a vertical left column on
+  // mobile. Both axes are animated, so each layout only moves on its own axis.
+  const animRef  = useRef<HTMLDivElement>(null);
+  const iconRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [centers, setCenters] = useState<{ x: number; y: number }[]>([]);
+
+  const measure = () => {
+    const anim = animRef.current;
+    if (!anim) return;
+    const ar = anim.getBoundingClientRect();
+    setCenters(iconRefs.current.map(el => {
+      if (!el) return { x: 0, y: 0 };
+      const r = el.getBoundingClientRect();
+      return { x: r.left - ar.left + r.width / 2, y: r.top - ar.top + r.height / 2 };
+    }));
+  };
+
+  useEffect(() => {
+    measure();
+    const t = setTimeout(measure, 700); // re-measure once the reveal transforms settle
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, []);
+  // Self-heal each loop (cheap, and only when the parcel is at rest).
+  useEffect(() => { if (howPhase === 'initial') measure(); }, [howPhase]);
+
+  // before parcel: rests behind Hämtning (idx 1), slides behind Rengöring (idx 2).
+  const beforeIdx = howPhase === 'initial' ? 1 : 2;
+  // after parcel: emerges behind Rengöring (idx 2), slides behind Leverans (idx 3).
+  const afterIdx  = howPhase === 'delivery' || howPhase === 'reset' ? 3 : 2;
+  const bc = centers[beforeIdx] ?? { x: 0, y: 28 };
+  const ac = centers[afterIdx]  ?? { x: 0, y: 28 };
+
   const beforeStyle: React.CSSProperties = {
     position: 'absolute',
-    top: 28,
-    left: howPhase === 'initial' ? ICON_X[1] : ICON_X[2],
+    left: bc.x,
+    top: bc.y,
     transform: 'translate(-50%, -50%)',
     opacity: howPhase === 'initial' || howPhase === 'pickup' ? 1 : 0,
     transition:
-      howPhase === 'pickup'  ? 'left 1.2s ease-in-out' :
+      howPhase === 'pickup'  ? 'left 1.2s ease-in-out, top 1.2s ease-in-out' :
       howPhase === 'initial' ? 'none' :
                                'opacity 0.3s ease',
     zIndex: 1,
     pointerEvents: 'none',
   };
 
-  // after.png: emerges from behind Rengöring (idx 2), slides behind Leverans (idx 3).
   const afterStyle: React.CSSProperties = {
     position: 'absolute',
-    top: 28,
-    left: howPhase === 'delivery' || howPhase === 'reset' ? ICON_X[3] : ICON_X[2],
+    left: ac.x,
+    top: ac.y,
     transform: 'translate(-50%, -50%)',
     opacity: howPhase === 'delivery' ? 1 : 0,
     transition:
-      howPhase === 'delivery' ? 'left 1.2s ease-in-out, opacity 0.5s ease' :
+      howPhase === 'delivery' ? 'left 1.2s ease-in-out, top 1.2s ease-in-out, opacity 0.5s ease' :
       howPhase === 'initial'  ? 'none' :
                                 'opacity 0.4s ease',
     zIndex: 1,
@@ -247,7 +275,7 @@ export default function LandingPage() {
             <div className="lp-how-line" aria-hidden />
 
             {/* Animated parcel flow: tinybefore.png → behind Rengöring → tinyafter.png → behind Leverans */}
-            <div className="lp-how-anim" aria-hidden>
+            <div className="lp-how-anim" aria-hidden ref={animRef}>
               <div style={beforeStyle}>
                 <img src="/tinybefore.png" alt="" className="lp-how-anim-img" loading="eager" />
               </div>
@@ -258,12 +286,17 @@ export default function LandingPage() {
 
             {STEPS.map(({ n, Icon, title, desc }, i) => (
               <Reveal key={n} delay={i * 70} className="lp-how-step">
-                <div className={`lp-how-icon${activeIcon === i ? ' lp-how-icon--active' : ''}${shakeIcon === i ? ' lp-how-icon--shake' : ''}`}>
+                <div
+                  ref={el => { iconRefs.current[i] = el; }}
+                  className={`lp-how-icon${activeIcon === i ? ' lp-how-icon--active' : ''}${shakeIcon === i ? ' lp-how-icon--shake' : ''}`}
+                >
                   <Icon size={22} stroke={1.5} />
                 </div>
-                <div className="lp-how-n">{n}</div>
-                <div className="lp-how-title">{title}</div>
-                <div className="lp-how-desc">{desc}</div>
+                <div className="lp-how-text">
+                  <div className="lp-how-n">{n}</div>
+                  <div className="lp-how-title">{title}</div>
+                  <div className="lp-how-desc">{desc}</div>
+                </div>
               </Reveal>
             ))}
           </div>
