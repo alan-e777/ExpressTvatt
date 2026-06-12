@@ -13,24 +13,29 @@ type Props = {
   value:     string; // 'HH:MM' or ''
   onConfirm: (time: string) => void;
   onClose:   () => void;
+  minTime?:  string; // earliest selectable slot, 'HH:MM' (default 16:00)
 };
 
 // ─── Slots ────────────────────────────────────────────────────────────────────
 
-// Pickup window 08:00–18:00 in 30-min slots (mirrors the website TimePicker range).
+// Bookable window 16:00–22:00 in 30-min slots (matches the website TimePicker).
 const SLOTS: string[] = (() => {
   const out: string[] = [];
-  for (let h = 8; h <= 18; h++) {
+  for (let h = 16; h <= 22; h++) {
     out.push(`${String(h).padStart(2, '0')}:00`);
-    if (h !== 18) out.push(`${String(h).padStart(2, '0')}:30`);
+    if (h !== 22) out.push(`${String(h).padStart(2, '0')}:30`);
   }
   return out;
 })();
 
+const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function TimePickerModal({ visible, value, onConfirm, onClose }: Props) {
+export default function TimePickerModal({ visible, value, onConfirm, onClose, minTime }: Props) {
   const [selected, setSelected] = useState<string>('');
+
+  const minM = minTime ? toMinutes(minTime) : 0;
 
   useEffect(() => {
     if (visible) setSelected(value || '');
@@ -60,15 +65,17 @@ export default function TimePickerModal({ visible, value, onConfirm, onClose }: 
         {/* Slot list */}
         <ScrollView style={s.list} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false}>
           {SLOTS.map(slot => {
-            const isSel = slot === selected;
+            const isSel      = slot === selected;
+            const isDisabled = toMinutes(slot) < minM;
             return (
               <TouchableOpacity
                 key={slot}
                 style={[s.slot, isSel && s.slotSel]}
-                onPress={() => setSelected(slot)}
-                activeOpacity={0.7}
+                onPress={() => !isDisabled && setSelected(slot)}
+                activeOpacity={isDisabled ? 1 : 0.7}
+                disabled={isDisabled}
               >
-                <Text style={[s.slotText, isSel && s.slotTextSel]}>{slot}</Text>
+                <Text style={[s.slotText, isDisabled && s.slotTextDisabled, isSel && s.slotTextSel]}>{slot}</Text>
                 {isSel && <IconCheck size={16} color={colors.forestDark} strokeWidth={2.5} />}
               </TouchableOpacity>
             );
@@ -119,7 +126,8 @@ const s = StyleSheet.create({
     borderRadius:      radius.md,
     marginBottom:      2,
   },
-  slotSel:     { backgroundColor: colors.mint },
-  slotText:    { fontFamily: 'Inter_400', fontSize: 16, color: colors.textDark },
-  slotTextSel: { fontFamily: 'Inter_600', color: colors.forestDark },
+  slotSel:          { backgroundColor: colors.mint },
+  slotText:         { fontFamily: 'Inter_400', fontSize: 16, color: colors.textDark },
+  slotTextSel:      { fontFamily: 'Inter_600', color: colors.forestDark },
+  slotTextDisabled: { color: colors.textMuted, opacity: 0.4 },
 });

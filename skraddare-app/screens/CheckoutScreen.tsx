@@ -32,14 +32,37 @@ export default function CheckoutScreen({ navigation, route }: Props) {
   const [address,          setAddress]          = useState('');
   const [postalCode,       setPostalCode]        = useState('');
   const [addressConfirmed, setAddressConfirmed]  = useState(false);
-  const [date,             setDate]              = useState('');
-  const [time,             setTime]              = useState('');
+  const [pickupDate,       setPickupDate]        = useState('');
+  const [pickupTime,       setPickupTime]        = useState('');
+  const [deliveryDate,     setDeliveryDate]      = useState('');
+  const [deliveryTime,     setDeliveryTime]      = useState('');
   const [notes,            setNotes]             = useState('');
-  const [showDatePicker,   setShowDatePicker]    = useState(false);
-  const [showTimePicker,   setShowTimePicker]    = useState(false);
+  const [datePickerFor,    setDatePickerFor]     = useState<'pickup' | 'delivery' | null>(null);
+  const [timePickerFor,    setTimePickerFor]     = useState<'pickup' | 'delivery' | null>(null);
   const [savedAddresses,   setSavedAddresses]    = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]         = useState<SavedAddress | null>(null);
   const [sheetOpen,        setSheetOpen]         = useState(false);
+
+  // Pickup can be booked for today only while it's still before 16:00.
+  const now = new Date();
+  const minPickupDate = now.getHours() < 16
+    ? toDateStr(now)
+    : toDateStr(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const earliestDeliveryDate = pickupDate ? addDaysStr(pickupDate, 3) : addDaysStr(minPickupDate, 3);
+  const deliveryMinTime = pickupDate && pickupTime && deliveryDate === earliestDeliveryDate ? pickupTime : '16:00';
+
+  // Keep delivery ≥ 72h after pickup, both ways: bump delivery forward when needed.
+  useEffect(() => {
+    const pickup = combineDT(pickupDate, pickupTime);
+    if (!pickup) return;
+    const earliest = new Date(pickup.getTime() + MS_72H);
+    const current  = combineDT(deliveryDate, deliveryTime);
+    if (current && current.getTime() >= earliest.getTime()) return;
+    const ed = toDateStr(earliest);
+    const et = toTimeStr(earliest);
+    if (deliveryDate !== ed) setDeliveryDate(ed);
+    if (deliveryTime !== et) setDeliveryTime(et);
+  }, [pickupDate, pickupTime, deliveryDate, deliveryTime]);
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -71,12 +94,23 @@ export default function CheckoutScreen({ navigation, route }: Props) {
       Alert.alert('Välj en adress', 'Välj en adress från förslagen för att fortsätta.');
       return;
     }
-    if (!date.trim() || !time.trim()) {
-      Alert.alert('Fyll i alla fält', 'Datum och tid krävs.');
+    if (!pickupDate || !pickupTime) {
+      Alert.alert('Fyll i alla fält', 'Välj datum och tid för upphämtning.');
+      return;
+    }
+    if (!deliveryDate || !deliveryTime) {
+      Alert.alert('Fyll i alla fält', 'Välj datum och tid för avlämning.');
+      return;
+    }
+    const pickup   = combineDT(pickupDate, pickupTime);
+    const delivery = combineDT(deliveryDate, deliveryTime);
+    if (!pickup || !delivery || delivery.getTime() - pickup.getTime() < MS_72H) {
+      Alert.alert('Kontrollera datum', 'Avlämning måste vara minst 72 timmar efter upphämtning.');
       return;
     }
     navigation.navigate('CartPayment', {
-      items, total, address, postalCode, date, time, notes,
+      items, total, address, postalCode,
+      date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes,
     });
   }
 
@@ -159,34 +193,74 @@ export default function CheckoutScreen({ navigation, route }: Props) {
             />
           )}
 
-          {/* ── Date ──────────────────────────────────────────────────── */}
-          <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Datum för hämtning</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.pickerBtn]}
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={date ? styles.pickerValue : styles.pickerPlaceholder}>
-              {date ? formatDateDisplay(date) : 'Välj datum'}
-            </Text>
-            <IconCalendar size={16} color={colors.forestMid} strokeWidth={1.5} />
-          </TouchableOpacity>
+          {/* ── Upphämtning (pickup) card ─────────────────────────────── */}
+          <View style={[styles.dtCard, { marginTop: spacing.lg }]}>
+            <View style={styles.dtTitleRow}>
+              <IconCalendar size={14} color={colors.forestDark} strokeWidth={1.75} />
+              <Text style={styles.dtTitle}>Upphämtning</Text>
+            </View>
 
-          {/* ── Time ──────────────────────────────────────────────────── */}
-          <Text style={styles.fieldLabel}>Tid för hämtning</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.pickerBtn]}
-            onPress={() => setShowTimePicker(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={time ? styles.pickerValue : styles.pickerPlaceholder}>
-              {time || 'Välj tid'}
-            </Text>
-            <IconClock size={16} color={colors.forestMid} strokeWidth={1.5} />
-          </TouchableOpacity>
+            <Text style={styles.fieldLabel}>Datum</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerBtn, { marginBottom: spacing.md }]}
+              onPress={() => setDatePickerFor('pickup')}
+              activeOpacity={0.7}
+            >
+              <Text style={pickupDate ? styles.pickerValue : styles.pickerPlaceholder}>
+                {pickupDate ? formatDateDisplay(pickupDate) : 'Välj datum'}
+              </Text>
+              <IconCalendar size={16} color={colors.forestMid} strokeWidth={1.5} />
+            </TouchableOpacity>
+
+            <Text style={styles.fieldLabel}>Tid</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerBtn, { marginBottom: 0 }]}
+              onPress={() => setTimePickerFor('pickup')}
+              activeOpacity={0.7}
+            >
+              <Text style={pickupTime ? styles.pickerValue : styles.pickerPlaceholder}>
+                {pickupTime || 'Välj tid'}
+              </Text>
+              <IconClock size={16} color={colors.forestMid} strokeWidth={1.5} />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Avlämning (delivery) card ─────────────────────────────── */}
+          <View style={[styles.dtCard, { marginTop: spacing.md }]}>
+            <View style={styles.dtTitleRow}>
+              <IconCalendar size={14} color={colors.forestDark} strokeWidth={1.75} />
+              <Text style={styles.dtTitle}>Avlämning</Text>
+            </View>
+
+            <Text style={styles.fieldLabel}>Datum</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerBtn, { marginBottom: spacing.md }]}
+              onPress={() => setDatePickerFor('delivery')}
+              activeOpacity={0.7}
+            >
+              <Text style={deliveryDate ? styles.pickerValue : styles.pickerPlaceholder}>
+                {deliveryDate ? formatDateDisplay(deliveryDate) : 'Välj datum'}
+              </Text>
+              <IconCalendar size={16} color={colors.forestMid} strokeWidth={1.5} />
+            </TouchableOpacity>
+
+            <Text style={styles.fieldLabel}>Tid</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerBtn, { marginBottom: 0 }]}
+              onPress={() => setTimePickerFor('delivery')}
+              activeOpacity={0.7}
+            >
+              <Text style={deliveryTime ? styles.pickerValue : styles.pickerPlaceholder}>
+                {deliveryTime || 'Välj tid'}
+              </Text>
+              <IconClock size={16} color={colors.forestMid} strokeWidth={1.5} />
+            </TouchableOpacity>
+
+            <Text style={styles.dtHint}>Minst 72 timmar efter upphämtning.</Text>
+          </View>
 
           {/* ── Notes ─────────────────────────────────────────────────── */}
-          <Text style={styles.fieldLabel}>Anteckning (valfritt)</Text>
+          <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>Anteckning (valfritt)</Text>
           <TextInput
             style={[styles.input, styles.notesInput]}
             placeholder="t.ex. C/O, portkod, specialinstruktioner…"
@@ -246,16 +320,18 @@ export default function CheckoutScreen({ navigation, route }: Props) {
       </Modal>
 
       <DatePickerModal
-        visible={showDatePicker}
-        value={date}
-        onConfirm={setDate}
-        onClose={() => setShowDatePicker(false)}
+        visible={datePickerFor !== null}
+        value={datePickerFor === 'delivery' ? deliveryDate : pickupDate}
+        minDate={datePickerFor === 'delivery' ? earliestDeliveryDate : minPickupDate}
+        onConfirm={d => (datePickerFor === 'delivery' ? setDeliveryDate(d) : setPickupDate(d))}
+        onClose={() => setDatePickerFor(null)}
       />
       <TimePickerModal
-        visible={showTimePicker}
-        value={time}
-        onConfirm={setTime}
-        onClose={() => setShowTimePicker(false)}
+        visible={timePickerFor !== null}
+        value={timePickerFor === 'delivery' ? deliveryTime : pickupTime}
+        minTime={timePickerFor === 'delivery' ? deliveryMinTime : '16:00'}
+        onConfirm={t => (timePickerFor === 'delivery' ? setDeliveryTime(t) : setPickupTime(t))}
+        onClose={() => setTimePickerFor(null)}
       />
     </View>
   );
@@ -267,6 +343,31 @@ function formatDateDisplay(str: string): string {
   const [y, m, d] = str.split('-').map(Number);
   if (!y || !m || !d) return str;
   return `${d} ${DISPLAY_MONTHS[m - 1]} ${y}`;
+}
+
+// ─── Schedule helpers (72h pickup→delivery rule) ────────────────────────────────
+
+const MS_72H = 72 * 60 * 60 * 1000;
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function toTimeStr(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function combineDT(date: string, time: string): Date | null {
+  if (!date || !time) return null;
+  const [y, mo, da] = date.split('-').map(Number);
+  const [h, mi]     = time.split(':').map(Number);
+  if (!y || !mo || !da || Number.isNaN(h) || Number.isNaN(mi)) return null;
+  return new Date(y, mo - 1, da, h, mi);
+}
+function addDaysStr(ymd: string, n: number): string {
+  const [y, mo, da] = ymd.split('-').map(Number);
+  const d = new Date(y, mo - 1, da);
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
 }
 
 const styles = StyleSheet.create({
@@ -411,6 +512,18 @@ const styles = StyleSheet.create({
   confirmedRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   confirmedText: { fontFamily: 'Inter_400', fontSize: 14, color: colors.textDark, flex: 1, marginRight: spacing.sm },
   changeLink:    { fontFamily: 'Inter_500', fontSize: 12, color: colors.textMuted },
+
+  // ─ Upphämtning / Avlämning cards ─
+  dtCard: {
+    backgroundColor:   colors.white,
+    borderRadius:      radius.md,
+    borderWidth:       1,
+    borderColor:       'rgba(15,23,42,0.08)',
+    padding:           spacing.lg,
+  },
+  dtTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  dtTitle:    { fontFamily: 'Inter_600', fontSize: 14, color: colors.textDark },
+  dtHint:     { fontFamily: 'Inter_400', fontSize: 11, color: colors.textMuted, marginTop: spacing.sm },
 
   pickerBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerValue:       { fontFamily: 'Inter_400', fontSize: 14, color: colors.textDark },

@@ -21,6 +21,31 @@ type SavedAddress = { address: string; postalCode: string; deliveryNote?: string
 
 function formatPrice(kr: number) { return `${kr} kr`; }
 
+// ── Pickup / delivery scheduling helpers ────────────────────────────────────
+// Minimum gap between Upphämtning (pickup) and Avlämning (delivery): 72 hours.
+const MS_72H = 72 * 60 * 60 * 1000;
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function toHM(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function combine(date: string, time: string): Date | null {
+  if (!date || !time) return null;
+  const [y, mo, da] = date.split('-').map(Number);
+  const [h, mi]     = time.split(':').map(Number);
+  if (!y || !mo || !da || Number.isNaN(h) || Number.isNaN(mi)) return null;
+  return new Date(y, mo - 1, da, h, mi);
+}
+function addDaysYMD(ymd: string, n: number): string {
+  const [y, mo, da] = ymd.split('-').map(Number);
+  const d = new Date(y, mo - 1, da);
+  d.setDate(d.getDate() + n);
+  return toYMD(d);
+}
+
 function SuccessCard({ orderId }: { orderId: string | null }) {
   const orderNo = orderId ? `#${orderId.slice(-7).toUpperCase()}` : '—';
   return (
@@ -122,8 +147,10 @@ function CheckoutForm() {
   const [address,          setAddress]          = useState('');
   const [postalCode,       setPostalCode]       = useState('');
   const [addressConfirmed, setAddressConfirmed] = useState(false);
-  const [date,             setDate]             = useState('');
-  const [time,             setTime]             = useState('');
+  const [pickupDate,       setPickupDate]       = useState('');
+  const [pickupTime,       setPickupTime]       = useState('');
+  const [deliveryDate,     setDeliveryDate]     = useState('');
+  const [deliveryTime,     setDeliveryTime]     = useState('');
   const [notes,            setNotes]            = useState('');
   const [formError,        setFormError]        = useState('');
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
@@ -164,6 +191,30 @@ function CheckoutForm() {
 
   const totalKr = items.reduce((s, i) => s + i.price * i.qty, 0);
 
+  // Pickup can be booked for today only while it's still before 16:00; otherwise
+  // the earliest pickup day is tomorrow. (Times are always 16:00–22:00.)
+  const now = new Date();
+  const minPickupDate = now.getHours() < 16 ? toYMD(now) : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+
+  // Delivery must be ≥ 72h after pickup → at least 3 calendar days later.
+  const earliestDeliveryDate = pickupDate ? addDaysYMD(pickupDate, 3) : addDaysYMD(minPickupDate, 3);
+  // On that earliest day the delivery time can't be before the pickup time (keeps the full 72h).
+  const deliveryMinTime = pickupDate && pickupTime && deliveryDate === earliestDeliveryDate ? pickupTime : '16:00';
+
+  // Keep the rule satisfied both ways: whenever pickup moves, bump the delivery
+  // forward to the earliest valid slot if it would otherwise fall inside 72h.
+  useEffect(() => {
+    const pickup = combine(pickupDate, pickupTime);
+    if (!pickup) return;
+    const earliest = new Date(pickup.getTime() + MS_72H);
+    const current  = combine(deliveryDate, deliveryTime);
+    if (current && current.getTime() >= earliest.getTime()) return; // already valid
+    const ed = toYMD(earliest);
+    const et = toHM(earliest);
+    if (deliveryDate !== ed) setDeliveryDate(ed);
+    if (deliveryTime !== et) setDeliveryTime(et);
+  }, [pickupDate, pickupTime, deliveryDate, deliveryTime]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
@@ -182,8 +233,18 @@ function CheckoutForm() {
       setFormError('Välj en adress från förslagslistan.');
       return;
     }
-    if (!date || !time) {
-      setFormError('Datum och tid krävs.');
+    if (!pickupDate || !pickupTime) {
+      setFormError('Välj datum och tid för upphämtning.');
+      return;
+    }
+    if (!deliveryDate || !deliveryTime) {
+      setFormError('Välj datum och tid för avlämning.');
+      return;
+    }
+    const pickup   = combine(pickupDate, pickupTime);
+    const delivery = combine(deliveryDate, deliveryTime);
+    if (!pickup || !delivery || delivery.getTime() - pickup.getTime() < MS_72H) {
+      setFormError('Avlämning måste vara minst 72 timmar efter upphämtning.');
       return;
     }
     setFormError('');
@@ -192,7 +253,7 @@ function CheckoutForm() {
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date, time, notes: notes.trim(), items }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes: notes.trim(), items }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -436,20 +497,42 @@ function CheckoutForm() {
       </div>
       </div>
 
-      {/* ── Hämtning — datum & tid ───────────────────────────────────── */}
+      {/* ── Upphämtning & Avlämning — two vertical cards ─────────────── */}
       <div className="of-section">
-      <div className="of-section-title"><IconCalendar size={15} stroke={1.5} /> Hämtning</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-sm)' }}>
-        <div className="input-group">
-          <label className="field-label">Önskad tid för hämtning</label>
-          <DatePicker value={date} onChange={setDate} placeholder="Välj datum" minDate={new Date().toISOString().slice(0, 10)} />
+      <div className="of-dt-cards">
+        {/* Upphämtning (pickup) */}
+        <div className="of-dt-card">
+          <div className="of-dt-title"><IconCalendar size={14} stroke={1.5} /> Upphämtning</div>
+          <div className="input-group" style={{ marginBottom: 'var(--sp-sm)' }}>
+            <label className="field-label">Datum</label>
+            <DatePicker value={pickupDate} onChange={setPickupDate} placeholder="Välj datum" minDate={minPickupDate} />
+          </div>
+          <div className="input-group" style={{ marginBottom: 0 }}>
+            <label className="field-label">
+              <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+              Tid
+            </label>
+            <TimePicker value={pickupTime} onChange={setPickupTime} placeholder="Välj tid" />
+          </div>
         </div>
-        <div className="input-group">
-          <label className="field-label">
-            <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
-            Tid
-          </label>
-          <TimePicker value={time} onChange={setTime} placeholder="Välj tid" />
+
+        {/* Avlämning (delivery) */}
+        <div className="of-dt-card">
+          <div className="of-dt-title"><IconCalendar size={14} stroke={1.5} /> Avlämning</div>
+          <div className="input-group" style={{ marginBottom: 'var(--sp-sm)' }}>
+            <label className="field-label">Datum</label>
+            <DatePicker value={deliveryDate} onChange={setDeliveryDate} placeholder="Välj datum" minDate={earliestDeliveryDate} />
+          </div>
+          <div className="input-group" style={{ marginBottom: 0 }}>
+            <label className="field-label">
+              <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
+              Tid
+            </label>
+            <TimePicker value={deliveryTime} onChange={setDeliveryTime} placeholder="Välj tid" minTime={deliveryMinTime} />
+          </div>
+          <p className="micro" style={{ color: 'var(--text-muted)', margin: 'var(--sp-sm) 0 0' }}>
+            Minst 72 timmar efter upphämtning.
+          </p>
         </div>
       </div>
       </div>

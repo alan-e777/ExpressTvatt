@@ -25,13 +25,15 @@ export type HomeStackParamList = {
     total: number;
   };
   CartPayment: {
-    items:      CartItem[];
-    total:      number;
-    address:    string;
-    postalCode: string;
-    date:       string;
-    time:       string;
-    notes:      string;
+    items:        CartItem[];
+    total:        number;
+    address:      string;
+    postalCode:   string;
+    date:         string; // pickup (Upphämtning)
+    time:         string;
+    deliveryDate: string; // delivery (Avlämning)
+    deliveryTime: string;
+    notes:        string;
   };
 };
 

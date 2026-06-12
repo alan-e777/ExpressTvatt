@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
     postalCode,
     date,
     time,
+    deliveryDate,
+    deliveryTime,
     notes,
     platform,
   }: {
@@ -41,14 +43,30 @@ export async function POST(request: NextRequest) {
     phone?: string;
     address: string;
     postalCode: string;
-    date: string;
+    date: string;          // pickup (Upphämtning)
     time: string;
+    deliveryDate?: string; // delivery (Avlämning)
+    deliveryTime?: string;
     notes?: string;
     platform?: string;
   } = body;
 
   if (!items?.length) {
     return NextResponse.json({ error: 'Varukorgen är tom.' }, { status: 400 });
+  }
+
+  // ── Schedule validation: delivery must be ≥ 72h after pickup ─────────────────
+  if (deliveryDate && deliveryTime) {
+    const toDate = (d: string, t: string) => {
+      const [y, mo, da] = d.split('-').map(Number);
+      const [h, mi]     = t.split(':').map(Number);
+      return new Date(y, (mo ?? 1) - 1, da, h, mi);
+    };
+    const pickup   = toDate(date, time);
+    const delivery = toDate(deliveryDate, deliveryTime);
+    if (delivery.getTime() - pickup.getTime() < 72 * 60 * 60 * 1000) {
+      return NextResponse.json({ error: 'Avlämning måste vara minst 72 timmar efter upphämtning.' }, { status: 400 });
+    }
   }
 
   // ── Server-side price validation ────────────────────────────────────────────
@@ -135,8 +153,14 @@ export async function POST(request: NextRequest) {
     customerPhone:   phone ?? '',
     address,
     postalCode,
+    // `dropoffDate`/`dropoffTime` historically hold the scheduled pickup — kept for
+    // the admin calendar/driver/orders views which key off them.
     dropoffDate:     date,
     dropoffTime:     time,
+    pickupDate:      date,
+    pickupTime:      time,
+    deliveryDate:    deliveryDate ?? '',
+    deliveryTime:    deliveryTime ?? '',
     notes:           notes ?? '',
     items:           validatedItems,
     platform:        platform === 'mobile' ? 'mobile' : 'web',

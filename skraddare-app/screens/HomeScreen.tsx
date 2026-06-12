@@ -119,8 +119,10 @@ function SectionHeader({ Icon, title, subtitle }: { Icon: IconComp; title: strin
 function ProductTile({ Icon, name, price, qty, onAdd, onRemove }: {
   Icon: IconComp; name: string; price: number; qty: number; onAdd: () => void; onRemove: () => void;
 }) {
+  // The whole tile is tappable to add. Inner step buttons capture their own
+  // taps (RN responder system), so they don't also trigger the tile's onAdd.
   return (
-    <View style={[pt.tile, qty > 0 && pt.tileActive]}>
+    <TouchableOpacity style={[pt.tile, qty > 0 && pt.tileActive]} onPress={onAdd} activeOpacity={0.85}>
       <View style={pt.iconCircle}><Icon size={22} color={colors.forestMid} strokeWidth={1.5} /></View>
       <Text style={pt.name} numberOfLines={2}>{name}</Text>
       <View style={pt.foot}>
@@ -142,7 +144,7 @@ function ProductTile({ Icon, name, price, qty, onAdd, onRemove }: {
           </View>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { IconClock } from '@tabler/icons-react';
 
-const HOURS   = Array.from({ length: 11 }, (_, i) => String(i + 8).padStart(2, '0'));
-const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+// Bookable window is 16:00–22:00 (see minTime/maxTime props below).
+const MINUTES_ALL = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
 function ScrollColumn({
   items,
@@ -79,16 +80,34 @@ export default function TimePicker({
   value,
   onChange,
   placeholder = 'Välj tid',
+  minTime = '16:00',
+  maxTime = '22:00',
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  minTime?: string;
+  maxTime?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
   const selH = value.split(':')[0] ?? '';
   const selM = value.split(':')[1] ?? '';
+
+  const minM = toMinutes(minTime);
+  const maxM = toMinutes(maxTime);
+  const minH = Math.floor(minM / 60);
+  const maxH = Math.floor(maxM / 60);
+
+  const HOURS = Array.from({ length: maxH - minH + 1 }, (_, i) => String(minH + i).padStart(2, '0'));
+  // Valid minutes for a given hour, keeping the whole HH:MM inside [minTime, maxTime].
+  const minutesFor = (h: string) =>
+    MINUTES_ALL.filter(m => {
+      const v = Number(h) * 60 + Number(m);
+      return v >= minM && v <= maxM;
+    });
+  const firstHour = HOURS[0] ?? String(minH).padStart(2, '0');
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -98,8 +117,12 @@ export default function TimePicker({
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  function pickHour(h: string) { onChange(`${h}:${selM || '00'}`); }
-  function pickMinute(m: string) { onChange(`${selH || '08'}:${m}`); }
+  function pickHour(h: string) {
+    const valid = minutesFor(h);
+    const m = valid.includes(selM) ? selM : (valid[0] ?? '00');
+    onChange(`${h}:${m}`);
+  }
+  function pickMinute(m: string) { onChange(`${selH || firstHour}:${m}`); }
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -151,8 +174,8 @@ export default function TimePicker({
 
           {/* Scrollable columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <ScrollColumn items={HOURS}   selected={selH} onSelect={pickHour}   />
-            <ScrollColumn items={MINUTES} selected={selM} onSelect={pickMinute} />
+            <ScrollColumn items={HOURS}                       selected={selH} onSelect={pickHour}   />
+            <ScrollColumn items={minutesFor(selH || firstHour)} selected={selM} onSelect={pickMinute} />
           </div>
 
           {/* Footer */}

@@ -17,6 +17,7 @@ type Props = {
   value:     string; // 'YYYY-MM-DD' or ''
   onConfirm: (dateStr: string) => void;
   onClose:   () => void;
+  minDate?:  string; // earliest selectable day, 'YYYY-MM-DD' (defaults to today)
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -67,8 +68,11 @@ function buildGrid(year: number, month: number): (number | null)[][] {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function DatePickerModal({ visible, value, onConfirm, onClose }: Props) {
+export default function DatePickerModal({ visible, value, onConfirm, onClose, minDate }: Props) {
   const today = startOfDay(new Date());
+  // Floor for selectable days: the later of today and the supplied minDate.
+  const parsedMin = parseDate(minDate ?? '');
+  const floor = parsedMin && parsedMin > today ? startOfDay(parsedMin) : today;
 
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -83,8 +87,8 @@ export default function DatePickerModal({ visible, value, onConfirm, onClose }: 
       setViewMonth(parsed.getMonth());
       setSelected(parsed);
     } else {
-      setViewYear(today.getFullYear());
-      setViewMonth(today.getMonth());
+      setViewYear(floor.getFullYear());
+      setViewMonth(floor.getMonth());
       setSelected(null);
     }
   }, [visible]);
@@ -92,8 +96,8 @@ export default function DatePickerModal({ visible, value, onConfirm, onClose }: 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
   const isCurrentMonth =
-    viewYear  === today.getFullYear() &&
-    viewMonth === today.getMonth();
+    viewYear  === floor.getFullYear() &&
+    viewMonth === floor.getMonth();
 
   function goBack() {
     if (isCurrentMonth) return;
@@ -169,7 +173,7 @@ export default function DatePickerModal({ visible, value, onConfirm, onClose }: 
                 if (!day) return <View key={ci} style={s.cell} />;
 
                 const cellDate = new Date(viewYear, viewMonth, day);
-                const isPast   = cellDate < today;
+                const isPast   = cellDate < floor;
                 const isToday  = sameDay(cellDate, today);
                 const isSel    = !!selected && sameDay(cellDate, selected);
 

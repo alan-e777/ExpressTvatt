@@ -162,23 +162,32 @@ export default function HomePage() {
     type: CartItem['type']; serviceId?: string;
   }) {
     const qty = cartQty(id);
+    const stop = (e: React.MouseEvent) => e.stopPropagation();
     return (
-      <div className={`prod-tile${qty > 0 ? ' of-active' : ''}`}>
+      <div
+        className={`prod-tile${qty > 0 ? ' of-active' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-label={`Lägg till ${name}`}
+        style={{ cursor: 'pointer' }}
+        onClick={() => addToCart({ id, name, price, type, serviceId })}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart({ id, name, price, type, serviceId }); } }}
+      >
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
           <div className="prod-tile-price">{price} kr<span className="prod-tile-per">/st</span></div>
           {qty === 0 ? (
-            <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={() => addToCart({ id, name, price, type, serviceId })}>
+            <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type, serviceId }); }}>
               <IconPlus size={18} stroke={2.5} />
             </button>
           ) : (
-            <div className="prod-stepper">
-              <button className="prod-step-btn" aria-label={`Ta bort ${name}`} onClick={() => removeFromCart(id)}>
+            <div className="prod-stepper" onClick={stop}>
+              <button className="prod-step-btn" aria-label={`Ta bort ${name}`} onClick={e => { stop(e); removeFromCart(id); }}>
                 <IconMinus size={13} stroke={2.5} />
               </button>
               <PulseQty value={qty} />
-              <button className="prod-step-btn" aria-label={`Lägg till ${name}`} onClick={() => addToCart({ id, name, price, type, serviceId })}>
+              <button className="prod-step-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type, serviceId }); }}>
                 <IconPlus size={13} stroke={2.5} />
               </button>
             </div>

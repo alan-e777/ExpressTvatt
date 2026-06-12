@@ -23,7 +23,7 @@ type Props = {
 };
 
 export default function CartPaymentScreen({ navigation, route }: Props) {
-  const { items, total, address, postalCode, date, time, notes } = route.params;
+  const { items, total, address, postalCode, date, time, deliveryDate, deliveryTime, notes } = route.params;
   const { confirmPayment } = useStripe();
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
     fetch(`${API_URL}/api/create-cart-payment`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ items, customerId, address, postalCode, date, time, notes }),
+      body:    JSON.stringify({ items, customerId, address, postalCode, date, time, deliveryDate, deliveryTime, notes }),
     })
       .then(r => r.json())
       .then(data => {
@@ -112,8 +112,12 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
             <Text style={typography.small}>{address}, {postalCode}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={typography.small}>Datum & tid</Text>
+            <Text style={typography.small}>Upphämtning</Text>
             <Text style={typography.small}>{date} kl. {time}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={typography.small}>Avlämning</Text>
+            <Text style={typography.small}>{deliveryDate} kl. {deliveryTime}</Text>
           </View>
 
           <View style={styles.divider} />
