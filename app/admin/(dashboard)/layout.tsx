@@ -56,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           overflowY: "auto",
         }}>
           <p style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1.5rem", color: "#fff" }}>
-            Tvättio Admin
+            Express Tvätt Admin
           </p>
           <NavLink href="/admin">Dashboard</NavLink>
           <NavLink href="/admin/orders">Orders</NavLink>

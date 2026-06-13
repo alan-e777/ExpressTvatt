@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
+import { isAdmin } from "@/lib/admin-auth";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY ?? "";
 
@@ -19,6 +20,7 @@ async function getServiceArea(): Promise<ServiceArea> {
 }
 
 export async function GET(req: NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const q = req.nextUrl.searchParams.get("q") ?? "";
   if (!q.trim()) return NextResponse.json({ predictions: [] });
   if (!API_KEY) return NextResponse.json({ error: "GOOGLE_MAPS_API_KEY saknas" }, { status: 500 });

@@ -43,7 +43,7 @@ export default function AdminMobileNav() {
         padding: '0 1rem',
       }}>
         <span style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', flex: 1 }}>
-          Tvättio Admin
+          Express Tvätt Admin
         </span>
         <button
           onClick={() => setOpen(v => !v)}

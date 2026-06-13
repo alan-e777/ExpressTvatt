@@ -693,7 +693,7 @@ function CheckoutForm() {
       <div className="of-bar of-bar--narrow">
         <div className="of-bar-inner">
           <button type="button" className="of-bar-summary" onClick={() => setSheetOpen(true)} aria-label="Visa bokning">
-            <span className="of-bar-count">{items.length} {items.length === 1 ? 'produkt' : 'produkter'}</span>
+            <span className="of-bar-count">{items.length} {items.length === 1 ? 'produkt' : 'produkter'}{deliveryFeeKr > 0 ? ` · +${deliveryFeeKr} kr leverans` : ''}</span>
             <span className="of-bar-total">{grandTotalKr} kr <IconChevronUp size={15} stroke={2} /></span>
           </button>
           <button type="submit" className="of-bar-cta" disabled={submitting}>

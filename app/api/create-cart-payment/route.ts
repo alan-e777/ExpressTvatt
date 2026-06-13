@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     currency: 'sek',
     metadata: {
       serviceId:   'cart',
-      serviceName: 'Tvättio Korg',
+      serviceName: 'Express Tvätt-korg',
       priceOre:    String(totalOre),
       customerId:  customerId ?? 'anonymous',
       items:       itemsSummary.slice(0, 500), // Stripe metadata limit
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
     id:              paymentIntent.id,
     paymentIntentId: paymentIntent.id,
     serviceId:       'cart',
-    serviceName:     'Tvättio Korg',
+    serviceName:     'Express Tvätt-korg',
     customerId:      customerId ?? 'anonymous',
     amount:          totalOre,
     originalAmount:  originalOre,

@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
     <div style={{ minHeight: "100vh", width: "100vw", maxWidth: "100vw", display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f4" }}>
       <style>{`body { max-width: 100vw !important; margin: 0 !important; } .bottom-nav { display: none !important; }`}</style>
       <div style={{ background: "#fff", padding: "2.5rem 2.25rem", borderRadius: "12px", width: "100%", maxWidth: "380px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #e8e8e8" }}>
-        <h1 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "0.25rem", letterSpacing: "-0.3px" }}>Tailor Admin</h1>
+        <h1 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "0.25rem", letterSpacing: "-0.3px" }}>Express Tvätt Admin</h1>
         <p style={{ color: "#999", marginBottom: "2rem", fontSize: "0.875rem" }}>Sign in to manage your shop</p>
 
         <label style={labelStyle}>Email</label>

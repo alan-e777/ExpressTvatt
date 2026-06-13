@@ -30,7 +30,10 @@ const STATUS_LABEL: Record<string, string> = {
   ready_for_pickup: 'Redo för leverans',
   completed:        'Klar',
   collected:        'Hämtad',
+  delivered:        'Levererad',
   cancelled:        'Avbokad',
+  payment_failed:   'Betalning misslyckades',
+  refunded:         'Återbetald',
 };
 const STATUS_BG: Record<string, string> = {
   pending_payment:  '#ede8de',
@@ -39,7 +42,10 @@ const STATUS_BG: Record<string, string> = {
   ready_for_pickup: '#ede9fe',
   completed:        '#dcfce7',
   collected:        '#d1fae5',
+  delivered:        '#bbf7d0',
   cancelled:        '#fee2e2',
+  payment_failed:   '#fee2e2',
+  refunded:         '#ede8de',
 };
 const STATUS_TEXT: Record<string, string> = {
   pending_payment:  '#7a9480',
@@ -48,7 +54,10 @@ const STATUS_TEXT: Record<string, string> = {
   ready_for_pickup: '#6d28d9',
   completed:        '#15803d',
   collected:        '#065f46',
+  delivered:        '#15803d',
   cancelled:        '#dc2626',
+  payment_failed:   '#b91c1c',
+  refunded:         '#374151',
 };
 
 type ViewMode = 'loading' | 'login' | 'signup' | 'profile';

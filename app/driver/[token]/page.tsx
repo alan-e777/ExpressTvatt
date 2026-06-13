@@ -81,7 +81,7 @@ export default function DriverRunPage() {
       {/* Header */}
       <div style={{ background: "#1a1a1a", color: "#fff", padding: "1.25rem 1.25rem 1.5rem" }}>
         <p style={{ fontSize: "0.65rem", color: "#666", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.35rem" }}>
-          Tvättio · {run.type === "dropoff" ? "Utkörning" : "Upphämtning"}
+          Express Tvätt · {run.type === "dropoff" ? "Utkörning" : "Upphämtning"}
         </p>
         <h1 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.85rem" }}>
           Dagens körning
