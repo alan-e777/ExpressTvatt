@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/firebase-admin';
+import { sendStatusEmail, orderNumber } from '@/lib/order-status-email';
 
 // Stripe sends the raw body — do not pre-parse it.
 export async function POST(request: NextRequest) {
@@ -48,6 +49,16 @@ export async function POST(request: NextRequest) {
         { merge: true }
       );
       console.log('[webhook] order updated to paid:', intent.id);
+
+      // Send order confirmation email — best-effort, never fail the webhook.
+      const orderSnap = await db.collection('orders').doc(intent.id).get();
+      const order = orderSnap.data() ?? {};
+      sendStatusEmail({
+        to: order.customerEmail ?? null,
+        name: order.customerName ?? '',
+        orderNo: orderNumber(order.paymentIntentId ?? intent.id),
+        status: 'order_received',
+      }).catch(err => console.error('[webhook] order confirmation email failed:', err));
     } catch (err) {
       console.error('[webhook] Firestore write failed for order', intent.id, err);
       return NextResponse.json({ error: 'Database write failed.' }, { status: 500 });

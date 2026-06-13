@@ -26,6 +26,7 @@ const COLORS = {
 
 // Customer-facing Swedish label + a short reassuring sentence per status.
 const STATUS_COPY: Record<string, { label: string; line: string }> = {
+  order_received:   { label: "Beställning mottagen",   line: "Vi har tagit emot din beställning och återkommer med mer information." },
   paid:             { label: "Mottagen",                line: "Vi har tagit emot din beställning och förbereder upphämtning." },
   collected:        { label: "Upphämtad",               line: "Vi har hämtat dina plagg – nu tar vi hand om resten." },
   in_progress:      { label: "Behandlas",               line: "Dina plagg behandlas just nu av vårt team." },
