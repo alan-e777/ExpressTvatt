@@ -17,7 +17,7 @@ export default async function AdminDashboard() {
       <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.25rem" }}>Dashboard</h1>
       <p style={{ color: "#999", marginBottom: "2rem", fontSize: "0.875rem" }}>Welcome back. Here's what's going on.</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         <StatCard label="Total Orders" value={String(orders.length)} />
         <StatCard label="In Progress" value={String(inProgressCount)} highlight={inProgressCount > 0} />
         <StatCard label="Total Revenue" value={`${(totalRevenue / 100).toLocaleString("sv-SE")} kr`} />

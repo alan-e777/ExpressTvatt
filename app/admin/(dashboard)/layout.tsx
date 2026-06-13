@@ -43,6 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         fontFamily: "system-ui, sans-serif",
         width: "100vw",
         overflow: "hidden",
+        flexDirection: "column",
       }}>
         <aside className="admin-layout-sidebar" style={{
           width: "220px",
@@ -54,6 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           gap: "0.5rem",
           flexShrink: 0,
           overflowY: "auto",
+          height: "100vh",
         }}>
           <p style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1.5rem", color: "#fff" }}>
             Tvättio Admin
@@ -78,6 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
+          minHeight: 0,
         }}>
           {children}
         </main>

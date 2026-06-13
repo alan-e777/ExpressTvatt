@@ -308,7 +308,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         <p style={{ color: "#999", fontSize: "0.875rem" }}>Chaufförens standardplatser och tjänsteområde</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", alignItems: "start" }}>
 
         {/* ── Left: start/stop + service area controls ─────────────────────── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -430,7 +430,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
                 Mattvättpriserna är fasta i koden, så deras rabatt ställs in här.
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "0.6rem" }}>
                 {([
                   ["matta-liten", "Liten"],
                   ["matta-stor",  "Stor"],

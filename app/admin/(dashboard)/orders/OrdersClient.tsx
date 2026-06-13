@@ -689,8 +689,8 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           {orders.length === 0 ? "No orders yet." : "No active orders."}
         </div>
       ) : (
-        <div style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+        <div style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", fontSize: "0.875rem" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #eee", background: "#fafafa" }}>
                 <th style={{ padding: "0.75rem 0 0.75rem 1.25rem", width: "2.5rem" }}>
@@ -791,7 +791,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                     {isExpanded && (
                       <tr style={{ borderBottom: isLast ? "none" : "1px solid #f0f0f0" }}>
                         <td colSpan={8} style={{ padding: "0.25rem 1.25rem 1.25rem 1.25rem", background: "#fafafa" }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
                             {/* Booking details */}
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                               <p style={detailHeading}>Booking details</p>

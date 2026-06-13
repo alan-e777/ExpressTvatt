@@ -246,7 +246,7 @@ function CustomerProfile({ row }: { row: CustomerRow | null }) {
 
       {/* Contact & stats */}
       <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #f0f0f0" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.85rem" }}>
           <Field label="Telefon"       value={row.phone  || "—"} />
           <Field label="E-post"        value={row.email  || "—"} small />
           <Field label="Antal ordrar"  value={String(row.orderCount)} />
@@ -319,7 +319,7 @@ export default function CustomersClient({ initialRows }: { initialRows: Customer
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "1.25rem", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.25rem", alignItems: "start" }}>
         <CustomerList
           rows={initialRows}
           selectedUid={selectedUid}

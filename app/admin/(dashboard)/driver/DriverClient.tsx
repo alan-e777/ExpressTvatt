@@ -276,7 +276,7 @@ export default function DriverClient({ initialOrders }: { initialOrders: DriverO
       )}
 
       {/* Two-column layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", alignItems: "start", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.25rem", alignItems: "start", flex: 1, minHeight: 0, overflow: "auto" }}>
 
         {/* ── Left: available orders ─────────────────────────────────────────── */}
         <section style={{ minWidth: 0, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
