@@ -96,6 +96,7 @@ export default function HomePage() {
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [rutAvdrag, setRutAvdrag]     = useState(false);
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
+  const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
   const [hasPlacedOrder, setHasPlacedOrder]     = useState<boolean | null>(null);
   const [userId, setUserId]                     = useState<string | undefined>();
 
@@ -120,6 +121,10 @@ export default function HomePage() {
     fetch('/api/discount-settings')
       .then(r => r.json() as Promise<DiscountSettings>)
       .then(setDiscountSettings)
+      .catch(() => {});
+    fetch('/api/delivery-settings')
+      .then(r => r.json() as Promise<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>)
+      .then(setDeliverySettings)
       .catch(() => {});
   }, []);
 
@@ -180,6 +185,10 @@ export default function HomePage() {
     isFirstTime,
   );
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
+  const deliveryFeeKr = cartCount > 0 && cartTotal < deliverySettings.freeDeliveryThresholdKr
+    ? deliverySettings.deliveryFeeKr
+    : 0;
+  const grandTotalKr = cartTotal + deliveryFeeKr;
 
   // Map every selectable product id → its category, for the per-category badges.
   const idToCat = useMemo(() => {
@@ -293,8 +302,8 @@ export default function HomePage() {
         </ol>
       </div>
 
-      {/* ── First-time discount banner ────────────────────────────────────── */}
-      {isFirstTime && discountSettings.firstTimeDiscountPercent > 0 && (
+      {/* ── First-time discount banner — only logged-in users who haven't ordered yet ── */}
+      {!!userId && hasPlacedOrder === false && discountSettings.firstTimeDiscountPercent > 0 && (
         <div style={{
           background: 'var(--forest-dark)',
           borderRadius: 'var(--radius-lg)',
@@ -428,7 +437,7 @@ export default function HomePage() {
           <div className="of-bar-inner">
             <button className="of-bar-summary" onClick={() => setSheetOpen(true)} aria-label="Visa bokning">
               <span className="of-bar-count">{cartCount} {cartCount === 1 ? 'produkt' : 'produkter'}</span>
-              <span className="of-bar-total">{cartTotal} kr <IconChevronUp size={15} stroke={2} /></span>
+              <span className="of-bar-total">{grandTotalKr} kr <IconChevronUp size={15} stroke={2} /></span>
             </button>
             <button className="of-bar-cta" onClick={handleCheckout}>Gå till bokning →</button>
           </div>
@@ -486,12 +495,12 @@ export default function HomePage() {
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-md)' }}>
-                  <span className="small" style={{ color: 'var(--text-mid)' }}>Hämtning &amp; leverans</span>
-                  <span className="small" style={{ color: 'var(--text-mid)' }}>Ingår</span>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>Leverans</span>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>{deliveryFeeKr > 0 ? `${deliveryFeeKr} kr` : 'Gratis'}</span>
                 </div>
                 <div style={{ borderTop: '0.5px solid rgba(15,23,42,0.1)', paddingTop: 'var(--sp-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
-                  <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{cartTotal} kr</span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{grandTotalKr} kr</span>
                 </div>
               </div>
             </div>
