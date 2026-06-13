@@ -42,6 +42,14 @@ export function statusLabel(status: string): string {
   return STATUS_COPY[status]?.label ?? status;
 }
 
+/**
+ * Customer-facing label + reassuring line for a status. Shared by the email and
+ * the SMS sender so both channels say exactly the same thing.
+ */
+export function statusCopy(status: string): { label: string; line: string } {
+  return STATUS_COPY[status] ?? { label: status, line: "Din order har uppdaterats." };
+}
+
 /** Order number shown to the customer, e.g. "#VZE3AEA". */
 export function orderNumber(paymentIntentId: string): string {
   if (!paymentIntentId) return "—";
