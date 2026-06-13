@@ -30,6 +30,14 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
   const [loadError,    setLoadError]    = useState<string | null>(null);
   const [cardReady,    setCardReady]    = useState(false);
   const [status,       setStatus]       = useState<'idle' | 'processing' | 'success'>('idle');
+  const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/delivery-settings`)
+      .then(r => r.json())
+      .then(setDeliverySettings)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const customerId = auth.currentUser?.uid ?? undefined;
@@ -45,6 +53,12 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
       })
       .catch(() => setLoadError('Nätverksfel — kontrollera anslutningen.'));
   }, []);
+
+  // Delivery fee — free once the discounted total reaches the admin threshold.
+  const deliveryFeeKr = items.length > 0 && total < deliverySettings.freeDeliveryThresholdKr
+    ? deliverySettings.deliveryFeeKr
+    : 0;
+  const grandTotalKr = total + deliveryFeeKr;
 
   async function handlePay() {
     if (!clientSecret) return;
@@ -122,8 +136,12 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
 
           <View style={styles.divider} />
           <View style={styles.row}>
+            <Text style={typography.small}>Leverans</Text>
+            <Text style={typography.small}>{deliveryFeeKr > 0 ? `${deliveryFeeKr} kr` : 'Gratis'}</Text>
+          </View>
+          <View style={styles.row}>
             <Text style={[typography.bodyBold]}>Totalt</Text>
-            <Text style={styles.totalValue}>{total} kr</Text>
+            <Text style={styles.totalValue}>{grandTotalKr} kr</Text>
           </View>
         </View>
 
@@ -152,7 +170,7 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
         )}
 
         <CTAButton
-          label={`Betala ${total} kr`}
+          label={`Betala ${grandTotalKr} kr`}
           onPress={handlePay}
           icon={<IconLock size={14} color="#FFFFFF" strokeWidth={1.5} />}
           disabled={!cardReady || !clientSecret}

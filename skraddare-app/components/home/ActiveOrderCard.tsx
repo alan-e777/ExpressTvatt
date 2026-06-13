@@ -184,9 +184,8 @@ export default function ActiveOrderCard({ orders, order }: { orders?: Order[]; o
 
       <TouchableOpacity
         style={styles.card}
-        activeOpacity={list.length > 1 ? 0.9 : 1}
+        activeOpacity={0.85}
         onPress={handlePress}
-        disabled={list.length <= 1}
       >
         <Animated.View style={{ transform: [{ translateX }], opacity }}>
           <OrderContent order={current} />
