@@ -226,11 +226,18 @@ export default function HomePage() {
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
-          <div className="prod-tile-price">
+          <div
+            className="prod-tile-price"
+            style={showStrike ? { flexDirection: 'column', alignItems: 'center', gap: '2px' } : undefined}
+          >
             {showStrike ? (
               <>
-                <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontWeight: 500, marginRight: 5 }}>{price}</span>
-                <span style={{ color: 'var(--forest-dark)' }}>{shownPrice} kr</span>
+                <span style={{ textDecoration: 'line-through', fontSize: 12, fontWeight: 400, color: 'var(--text-muted)', lineHeight: 1.2 }}>
+                  {price} kr
+                </span>
+                <span style={{ color: 'var(--forest-dark)', lineHeight: 1.2 }}>
+                  {shownPrice} kr
+                </span>
               </>
             ) : (
               <>{price} kr</>
