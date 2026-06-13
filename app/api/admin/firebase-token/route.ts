@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { auth as adminAuth } from '@/lib/firebase-admin';
+import { isAdmin } from '@/lib/admin-auth';
 
 export async function GET() {
-  const cookieStore = await cookies();
-  if (!cookieStore.get('admin-session')) {
+  // Verify the session cookie cryptographically (not just its presence) before
+  // minting a custom token for the admin UID — otherwise any request carrying a
+  // dummy `admin-session` cookie could sign in as admin and gain full Firestore access.
+  if (!(await isAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
