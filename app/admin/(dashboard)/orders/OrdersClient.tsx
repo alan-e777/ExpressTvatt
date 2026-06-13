@@ -5,6 +5,7 @@ import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import * as XLSX from "xlsx";
 import { IconDeviceMobile, IconDeviceDesktop } from "@tabler/icons-react";
+import { queueStatusEmail } from "@/lib/order-email-bus";
 
 export type BasketItem = { id: string; name: string; price: number; qty: number };
 
@@ -15,6 +16,7 @@ export type Order = {
   amount: number;
   status: string;
   customerId: string;
+  customerName: string;
   customerEmail: string | null;
   platform: 'mobile' | 'web';
   createdAt: string | null;
@@ -69,6 +71,14 @@ const DEFAULT_DATE_FROM = toDateInput(new Date(_now.getFullYear(), _now.getMonth
 const DEFAULT_DATE_TO   = toDateInput(_now);
 
 const SWEDISH_MONTHS = ["januari","februari","mars","april","maj","juni","juli","augusti","september","oktober","november","december"];
+
+function statusLabelFor(value: string): string {
+  return STATUS_OPTIONS.find(o => o.value === value)?.label ?? value;
+}
+
+function orderNoFor(o: Order): string {
+  return o.paymentIntentId ? `#${o.paymentIntentId.slice(-7).toUpperCase()}` : "—";
+}
 
 function formatItemsSummary(items: BasketItem[], serviceName: string): string {
   if (!items || items.length === 0) return serviceName;
@@ -161,6 +171,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           amount:          data.amount ?? 0,
           status:          data.status ?? "paid",
           customerId:      uid,
+          customerName:    data.customerName ?? "",
           customerEmail:   data.customerEmail ?? null,
           platform:        (data.platform === 'mobile' ? 'mobile' : 'web') as 'mobile' | 'web',
           createdAt:       data.createdAt?.toDate?.()?.toISOString() ?? null,
@@ -257,6 +268,8 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
   }
 
   async function updateStatus(id: string, status: string) {
+    const order = orders.find(o => o.id === id);
+    const changed = order && order.status !== status;
     setUpdating(id);
     try {
       const res = await fetch(`/api/admin/orders/${id}`, {
@@ -266,6 +279,16 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       });
       if (!res.ok) throw new Error();
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+      // Queue the customer email (10s countdown banner sends it).
+      if (changed && order) {
+        queueStatusEmail({
+          orderId: id,
+          orderNo: orderNoFor(order),
+          customerName: order.customerName,
+          status,
+          statusLabel: statusLabelFor(status),
+        });
+      }
     } catch {
       alert("Failed to update status.");
     } finally {
@@ -275,6 +298,8 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
 
   async function applyBulkStatus() {
     if (selected.size === 0) return;
+    // Capture which orders actually change status (for the email queue).
+    const changedOrders = orders.filter(o => selected.has(o.id) && o.status !== bulkStatus);
     setBulkUpdating(true);
     try {
       await Promise.all(
@@ -287,6 +312,15 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
         )
       );
       setOrders(prev => prev.map(o => selected.has(o.id) ? { ...o, status: bulkStatus } : o));
+      changedOrders.forEach(o =>
+        queueStatusEmail({
+          orderId: o.id,
+          orderNo: orderNoFor(o),
+          customerName: o.customerName,
+          status: bulkStatus,
+          statusLabel: statusLabelFor(bulkStatus),
+        })
+      );
       setSelected(new Set());
     } catch {
       alert("Some updates failed. Refresh and try again.");

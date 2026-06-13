@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ChatNavLink from "./ChatNavLink";
+import OrderStatusNotifier from "@/components/admin/OrderStatusNotifier";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -35,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </main>
     </div>
+    <OrderStatusNotifier />
     </>
   );
 }

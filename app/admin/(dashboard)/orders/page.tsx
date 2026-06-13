@@ -30,6 +30,7 @@ export default async function OrdersPage() {
       amount:        data.amount ?? 0,
       status:        data.status ?? "paid",
       customerId:    uid,
+      customerName:  data.customerName ?? "",
       customerEmail: emailMap[uid] ?? null,
       platform:      (data.platform === 'mobile' ? 'mobile' : 'web') as 'mobile' | 'web',
       createdAt:     data.createdAt?.toDate?.()?.toISOString() ?? null,
