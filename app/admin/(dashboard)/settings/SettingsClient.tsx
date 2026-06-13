@@ -415,12 +415,12 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               <label style={fieldLabelStyle}>Leveransavgift</label>
               <div style={{ position: "relative", maxWidth: "140px" }}>
                 <input
-                  type="number"
-                  min={0}
-                  step={5}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={settings.deliveryFeeKr}
                   onChange={e => {
-                    const v = Math.max(0, Math.round(Number(e.target.value)));
+                    const v = Math.max(0, Math.round(Number(e.target.value.replace(/\D/g, ""))));
                     setSettings(s => ({ ...s, deliveryFeeKr: Number.isFinite(v) ? v : 0 }));
                   }}
                   style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem 2.4rem 0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
