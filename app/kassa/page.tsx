@@ -153,6 +153,7 @@ function CheckoutForm() {
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [strukenDiscounts, setStrukenDiscounts] = useState<Record<string, number>>({});
   const [hasPlacedOrder,   setHasPlacedOrder]   = useState<boolean | null>(null);
+  const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
 
   useEffect(() => {
     try {
@@ -182,6 +183,10 @@ function CheckoutForm() {
         for (const p of products) map[p.id] = p.discountPercent ?? 0;
         setStrukenDiscounts(map);
       })
+      .catch(() => {});
+    fetch('/api/delivery-settings')
+      .then(r => r.json() as Promise<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>)
+      .then(setDeliverySettings)
       .catch(() => {});
   }, []);
 
@@ -222,6 +227,13 @@ function CheckoutForm() {
     { firstTimeDiscountPercent: discountSettings.firstTimeDiscountPercent, multipleDiscountsAllowed: discountSettings.multipleDiscountsAllowed },
     isFirstTime,
   );
+
+  // Delivery fee — free once the discounted total reaches the admin threshold.
+  // Mirrors create-cart-payment so the displayed total equals the charged amount.
+  const deliveryFeeKr = items.length > 0 && totalKr < deliverySettings.freeDeliveryThresholdKr
+    ? deliverySettings.deliveryFeeKr
+    : 0;
+  const grandTotalKr = totalKr + deliveryFeeKr;
 
   // Pickup can be booked today if any time span is still open (last span ends 20:00).
   const now = new Date();
@@ -338,8 +350,12 @@ function CheckoutForm() {
         </>
       )}
       <div className="summary-row">
+        <span className="small">Leverans</span>
+        <span className="small">{deliveryFeeKr > 0 ? formatPrice(deliveryFeeKr) : 'Gratis'}</span>
+      </div>
+      <div className="summary-row">
         <span className="small">Totalt</span>
-        <span className="summary-total">{formatPrice(totalKr)}</span>
+        <span className="summary-total">{formatPrice(grandTotalKr)}</span>
       </div>
     </div>
   );
@@ -378,7 +394,7 @@ function CheckoutForm() {
       <div className="form-page of">
         {!paid && <Summary />}
         <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <PaymentForm totalKr={totalKr} orderId={orderId} onBack={() => setStep('form')} onPaid={() => setPaid(true)} />
+          <PaymentForm totalKr={grandTotalKr} orderId={orderId} onBack={() => setStep('form')} onPaid={() => setPaid(true)} />
         </Elements>
       </div>
     );
@@ -641,7 +657,7 @@ function CheckoutForm() {
               </span>
             </div>
             <p className="micro" style={{ color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
-              Du betalar fullt pris nu och vi återbetalar {RUT_DISCOUNT_PERCENT}% (cirka {rutRefundKr(totalKr)} kr) som skattereduktion i efterhand.
+              Du betalar fullt pris nu och vi återbetalar {RUT_DISCOUNT_PERCENT}% (cirka {rutRefundKr(grandTotalKr)} kr) som skattereduktion i efterhand.
             </p>
           </div>
         </label>
@@ -678,12 +694,12 @@ function CheckoutForm() {
         <div className="of-bar-inner">
           <button type="button" className="of-bar-summary" onClick={() => setSheetOpen(true)} aria-label="Visa bokning">
             <span className="of-bar-count">{items.length} {items.length === 1 ? 'produkt' : 'produkter'}</span>
-            <span className="of-bar-total">{totalKr} kr <IconChevronUp size={15} stroke={2} /></span>
+            <span className="of-bar-total">{grandTotalKr} kr <IconChevronUp size={15} stroke={2} /></span>
           </button>
           <button type="submit" className="of-bar-cta" disabled={submitting}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <IconLock size={14} stroke={1.5} />
-              {submitting ? 'Förbereder…' : `Betala ${formatPrice(totalKr)}`}
+              {submitting ? 'Förbereder…' : `Betala ${formatPrice(grandTotalKr)}`}
             </span>
           </button>
         </div>
@@ -724,14 +740,18 @@ function CheckoutForm() {
                   <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(savingsKr)}</span>
                 </div>
               )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 'var(--sp-md)' }}>
+                <span className="small">Leverans</span>
+                <span className="small">{deliveryFeeKr > 0 ? formatPrice(deliveryFeeKr) : 'Gratis'}</span>
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 'var(--sp-md)' }}>
                 <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
-                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{formatPrice(totalKr)}</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{formatPrice(grandTotalKr)}</span>
               </div>
               {rutAvdrag && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
                   <span className="micro" style={{ color: 'var(--moss)' }}>RUT-avdrag (återbetalas senare)</span>
-                  <span className="micro" style={{ color: 'var(--moss)', fontWeight: 600 }}>−{formatPrice(rutRefundKr(totalKr))}</span>
+                  <span className="micro" style={{ color: 'var(--moss)', fontWeight: 600 }}>−{formatPrice(rutRefundKr(grandTotalKr))}</span>
                 </div>
               )}
             </div>

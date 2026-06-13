@@ -88,11 +88,12 @@ export async function POST(request: NextRequest) {
 
   // ── Server-side price validation ────────────────────────────────────────────
 
-  // Fetch price catalogs for struken + services + the discount settings in parallel
-  const [strukenSnap, servicesSnap, discountsSnap] = await Promise.all([
+  // Fetch price catalogs for struken + services + the discount/delivery settings in parallel
+  const [strukenSnap, servicesSnap, discountsSnap, driverSnap] = await Promise.all([
     db.collection('services').doc('struken-tvatt').collection('StrukenTvatt').get(),
     db.collection('services').get(),
     db.collection('settings').doc('discounts').get(),
+    db.collection('settings').doc('driver').get(),
   ]);
 
   const strukenPrices = Object.fromEntries(
@@ -170,6 +171,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Kunde inte beräkna totalpris.' }, { status: 400 });
   }
 
+  // ── Delivery fee ────────────────────────────────────────────────────────────
+  // Pickup + delivery is free once the (discounted) order total reaches the
+  // admin-set threshold; below it, a flat fee applies. Both default to 0, so the
+  // charge is unchanged until an admin configures them in Inställningar.
+  const driverData = driverSnap.exists ? driverSnap.data() : {};
+  const freeDeliveryThresholdKr = Math.max(0, Math.round(Number(driverData?.freeDeliveryThresholdKr) || 0));
+  const deliveryFeeKr           = Math.max(0, Math.round(Number(driverData?.deliveryFeeKr) || 0));
+  const itemsTotalKr            = totalOre / 100;
+  const appliedDeliveryFeeKr    = itemsTotalKr >= freeDeliveryThresholdKr ? 0 : deliveryFeeKr;
+  const deliveryFeeOre          = appliedDeliveryFeeKr * 100;
+
+  totalOre    += deliveryFeeOre;
+  originalOre += deliveryFeeOre;
+
   const itemsSummary = validatedItems
     .map(i => `${i.qty}× ${i.name} (${i.discountedPrice} kr)`)
     .join(', ');
@@ -188,6 +203,7 @@ export async function POST(request: NextRequest) {
       rutAvdrag:   rutAvdrag ? 'true' : 'false',
       rutPersonnummer: rutPersonnummer,
       firstTimeDiscount: isFirstTime ? String(firstTimePct) : '0',
+      deliveryFee: String(appliedDeliveryFeeKr),
     },
   });
 
@@ -203,6 +219,9 @@ export async function POST(request: NextRequest) {
     originalAmount:  originalOre,
     currency:        'sek',
     status:          'pending_payment',
+    // Delivery fee charged on this order (kr), 0 when free pickup/delivery applied.
+    deliveryFeeKr:   appliedDeliveryFeeKr,
+    deliveryFeeOre:  deliveryFeeOre,
     // Discount bookkeeping (RUT is separate — see below).
     firstTimeDiscountApplied:  isFirstTime,
     firstTimeDiscountPercent:  firstTimePct,
