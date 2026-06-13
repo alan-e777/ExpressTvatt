@@ -26,6 +26,10 @@ export type Order = {
   postalCode: string;
   dropoffDate: string;
   dropoffTime: string;
+  pickupDate: string;
+  pickupTime: string;
+  deliveryDate: string;
+  deliveryTime: string;
   customFields: Record<string, string>;
   items: BasketItem[];
   tags: string[];
@@ -181,6 +185,10 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           postalCode:      data.postalCode ?? "",
           dropoffDate:     data.dropoffDate ?? "",
           dropoffTime:     data.dropoffTime ?? "",
+          pickupDate:      data.pickupDate ?? data.dropoffDate ?? "",
+          pickupTime:      data.pickupTime ?? data.dropoffTime ?? "",
+          deliveryDate:    data.deliveryDate ?? "",
+          deliveryTime:    data.deliveryTime ?? "",
           customFields:    data.customFields ?? {},
           items:           data.items ?? [],
           tags:            data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
@@ -793,11 +801,17 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                               {order.address && (
                                 <DetailRow label="Address" value={`${order.address}${order.postalCode ? ", " + order.postalCode : ""}`} />
                               )}
-                              {order.dropoffDate && (
-                                <DetailRow label="Dropoff date" value={order.dropoffDate} />
+                              {order.pickupDate && (
+                                <DetailRow
+                                  label="Upphämtning"
+                                  value={`${order.pickupDate}${order.pickupTime ? "  ·  " + formatTimeSpan(order.pickupTime) : ""}`}
+                                />
                               )}
-                              {order.dropoffTime && (
-                                <DetailRow label="Dropoff time" value={order.dropoffTime} />
+                              {order.deliveryDate && (
+                                <DetailRow
+                                  label="Avlämning"
+                                  value={`${order.deliveryDate}${order.deliveryTime ? "  ·  " + formatTimeSpan(order.deliveryTime) : ""}`}
+                                />
                               )}
                               {order.rutAvdrag && (
                                 <div style={{
@@ -1023,6 +1037,16 @@ const detailHeading: React.CSSProperties = {
   fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
   letterSpacing: "0.06em", color: "#aaa", marginBottom: "0.4rem",
 };
+
+function formatTimeSpan(t: string): string {
+  if (!t) return "—";
+  // Span like "08-12" → "08:00–12:00"; exact time "16:00" passes through.
+  if (t.includes("-") && !t.includes(":")) {
+    const [s, e] = t.split("-");
+    return `${s}:00–${e}:00`;
+  }
+  return t;
+}
 
 function formatAmount(ore: number) {
   return `${(ore / 100).toLocaleString("sv-SE")} kr`;

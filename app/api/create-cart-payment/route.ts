@@ -76,17 +76,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ett av de valda datumen är inte längre tillgängligt. Välj ett annat datum.' }, { status: 400 });
   }
 
-  // ── Schedule validation: delivery must be ≥ 72h after pickup ─────────────────
-  if (deliveryDate && deliveryTime) {
-    const toDate = (d: string, t: string) => {
-      const [y, mo, da] = d.split('-').map(Number);
-      const [h, mi]     = t.split(':').map(Number);
-      return new Date(y, (mo ?? 1) - 1, da, h, mi);
-    };
-    const pickup   = toDate(date, time);
-    const delivery = toDate(deliveryDate, deliveryTime);
-    if (delivery.getTime() - pickup.getTime() < 72 * 60 * 60 * 1000) {
-      return NextResponse.json({ error: 'Avlämning måste vara minst 72 timmar efter upphämtning.' }, { status: 400 });
+  // ── Schedule validation: delivery must be ≥ 3 calendar days after pickup ─────
+  if (deliveryDate) {
+    const dayDiff = Math.round(
+      (new Date(deliveryDate).getTime() - new Date(date).getTime()) / (24 * 60 * 60 * 1000)
+    );
+    if (dayDiff < 3) {
+      return NextResponse.json({ error: 'Avlämning måste vara minst 3 dagar efter upphämtning.' }, { status: 400 });
     }
   }
 

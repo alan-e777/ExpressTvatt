@@ -6,6 +6,7 @@ import {
   IconSteam, IconNeedle, IconShirt, IconHanger, IconStar, IconWash,
   IconScissors, IconSpray, IconSparkles,
   IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
+  IconTag,
 } from '@tabler/icons-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -284,6 +285,36 @@ export default function HomePage() {
           </li>
         </ol>
       </div>
+
+      {/* ── First-time discount banner ────────────────────────────────────── */}
+      {isFirstTime && discountSettings.firstTimeDiscountPercent > 0 && (
+        <div style={{
+          background: 'var(--forest-dark)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '14px var(--sp-xl)',
+          marginBottom: 'var(--sp-lg)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--sp-md)',
+        }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%',
+            background: 'var(--moss)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <IconTag size={18} stroke={2} color="var(--forest-dark)" />
+          </div>
+          <div>
+            <div style={{ color: 'var(--moss)', fontWeight: 700, fontSize: 16, lineHeight: 1.2, marginBottom: 3 }}>
+              {discountSettings.firstTimeDiscountPercent}% förstagångsrabatt
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.4 }}>
+              Välkommen! Din rabatt läggs till automatiskt i kassan.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── RUT-avdrag toggle — discrete, persists across list & detail ──── */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--sp-lg)' }}>

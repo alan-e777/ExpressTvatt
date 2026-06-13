@@ -24,22 +24,10 @@ type SavedAddress = { address: string; postalCode: string; deliveryNote?: string
 function formatPrice(kr: number) { return `${kr} kr`; }
 
 // ── Pickup / delivery scheduling helpers ────────────────────────────────────
-// Minimum gap between Upphämtning (pickup) and Avlämning (delivery): 72 hours.
-const MS_72H = 72 * 60 * 60 * 1000;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 function toYMD(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function toHM(d: Date): string {
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-function combine(date: string, time: string): Date | null {
-  if (!date || !time) return null;
-  const [y, mo, da] = date.split('-').map(Number);
-  const [h, mi]     = time.split(':').map(Number);
-  if (!y || !mo || !da || Number.isNaN(h) || Number.isNaN(mi)) return null;
-  return new Date(y, mo - 1, da, h, mi);
 }
 function addDaysYMD(ymd: string, n: number): string {
   const [y, mo, da] = ymd.split('-').map(Number);
@@ -235,29 +223,26 @@ function CheckoutForm() {
     isFirstTime,
   );
 
-  // Pickup can be booked for today only while it's still before 16:00; otherwise
-  // the earliest pickup day is tomorrow. (Times are always 16:00–22:00.)
+  // Pickup can be booked today if any time span is still open (last span ends 20:00).
   const now = new Date();
-  const minPickupDate = now.getHours() < 16 ? toYMD(now) : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const minPickupDate = now.getHours() < 20 ? toYMD(now) : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
 
-  // Delivery must be ≥ 72h after pickup → at least 3 calendar days later.
+  // Disable pickup spans that have already ended today.
+  const disabledPickupSpans: string[] = pickupDate === toYMD(now)
+    ? ['08-12', '12-16', '16-20'].filter(s => now.getHours() >= Number(s.split('-')[1]))
+    : [];
+
+  // Delivery must be at least 3 calendar days after pickup.
   const earliestDeliveryDate = pickupDate ? addDaysYMD(pickupDate, 3) : addDaysYMD(minPickupDate, 3);
-  // On that earliest day the delivery time can't be before the pickup time (keeps the full 72h).
-  const deliveryMinTime = pickupDate && pickupTime && deliveryDate === earliestDeliveryDate ? pickupTime : '16:00';
 
-  // Keep the rule satisfied both ways: whenever pickup moves, bump the delivery
-  // forward to the earliest valid slot if it would otherwise fall inside 72h.
+  // When pickup date changes, bump delivery date forward if it's no longer valid.
   useEffect(() => {
-    const pickup = combine(pickupDate, pickupTime);
-    if (!pickup) return;
-    const earliest = new Date(pickup.getTime() + MS_72H);
-    const current  = combine(deliveryDate, deliveryTime);
-    if (current && current.getTime() >= earliest.getTime()) return; // already valid
-    const ed = toYMD(earliest);
-    const et = toHM(earliest);
-    if (deliveryDate !== ed) setDeliveryDate(ed);
-    if (deliveryTime !== et) setDeliveryTime(et);
-  }, [pickupDate, pickupTime, deliveryDate, deliveryTime]);
+    if (!pickupDate) return;
+    const minDelivery = addDaysYMD(pickupDate, 3);
+    if (deliveryDate && deliveryDate >= minDelivery) return;
+    setDeliveryDate(minDelivery);
+    setDeliveryTime('');
+  }, [pickupDate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -285,10 +270,11 @@ function CheckoutForm() {
       setFormError('Välj datum och tid för avlämning.');
       return;
     }
-    const pickup   = combine(pickupDate, pickupTime);
-    const delivery = combine(deliveryDate, deliveryTime);
-    if (!pickup || !delivery || delivery.getTime() - pickup.getTime() < MS_72H) {
-      setFormError('Avlämning måste vara minst 72 timmar efter upphämtning.');
+    const dayDiff = Math.round(
+      (new Date(deliveryDate).getTime() - new Date(pickupDate).getTime()) / (24 * 60 * 60 * 1000)
+    );
+    if (dayDiff < 3) {
+      setFormError('Avlämning måste vara minst 3 dagar efter upphämtning.');
       return;
     }
     if (rutAvdrag && !isValidPersonnummer(personnummer)) {
@@ -579,7 +565,7 @@ function CheckoutForm() {
               <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
               Tid
             </label>
-            <TimePicker value={pickupTime} onChange={setPickupTime} placeholder="Välj tid" />
+            <TimePicker value={pickupTime} onChange={setPickupTime} placeholder="Välj tid" disabledOptions={disabledPickupSpans} />
           </div>
         </div>
 
@@ -595,10 +581,10 @@ function CheckoutForm() {
               <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
               Tid
             </label>
-            <TimePicker value={deliveryTime} onChange={setDeliveryTime} placeholder="Välj tid" minTime={deliveryMinTime} />
+            <TimePicker value={deliveryTime} onChange={setDeliveryTime} placeholder="Välj tid" />
           </div>
           <p className="micro" style={{ color: 'var(--text-muted)', margin: 'var(--sp-sm) 0 0' }}>
-            Minst 72 timmar efter upphämtning.
+            Minst 3 dagar efter upphämtning.
           </p>
         </div>
       </div>
