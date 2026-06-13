@@ -13,7 +13,9 @@ import { sendStatusEmail, orderNumber } from "@/lib/order-status-email";
 const VALID_STATUSES = ["paid", "in_progress", "ready_for_pickup", "completed", "collected", "cancelled", "delivered", "payment_failed", "refunded"];
 
 export async function POST(request: NextRequest) {
+  console.log("[notify-status] POST received");
   if (!(await isAdmin())) {
+    console.log("[notify-status] not admin");
     return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
   }
 
@@ -21,10 +23,12 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
+    console.log("[notify-status] invalid json");
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
   const { orderId, status } = body;
+  console.log("[notify-status] orderId:", orderId, "status:", status);
   if (!orderId || !status) {
     return NextResponse.json({ error: "orderId and status are required" }, { status: 400 });
   }
@@ -35,9 +39,11 @@ export async function POST(request: NextRequest) {
   try {
     const snap = await db.collection("orders").doc(orderId).get();
     if (!snap.exists) {
+      console.log("[notify-status] order not found");
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
     const order = snap.data() ?? {};
+    console.log("[notify-status] order found. customerEmail:", order.customerEmail, "customerName:", order.customerName);
 
     const result = await sendStatusEmail({
       to: order.customerEmail ?? null,
@@ -46,6 +52,7 @@ export async function POST(request: NextRequest) {
       status,
     });
 
+    console.log("[notify-status] sendStatusEmail result:", result);
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 502 });
     }
