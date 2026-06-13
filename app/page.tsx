@@ -32,11 +32,6 @@ const BENEFITS = [
   { title: 'Transparent prissättning',    desc: 'Inga dolda avgifter. Hämtning och leverans ingår alltid.' },
 ];
 
-const REVIEWS = [
-  { text: 'Hämtade på morgonen, tillbaka nästa dag — pressat och perfekt. Jag tänker aldrig på tvätt längre.', name: 'Anna L.', city: 'Östermalm' },
-  { text: 'Behandlade min kostym bättre än någon kemtvätt jag använt. Logistiken är felfri.', name: 'Marcus H.', city: 'Vasastan' },
-  { text: 'Punktliga, diskreta och proffsiga. Precis vad man vill ha av en tjänst för dyra plagg.', name: 'Sofia B.', city: 'Kungsholmen' },
-];
 
 // ── Reveal — minimal opacity + translateY on scroll ──────────────────────────
 
@@ -330,36 +325,44 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Social proof ───────────────────────────────────────────── */}
-      <section className="lp-reviews" id="reviews">
+      {/* ── Membership / certification ─────────────────────────────── */}
+      <section className="lp-forbund" id="reviews">
         <div className="lp-section-inner">
-          <Reveal className="lp-reviews-head">
-            <div className="lp-kicker">Omdömen</div>
-            <div className="lp-reviews-score">
-              <span className="lp-reviews-num">4,9</span>
-              <span className="lp-reviews-stars" aria-label="4,9 av 5">
-                {Array.from({ length: 5 }).map((_, i) => <IconStarFilled key={i} size={15} />)}
-              </span>
-              <span className="lp-reviews-count">· 1 200+ upphämtningar</span>
-            </div>
-          </Reveal>
+          <div className="lp-forbund-card">
+            <Reveal variant="scale" className="lp-forbund-badge">
+              <Image
+                src="/tvatteriforbundet-member.webp"
+                alt="Medlemsmärke — Sveriges Tvätteriförbund"
+                width={220}
+                height={220}
+                className="lp-forbund-badge-img"
+              />
+            </Reveal>
 
-          <div className="lp-reviews-grid">
-            {REVIEWS.map((r, i) => (
-              <Reveal key={r.name} delay={i * 90} variant="scale" className="lp-review">
-                <span className="lp-review-stars" aria-label="5 av 5">
-                  {Array.from({ length: 5 }).map((_, j) => <IconStarFilled key={j} size={14} />)}
-                </span>
-                <p className="lp-review-text">{r.text}</p>
-                <div className="lp-review-author">
-                  <span className="lp-review-avatar" aria-hidden>{r.name.charAt(0)}</span>
-                  <span className="lp-review-meta">
-                    <span className="lp-review-name">{r.name}</span>
-                    <span className="lp-review-city">{r.city}</span>
-                  </span>
-                </div>
-              </Reveal>
-            ))}
+            <Reveal className="lp-forbund-body">
+              <div className="lp-kicker">Kvalitet & ansvar</div>
+              <h2 className="lp-forbund-title">Medlem i Sveriges Tvätteriförbund</h2>
+              <p className="lp-forbund-text">
+                Vi är anslutna till branschorganisationen för Sveriges tvätt- och
+                textilservice. Medlemskapet är en kvalitetsstämpel — det innebär
+                godkänd auktorisationskontroll, yrkeskunnig hantering och ett
+                miljömedvetet arbetssätt i varje led.
+              </p>
+              <ul className="lp-forbund-points">
+                <li>
+                  <strong>T-märkt kvalitet</strong>
+                  Auktoriserad plaggvård efter förbundets kontroll.
+                </li>
+                <li>
+                  <strong>Yrkeskunskap</strong>
+                  Utbildade specialister behandlar varje plagg rätt.
+                </li>
+                <li>
+                  <strong>Miljömedvetet</strong>
+                  Effektiv resurshantering enligt branschens riktlinjer.
+                </li>
+              </ul>
+            </Reveal>
           </div>
         </div>
       </section>

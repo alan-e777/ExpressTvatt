@@ -127,6 +127,8 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
     startAddr: "",
     stopAddr: "",
     serviceArea: { lat: 59.3342, lng: 18.0709, radiusKm: 5 },
+    freeDeliveryThresholdKr: 0,
+    deliveryFeeKr: 0,
   });
   const [discounts, setDiscounts] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -376,6 +378,58 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#bbb" }}>
                 <span>1 km</span><span>50 km</span>
               </div>
+            </div>
+          </section>
+
+          {/* Delivery */}
+          <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
+            <p style={labelStyle}>Leverans</p>
+            <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
+              Bestäm vid vilket ordervärde upphämtning och hemleverans blir gratis, samt avgiften för mindre beställningar.
+            </p>
+
+            {/* Free-delivery threshold */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <label style={fieldLabelStyle}>
+                Gratis upphämtning & leverans från: <strong>{settings.freeDeliveryThresholdKr} kr</strong>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={1000}
+                step={25}
+                value={settings.freeDeliveryThresholdKr}
+                onChange={e => setSettings(s => ({ ...s, freeDeliveryThresholdKr: Number(e.target.value) }))}
+                style={{ width: "100%", accentColor: "#4b8c5c" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#bbb" }}>
+                <span>0 kr</span><span>1000 kr</span>
+              </div>
+              <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0.35rem 0 0", lineHeight: 1.5 }}>
+                Ordrar på minst detta belopp får fri upphämtning och hemleverans. Sätt till <strong>0 kr</strong> för att alltid erbjuda fri leverans.
+              </p>
+            </div>
+
+            {/* Delivery fee */}
+            <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
+              <label style={fieldLabelStyle}>Leveransavgift</label>
+              <div style={{ position: "relative", maxWidth: "140px" }}>
+                <input
+                  type="number"
+                  min={0}
+                  step={5}
+                  value={settings.deliveryFeeKr}
+                  onChange={e => {
+                    const v = Math.max(0, Math.round(Number(e.target.value)));
+                    setSettings(s => ({ ...s, deliveryFeeKr: Number.isFinite(v) ? v : 0 }));
+                  }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem 2.4rem 0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
+                />
+                <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.85rem", fontWeight: 600, pointerEvents: "none" }}>kr</span>
+              </div>
+              <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0.35rem 0 0", lineHeight: 1.5 }}>
+                Tas ut på ordrar under tröskelvärdet ovan. Sätt till <strong>0 kr</strong> för fri leverans även för mindre beställningar.
+              </p>
             </div>
           </section>
 

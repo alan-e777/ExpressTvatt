@@ -1935,7 +1935,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Anchor targets clear the fixed nav (12px gap + 64px pill + breathing room) */
-.lp-how, .lp-why, .lp-reviews { scroll-margin-top: 96px; }
+.lp-how, .lp-why, .lp-forbund { scroll-margin-top: 96px; }
 
 /* ── Navigation ─────────────────────────────────────────────────────── */
 /* Floating white pill — matches the site-wide SiteHeader */
@@ -2426,57 +2426,72 @@ input, textarea, select { font-family: inherit; }
   color: var(--muted);
 }
 
-/* ── Reviews ────────────────────────────────────────────────────────── */
-.lp-reviews { background: #fff; padding: 110px 0; }
-.lp-reviews-head { margin-bottom: 48px; }
-.lp-reviews-score { display: flex; align-items: center; gap: 10px; }
-.lp-reviews-num { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
-.lp-reviews-stars { display: inline-flex; gap: 2px; color: var(--gold); }
-.lp-reviews-count { font-size: 15px; color: var(--muted); }
-.lp-reviews-grid {
+/* ── Membership / certification ─────────────────────────────────────── */
+.lp-forbund { background: #fff; padding: 110px 0; }
+.lp-forbund-card {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-.lp-review {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 30px;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  align-items: center;
+  gap: 56px;
+  padding: 48px;
   background: var(--light);
   border: 1px solid rgba(15,23,42,0.06);
-  border-radius: 18px;
-  transition: transform 300ms var(--ease-soft), box-shadow 300ms var(--ease-soft),
-              background 300ms var(--ease-soft), border-color 300ms var(--ease-soft);
+  border-radius: 24px;
 }
-.lp-review:hover {
-  transform: translateY(-5px);
-  background: #fff;
-  border-color: rgba(8,63,65,0.12);
-  box-shadow: var(--sh-3);
+.lp-forbund-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.lp-review-stars { display: inline-flex; gap: 2px; color: var(--gold); }
-.lp-review-text {
-  font-size: 16px;
-  line-height: 1.65;
+.lp-forbund-badge-img {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+}
+.lp-forbund-body { max-width: 56ch; }
+.lp-forbund-title {
+  font-size: clamp(26px, 3.4vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   color: var(--ink);
+  margin: 0 0 18px;
+}
+.lp-forbund-text {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--muted);
   letter-spacing: -0.01em;
+  margin: 0 0 28px;
 }
-.lp-review-author { display: flex; align-items: center; gap: 12px; margin-top: auto; }
-.lp-review-avatar {
-  width: 40px; height: 40px;
-  flex-shrink: 0;
+.lp-forbund-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+.lp-forbund-points li {
+  position: relative;
+  padding-left: 28px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.lp-forbund-points li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 7px;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--p);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 600;
+  background: var(--gold);
 }
-.lp-review-meta { display: flex; flex-direction: column; gap: 1px; }
-.lp-review-name { font-size: 14px; font-weight: 600; color: var(--ink); }
-.lp-review-city { font-size: 13px; color: var(--muted); }
-@media (prefers-reduced-motion: reduce) {
-  .lp-review:hover { transform: none; }
+.lp-forbund-points strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
 }
 
 /* ── Final CTA ──────────────────────────────────────────────────────── */
@@ -2618,7 +2633,15 @@ input, textarea, select { font-family: inherit; }
   .lp-how-desc { max-width: none; }
   .lp-trust-inner { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
   .lp-trust-item { justify-content: flex-start; }
-  .lp-reviews-grid { grid-template-columns: 1fr; gap: 20px; }
+  .lp-forbund-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 32px;
+    padding: 40px 28px;
+  }
+  .lp-forbund-badge-img { max-width: 160px; }
+  .lp-forbund-points { text-align: left; }
   .lp-footer-inner { grid-template-columns: 1fr 1fr; gap: 32px; }
   .lp-footer-brand { grid-column: 1 / -1; }
 }

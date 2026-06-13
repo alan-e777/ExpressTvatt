@@ -10,14 +10,26 @@ export interface DriverSettings {
     lng: number;
     radiusKm: number;
   };
+  /** Order total (kr) at or above which pickup + delivery is free. */
+  freeDeliveryThresholdKr: number;
+  /** Delivery fee (kr) charged when the order total is below the threshold. */
+  deliveryFeeKr: number;
 }
 
 const DOC = () => db.collection("settings").doc("driver");
+
+// Clamp money inputs to a sane non-negative whole number of kronor.
+const clampKr = (n: unknown, fallback: number): number => {
+  const v = Math.round(Number(n));
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
+};
 
 const DEFAULTS: DriverSettings = {
   startAddr: "",
   stopAddr: "",
   serviceArea: { lat: 59.3342, lng: 18.0709, radiusKm: 5 },
+  freeDeliveryThresholdKr: 0,
+  deliveryFeeKr: 0,
 };
 
 export async function GET() {
@@ -39,6 +51,8 @@ export async function POST(req: NextRequest) {
         lng: body.serviceArea?.lng ?? DEFAULTS.serviceArea.lng,
         radiusKm: body.serviceArea?.radiusKm ?? DEFAULTS.serviceArea.radiusKm,
       },
+      freeDeliveryThresholdKr: clampKr(body.freeDeliveryThresholdKr, DEFAULTS.freeDeliveryThresholdKr),
+      deliveryFeeKr: clampKr(body.deliveryFeeKr, DEFAULTS.deliveryFeeKr),
     },
     { merge: true }
   );
