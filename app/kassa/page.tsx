@@ -167,6 +167,8 @@ function CheckoutForm() {
       const raw = searchParams.get('cart') ?? '[]';
       setItems(JSON.parse(decodeURIComponent(raw)));
     } catch { setItems([]); }
+    // Carry the RUT choice over from the service-selection screen.
+    if (searchParams.get('rut') === '1') setRutAvdrag(true);
   }, [searchParams]);
 
   useEffect(() => {

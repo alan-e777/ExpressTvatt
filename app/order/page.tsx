@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   IconSteam, IconNeedle, IconShirt, IconHanger, IconStar, IconWash,
   IconScissors, IconSpray, IconSparkles,
-  IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX,
+  IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
 } from '@tabler/icons-react';
+import { rutNetKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ export default function HomePage() {
   const [cart, setCart]               = useState<CartItem[]>([]);
   const [openCat, setOpenCat]         = useState<CatId | null>(null);
   const [sheetOpen, setSheetOpen]     = useState(false);
+  const [rutAvdrag, setRutAvdrag]     = useState(false);
 
   // Fetch the unified product catalogue (all categories live in StrukenTvatt)
   useEffect(() => {
@@ -126,7 +128,8 @@ export default function HomePage() {
   function handleCheckout() {
     if (cart.length === 0) return;
     const items = cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.quantity, type: i.type }));
-    router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}`);
+    const rutParam = rutAvdrag ? '&rut=1' : '';
+    router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}${rutParam}`);
   }
 
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -173,7 +176,17 @@ export default function HomePage() {
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
-          <div className="prod-tile-price">{price} kr<span className="prod-tile-per">/st</span></div>
+          <div className="prod-tile-price">
+            {rutAvdrag ? (
+              <>
+                <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontWeight: 500, marginRight: 5 }}>{price}</span>
+                <span style={{ color: 'var(--forest-dark)' }}>{rutNetKr(price)} kr</span>
+              </>
+            ) : (
+              <>{price} kr</>
+            )}
+            <span className="prod-tile-per">/st</span>
+          </div>
           {qty === 0 ? (
             <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type }); }}>
               <IconPlus size={18} stroke={2.5} />
@@ -221,6 +234,45 @@ export default function HomePage() {
             <span style={{ color: 'var(--forest-light)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
           </li>
         </ol>
+      </div>
+
+      {/* ── RUT-avdrag toggle — discrete, persists across list & detail ──── */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--sp-lg)' }}>
+        <button
+          type="button"
+          onClick={() => setRutAvdrag(v => !v)}
+          aria-pressed={rutAvdrag}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '7px 14px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+            fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+            color: rutAvdrag ? 'var(--forest-dark)' : 'var(--forest-light)',
+            background: rutAvdrag ? 'var(--linen)' : 'transparent',
+            border: `0.5px solid ${rutAvdrag ? 'var(--moss)' : 'rgba(74,124,89,0.3)'}`,
+            transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 16, height: 16, borderRadius: 5, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: rutAvdrag ? 'none' : '1.5px solid rgba(74,124,89,0.45)',
+              background: rutAvdrag ? 'var(--forest-dark)' : 'transparent',
+            }}
+          >
+            {rutAvdrag && <IconCheck size={11} stroke={2.75} color="var(--moss)" />}
+          </span>
+          Visa pris med RUT-avdrag
+          <span style={{
+            background: rutAvdrag ? 'var(--forest-dark)' : 'rgba(74,124,89,0.12)',
+            color: rutAvdrag ? 'var(--moss)' : 'var(--forest-light)',
+            borderRadius: 'var(--radius-pill)', padding: '1px 7px',
+            fontSize: 11, fontWeight: 600,
+          }}>
+            −{RUT_DISCOUNT_PERCENT}%
+          </span>
+        </button>
       </div>
 
       {/* ── List view: category rows ─────────────────────────────────────── */}

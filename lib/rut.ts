@@ -22,3 +22,10 @@ export function isValidPersonnummer(value: string): boolean {
 export function rutRefundKr(totalKr: number): number {
   return Math.round((totalKr * RUT_DISCOUNT_PERCENT) / 100);
 }
+
+// Effective price (kr) after the RUT reduction — used to preview the discounted
+// price on product tiles. Display only; the customer still pays full price up
+// front and the refund is settled afterwards.
+export function rutNetKr(priceKr: number): number {
+  return priceKr - rutRefundKr(priceKr);
+}
