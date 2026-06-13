@@ -3,12 +3,20 @@
 import { useState } from "react";
 
 export type StrukenProduct = {
-  id:       string;
-  name:     string;
-  price:    number;
-  category: string;
-  order:    number;
+  id:              string;
+  name:            string;
+  price:           number;
+  category:        string;
+  order:           number;
+  discountPercent: number;
 };
+
+// Parse a percentage input into a clamped 0–100 integer.
+function clampPctInput(v: string): number {
+  const n = Math.round(parseFloat(v));
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, n));
+}
 
 // Mirrors the customer order page (app/order/page.tsx). Mattvätt is omitted here
 // because it uses fixed local sizes, not the StrukenTvatt catalogue.
@@ -23,21 +31,28 @@ function CategoryCard({
   onAdd,
   onDelete,
   onUpdatePrice,
+  onUpdateDiscount,
 }: {
-  category:       Category;
-  items:          StrukenProduct[];
-  onAdd:          (category: string, name: string, price: number) => Promise<void>;
-  onDelete:       (id: string) => Promise<void>;
-  onUpdatePrice:  (id: string, price: number) => Promise<void>;
+  category:         Category;
+  items:            StrukenProduct[];
+  onAdd:            (category: string, name: string, price: number, discountPercent: number) => Promise<void>;
+  onDelete:         (id: string) => Promise<void>;
+  onUpdatePrice:    (id: string, price: number) => Promise<void>;
+  onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
 }) {
-  const [newName,  setNewName]  = useState("");
-  const [newPrice, setNewPrice] = useState("");
-  const [adding,   setAdding]   = useState(false);
-  const [addError, setAddError] = useState("");
+  const [newName,     setNewName]     = useState("");
+  const [newPrice,    setNewPrice]    = useState("");
+  const [newDiscount, setNewDiscount] = useState("");
+  const [adding,      setAdding]      = useState(false);
+  const [addError,    setAddError]    = useState("");
 
   // Inline price editing
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [editPriceVal, setEditPriceVal] = useState("");
+
+  // Inline discount editing
+  const [editingDisc, setEditingDisc] = useState<string | null>(null);
+  const [editDiscVal, setEditDiscVal] = useState("");
 
   async function handleAdd() {
     if (!newName.trim()) { setAddError("Ange ett namn."); return; }
@@ -46,9 +61,10 @@ function CategoryCard({
     setAdding(true);
     setAddError("");
     try {
-      await onAdd(category, newName.trim(), price);
+      await onAdd(category, newName.trim(), price, clampPctInput(newDiscount));
       setNewName("");
       setNewPrice("");
+      setNewDiscount("");
     } catch {
       setAddError("Kunde inte lägga till. Försök igen.");
     } finally {
@@ -61,6 +77,11 @@ function CategoryCard({
     if (isNaN(price) || price <= 0) { setEditingPrice(null); return; }
     await onUpdatePrice(id, price);
     setEditingPrice(null);
+  }
+
+  async function handleDiscSave(id: string) {
+    await onUpdateDiscount(id, clampPctInput(editDiscVal));
+    setEditingDisc(null);
   }
 
   return (
@@ -116,6 +137,34 @@ function CategoryCard({
               </button>
             )}
 
+            {/* Discount % — click to edit inline */}
+            {editingDisc === item.id ? (
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type="number"
+                  value={editDiscVal}
+                  autoFocus
+                  onChange={e => setEditDiscVal(e.target.value)}
+                  onBlur={() => handleDiscSave(item.id)}
+                  onKeyDown={e => { if (e.key === "Enter") handleDiscSave(item.id); if (e.key === "Escape") setEditingDisc(null); }}
+                  style={{ width: "56px", padding: "0.2rem 1.1rem 0.2rem 0.4rem", border: "1px solid #aaa", borderRadius: "4px", fontSize: "0.8rem", textAlign: "right" }}
+                />
+                <span style={{ position: "absolute", right: "0.35rem", fontSize: "0.7rem", color: "#aaa", pointerEvents: "none" }}>%</span>
+              </div>
+            ) : (
+              <button
+                title="Klicka för att ändra rabatt (%)"
+                onClick={() => { setEditingDisc(item.id); setEditDiscVal(String(item.discountPercent || 0)); }}
+                style={{
+                  background: item.discountPercent > 0 ? "#f0fdf4" : "#fafafa",
+                  border: "none", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.75rem",
+                  color: item.discountPercent > 0 ? "#16a34a" : "#bbb", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                }}
+              >
+                {item.discountPercent > 0 ? `−${item.discountPercent}%` : "0 %"}
+              </button>
+            )}
+
             {/* Remove */}
             <button
               onClick={() => { if (confirm(`Ta bort "${item.name}"?`)) onDelete(item.id); }}
@@ -152,6 +201,18 @@ function CategoryCard({
             />
             <span style={{ position: "absolute", right: "0.5rem", fontSize: "0.75rem", color: "#aaa", pointerEvents: "none" }}>kr</span>
           </div>
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <input
+              type="number"
+              placeholder="Rabatt"
+              value={newDiscount}
+              onChange={e => { setNewDiscount(e.target.value); setAddError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              title="Rabatt i procent (valfritt)"
+              style={{ width: "64px", padding: "0.4rem 1.5rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
+            />
+            <span style={{ position: "absolute", right: "0.5rem", fontSize: "0.75rem", color: "#aaa", pointerEvents: "none" }}>%</span>
+          </div>
           <button
             onClick={handleAdd}
             disabled={adding}
@@ -175,17 +236,17 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
   const byCategory = (cat: Category) =>
     products.filter(p => p.category === cat).sort((a, b) => a.order - b.order);
 
-  async function handleAdd(category: string, name: string, price: number) {
+  async function handleAdd(category: string, name: string, price: number, discountPercent: number) {
     const res = await fetch("/api/admin/struken-tvatt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price, category }),
+      body: JSON.stringify({ name, price, category, discountPercent }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1 }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent }]);
   }
 
   async function handleDelete(id: string) {
@@ -204,10 +265,20 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
     setProducts(prev => prev.map(p => p.id === id ? { ...p, price } : p));
   }
 
+  async function handleUpdateDiscount(id: string, discountPercent: number) {
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ discountPercent }),
+    });
+    if (!res.ok) { alert("Kunde inte spara rabatt. Försök igen."); return; }
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, discountPercent } : p));
+  }
+
   return (
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
-        Klicka på ett pris för att ändra det. Tryck på ✕ för att ta bort ett plagg.
+        Klicka på ett pris eller en rabatt (%) för att ändra det. Tryck på ✕ för att ta bort ett plagg.
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
         {CATEGORIES.map(cat => (
@@ -218,6 +289,7 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
             onAdd={handleAdd}
             onDelete={handleDelete}
             onUpdatePrice={handleUpdatePrice}
+            onUpdateDiscount={handleUpdateDiscount}
           />
         ))}
       </div>

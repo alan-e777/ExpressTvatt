@@ -52,6 +52,18 @@ export async function POST(request: NextRequest) {
       console.error('[webhook] Firestore write failed for order', intent.id, err);
       return NextResponse.json({ error: 'Database write failed.' }, { status: 500 });
     }
+
+    // Mark the customer as having placed an order so the first-time discount only
+    // applies once. Best-effort — never fail the webhook over this.
+    const customerId = intent.metadata?.customerId;
+    if (customerId && customerId !== 'anonymous') {
+      try {
+        await db.collection('customers').doc(customerId).set({ hasPlacedOrder: true }, { merge: true });
+        console.log('[webhook] customer marked hasPlacedOrder:', customerId);
+      } catch (err) {
+        console.error('[webhook] failed to set hasPlacedOrder for', customerId, err);
+      }
+    }
   }
 
   if (event.type === 'payment_intent.payment_failed') {

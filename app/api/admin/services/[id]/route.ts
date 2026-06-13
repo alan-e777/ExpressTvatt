@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import { isAdmin } from "@/lib/admin-auth";
+import { clampPct } from "@/lib/discount";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
@@ -12,6 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   for (const key of allowed) {
     if (key in body) update[key] = body[key];
   }
+  if ("discountPercent" in body) update.discountPercent = clampPct(body.discountPercent);
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/firebase-admin';
 import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, type DiscountSettings } from '@/lib/discount';
 
 type CartItem = {
   id:    string;
@@ -91,10 +92,11 @@ export async function POST(request: NextRequest) {
 
   // ── Server-side price validation ────────────────────────────────────────────
 
-  // Fetch price catalogs for struken + services in parallel
-  const [strukenSnap, servicesSnap] = await Promise.all([
+  // Fetch price catalogs for struken + services + the discount settings in parallel
+  const [strukenSnap, servicesSnap, discountsSnap] = await Promise.all([
     db.collection('services').doc('struken-tvatt').collection('StrukenTvatt').get(),
     db.collection('services').get(),
+    db.collection('settings').doc('discounts').get(),
   ]);
 
   const strukenPrices = Object.fromEntries(
@@ -103,9 +105,39 @@ export async function POST(request: NextRequest) {
   const servicePrices = Object.fromEntries(
     servicesSnap.docs.map(d => [d.id, Math.round(d.data().price_ore / 100) as number])
   );
+  // Per-item discount % maps (0 when unset).
+  const strukenDiscount = Object.fromEntries(
+    strukenSnap.docs.map(d => [d.id, clampPct(d.data().discountPercent ?? 0)])
+  );
+  const serviceDiscount = Object.fromEntries(
+    servicesSnap.docs.map(d => [d.id, clampPct(d.data().discountPercent ?? 0)])
+  );
+
+  // ── Discount settings + first-time eligibility ──────────────────────────────
+  const discounts: DiscountSettings = {
+    ...DISCOUNT_DEFAULTS,
+    ...(discountsSnap.exists ? (discountsSnap.data() as Partial<DiscountSettings>) : {}),
+    mattvatt: { ...DISCOUNT_DEFAULTS.mattvatt, ...(discountsSnap.data()?.mattvatt ?? {}) },
+  };
+  // First-timer only when a known (non-anonymous) customer has never had a paid order.
+  let isFirstTime = false;
+  if (customerId && customerId !== 'anonymous' && discounts.firstTimeDiscountPercent > 0) {
+    const custSnap = await db.collection('customers').doc(customerId).get();
+    isFirstTime = !(custSnap.exists && custSnap.data()?.hasPlacedOrder === true);
+  }
+  const firstTimePct = isFirstTime ? clampPct(discounts.firstTimeDiscountPercent) : 0;
+
+  // Per-item discount % for a line, by type/id.
+  const itemDiscountPct = (item: CartItem): number => {
+    if (item.type === 'mattvätt') return clampPct(discounts.mattvatt[item.id as keyof typeof discounts.mattvatt] ?? 0);
+    if (item.type === 'struken')  return strukenDiscount[item.id] ?? 0;
+    if (item.type === 'service')  return serviceDiscount[item.id] ?? 0;
+    return 0;
+  };
 
   let totalOre = 0;
-  const validatedItems: (CartItem & { validatedPrice: number })[] = [];
+  let originalOre = 0;
+  const validatedItems: (CartItem & { validatedPrice: number; discountPercent: number; discountedPrice: number })[] = [];
 
   for (const item of items) {
     if (item.qty < 1) continue;
@@ -130,8 +162,12 @@ export async function POST(request: NextRequest) {
 
     if (priceKr === null) continue;
 
-    totalOre += priceKr * 100 * item.qty;
-    validatedItems.push({ ...item, validatedPrice: priceKr });
+    const itemPct = itemDiscountPct(item);
+    const unitKr  = discountedUnitPrice(priceKr, itemPct, firstTimePct, discounts.multipleDiscountsAllowed);
+
+    originalOre += priceKr * 100 * item.qty;
+    totalOre    += unitKr * 100 * item.qty;
+    validatedItems.push({ ...item, validatedPrice: priceKr, discountPercent: itemPct, discountedPrice: unitKr });
   }
 
   if (totalOre === 0) {
@@ -139,7 +175,7 @@ export async function POST(request: NextRequest) {
   }
 
   const itemsSummary = validatedItems
-    .map(i => `${i.qty}× ${i.name} (${i.validatedPrice} kr)`)
+    .map(i => `${i.qty}× ${i.name} (${i.discountedPrice} kr)`)
     .join(', ');
 
   // ── Create Stripe PaymentIntent ─────────────────────────────────────────────
@@ -155,6 +191,7 @@ export async function POST(request: NextRequest) {
       items:       itemsSummary.slice(0, 500), // Stripe metadata limit
       rutAvdrag:   rutAvdrag ? 'true' : 'false',
       rutPersonnummer: rutPersonnummer,
+      firstTimeDiscount: isFirstTime ? String(firstTimePct) : '0',
     },
   });
 
@@ -167,8 +204,14 @@ export async function POST(request: NextRequest) {
     serviceName:     'Tvättio Korg',
     customerId:      customerId ?? 'anonymous',
     amount:          totalOre,
+    originalAmount:  originalOre,
     currency:        'sek',
     status:          'pending_payment',
+    // Discount bookkeeping (RUT is separate — see below).
+    firstTimeDiscountApplied:  isFirstTime,
+    firstTimeDiscountPercent:  firstTimePct,
+    discountSavingsOre:        originalOre - totalOre,
+    multipleDiscountsAllowed:  discounts.multipleDiscountsAllowed,
     customerName:    name ?? '',
     careOf:          careOf ?? '',
     customerEmail:   email ?? '',

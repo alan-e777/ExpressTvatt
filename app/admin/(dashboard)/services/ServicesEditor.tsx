@@ -8,9 +8,10 @@ export type Service = {
   description: string;
   price_ore: number;
   icon?: string;
+  discountPercent?: number;
 };
 
-const EMPTY_FORM = { name: "", description: "", price_ore: 0, icon: "" };
+const EMPTY_FORM = { name: "", description: "", price_ore: 0, icon: "", discountPercent: 0 };
 
 export default function ServicesEditor({ initialServices }: { initialServices: Service[] }) {
   const [services, setServices] = useState<Service[]>(initialServices);
@@ -24,7 +25,7 @@ export default function ServicesEditor({ initialServices }: { initialServices: S
   function startEdit(service: Service) {
     setAdding(false);
     setEditing(service.id);
-    setForm({ name: service.name, description: service.description, price_ore: service.price_ore, icon: service.icon });
+    setForm({ name: service.name, description: service.description, price_ore: service.price_ore, icon: service.icon, discountPercent: service.discountPercent ?? 0 });
     setError("");
   }
 
@@ -116,13 +117,23 @@ export default function ServicesEditor({ initialServices }: { initialServices: S
                   style={textareaStyle}
                 />
               </div>
-              <div style={{ maxWidth: "200px" }}>
-                <Label>Price (kr)</Label>
-                <Input
-                  type="number"
-                  value={String((form.price_ore ?? 0) / 100)}
-                  onChange={v => setForm(f => ({ ...f, price_ore: Math.round(parseFloat(v) * 100) || 0 }))}
-                />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", maxWidth: "420px" }}>
+                <div>
+                  <Label>Price (kr)</Label>
+                  <Input
+                    type="number"
+                    value={String((form.price_ore ?? 0) / 100)}
+                    onChange={v => setForm(f => ({ ...f, price_ore: Math.round(parseFloat(v) * 100) || 0 }))}
+                  />
+                </div>
+                <div>
+                  <Label>Rabatt (%)</Label>
+                  <Input
+                    type="number"
+                    value={String(form.discountPercent ?? 0)}
+                    onChange={v => setForm(f => ({ ...f, discountPercent: clampPctInput(v) }))}
+                  />
+                </div>
               </div>
               {error && <p style={errorStyle}>{error}</p>}
               <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -139,9 +150,16 @@ export default function ServicesEditor({ initialServices }: { initialServices: S
                 <p style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.2rem" }}>{service.name}</p>
                 <p style={{ color: "#888", fontSize: "0.825rem" }}>{service.description}</p>
               </div>
-              <p style={{ fontWeight: 700, fontSize: "1rem", whiteSpace: "nowrap", marginRight: "0.5rem" }}>
-                {(service.price_ore / 100).toLocaleString("sv-SE")} kr
-              </p>
+              <div style={{ textAlign: "right", marginRight: "0.5rem" }}>
+                <p style={{ fontWeight: 700, fontSize: "1rem", whiteSpace: "nowrap" }}>
+                  {(service.price_ore / 100).toLocaleString("sv-SE")} kr
+                </p>
+                {(service.discountPercent ?? 0) > 0 && (
+                  <span style={{ display: "inline-block", marginTop: 2, fontSize: "0.72rem", fontWeight: 600, color: "#16a34a", background: "#f0fdf4", borderRadius: "5px", padding: "1px 6px" }}>
+                    −{service.discountPercent}%
+                  </span>
+                )}
+              </div>
               <button onClick={() => startEdit(service)} style={{ ...btnGhost, fontSize: "0.8rem" }}>Edit</button>
               <button onClick={() => deleteService(service.id, service.name)} style={{ ...btnGhost, fontSize: "0.8rem", color: "#dc2626", borderColor: "#fca5a5" }}>
                 Remove
@@ -174,13 +192,23 @@ export default function ServicesEditor({ initialServices }: { initialServices: S
                 style={textareaStyle}
               />
             </div>
-            <div style={{ maxWidth: "200px" }}>
-              <Label>Price (kr)</Label>
-              <Input
-                type="number"
-                value={addForm.price_ore ? String(addForm.price_ore / 100) : ""}
-                onChange={v => setAddForm(f => ({ ...f, price_ore: Math.round(parseFloat(v) * 100) || 0 }))}
-              />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", maxWidth: "420px" }}>
+              <div>
+                <Label>Price (kr)</Label>
+                <Input
+                  type="number"
+                  value={addForm.price_ore ? String(addForm.price_ore / 100) : ""}
+                  onChange={v => setAddForm(f => ({ ...f, price_ore: Math.round(parseFloat(v) * 100) || 0 }))}
+                />
+              </div>
+              <div>
+                <Label>Rabatt (%)</Label>
+                <Input
+                  type="number"
+                  value={String(addForm.discountPercent)}
+                  onChange={v => setAddForm(f => ({ ...f, discountPercent: clampPctInput(v) }))}
+                />
+              </div>
             </div>
             {error && <p style={errorStyle}>{error}</p>}
             <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -203,6 +231,13 @@ export default function ServicesEditor({ initialServices }: { initialServices: S
       )}
     </div>
   );
+}
+
+// Parse a percentage input into a clamped 0–100 integer.
+function clampPctInput(v: string): number {
+  const n = Math.round(parseFloat(v));
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, n));
 }
 
 function Label({ children }: { children: React.ReactNode }) {

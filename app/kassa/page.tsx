@@ -14,6 +14,7 @@ import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
 import Confetti from '@/components/Confetti';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { DISCOUNT_DEFAULTS, computeCartTotals, type DiscountSettings } from '@/lib/discount';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -161,6 +162,9 @@ function CheckoutForm() {
   const [profileCard,      setProfileCard]      = useState<{ name: string; email: string; phone: string } | null>(null);
   const [editingContact,   setEditingContact]   = useState(false);
   const [sheetOpen,        setSheetOpen]        = useState(false);
+  const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
+  const [strukenDiscounts, setStrukenDiscounts] = useState<Record<string, number>>({});
+  const [hasPlacedOrder,   setHasPlacedOrder]   = useState<boolean | null>(null);
 
   useEffect(() => {
     try {
@@ -176,11 +180,29 @@ function CheckoutForm() {
     return unsub;
   }, []);
 
+  // Discount settings (public) + per-item struken discounts, to mirror what the
+  // server will charge. Mattvätt discounts come from the settings doc.
+  useEffect(() => {
+    fetch('/api/discount-settings')
+      .then(r => r.json() as Promise<DiscountSettings>)
+      .then(setDiscountSettings)
+      .catch(() => {});
+    fetch('/api/struken-tvatt')
+      .then(r => r.json() as Promise<{ id: string; discountPercent?: number }[]>)
+      .then(products => {
+        const map: Record<string, number> = {};
+        for (const p of products) map[p.id] = p.discountPercent ?? 0;
+        setStrukenDiscounts(map);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!userId) { setSavedAddresses([]); setProfileCard(null); return; }
     const u = auth.currentUser;
     getDoc(doc(db, 'customers', userId)).then(snap => {
       const data = snap.exists() ? snap.data() : {};
+      setHasPlacedOrder(snap.exists() ? data.hasPlacedOrder === true : false);
       setSavedAddresses((data.addresses ?? []) as SavedAddress[]);
       const n = u?.displayName || data.name || '';
       const e = u?.email       || data.email || '';
@@ -199,7 +221,19 @@ function CheckoutForm() {
     }).catch(() => {});
   }, [userId]);
 
-  const totalKr = items.reduce((s, i) => s + i.price * i.qty, 0);
+  // First-timer = logged in and never completed an order. Must match the server's
+  // create-cart-payment check so the displayed total equals the charged amount.
+  const isFirstTime = !!userId && hasPlacedOrder === false;
+  const perItemPct = (id: string) =>
+    id.startsWith('matta-')
+      ? (discountSettings.mattvatt[id as keyof typeof discountSettings.mattvatt] ?? 0)
+      : (strukenDiscounts[id] ?? 0);
+  const { subtotalKr, totalKr, savingsKr } = computeCartTotals(
+    items,
+    perItemPct,
+    { firstTimeDiscountPercent: discountSettings.firstTimeDiscountPercent, multipleDiscountsAllowed: discountSettings.multipleDiscountsAllowed },
+    isFirstTime,
+  );
 
   // Pickup can be booked for today only while it's still before 16:00; otherwise
   // the earliest pickup day is tomorrow. (Times are always 16:00–22:00.)
@@ -298,6 +332,25 @@ function CheckoutForm() {
         </div>
       ))}
       <div className="summary-divider" />
+      {savingsKr > 0 && (
+        <>
+          <div className="summary-row">
+            <span className="small">Delsumma</span>
+            <span className="small">{formatPrice(subtotalKr)}</span>
+          </div>
+          <div className="summary-row">
+            <span className="small" style={{ color: 'var(--forest-dark)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              Rabatt
+              {isFirstTime && (
+                <span style={{ background: 'var(--forest-dark)', color: 'var(--moss)', borderRadius: 'var(--radius-pill)', padding: '1px 7px', fontSize: 10, fontWeight: 600 }}>
+                  Förstagångsrabatt
+                </span>
+              )}
+            </span>
+            <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(savingsKr)}</span>
+          </div>
+        </>
+      )}
       <div className="summary-row">
         <span className="small">Totalt</span>
         <span className="summary-total">{formatPrice(totalKr)}</span>
@@ -672,6 +725,19 @@ function CheckoutForm() {
                   <span className="of-sheet-line">{item.price * item.qty} kr</span>
                 </div>
               ))}
+              {savingsKr > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 'var(--sp-md)' }}>
+                  <span className="small" style={{ color: 'var(--forest-dark)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    Rabatt
+                    {isFirstTime && (
+                      <span style={{ background: 'var(--forest-dark)', color: 'var(--moss)', borderRadius: 'var(--radius-pill)', padding: '1px 7px', fontSize: 10, fontWeight: 600 }}>
+                        Förstagångsrabatt
+                      </span>
+                    )}
+                  </span>
+                  <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(savingsKr)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 'var(--sp-md)' }}>
                 <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
                 <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{formatPrice(totalKr)}</span>

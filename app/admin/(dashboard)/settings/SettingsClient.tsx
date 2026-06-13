@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { DriverSettings } from "@/app/api/admin/settings/route";
+import { DISCOUNT_DEFAULTS, clampPct, type DiscountSettings } from "@/lib/discount";
 
 type Prediction = { description: string; placeId: string };
 
@@ -127,6 +128,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
     stopAddr: "",
     serviceArea: { lat: 59.3342, lng: 18.0709, radiusKm: 5 },
   });
+  const [discounts, setDiscounts] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -144,6 +146,14 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
       .then(r => r.json())
       .then((data: DriverSettings) => { setSettings(data); setLoading(false); })
       .catch(() => setLoading(false));
+  }, []);
+
+  // Load discount settings
+  useEffect(() => {
+    fetch("/api/admin/discounts")
+      .then(r => r.json())
+      .then((data: DiscountSettings) => setDiscounts({ ...DISCOUNT_DEFAULTS, ...data, mattvatt: { ...DISCOUNT_DEFAULTS.mattvatt, ...(data.mattvatt ?? {}) } }))
+      .catch(() => {});
   }, []);
 
   // Draw / update circle whenever settings.serviceArea changes and map is ready
@@ -263,11 +273,18 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   async function save() {
     setSaving(true);
     try {
-      await fetch("/api/admin/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
+      await Promise.all([
+        fetch("/api/admin/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(settings),
+        }),
+        fetch("/api/admin/discounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(discounts),
+        }),
+      ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
@@ -358,6 +375,83 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               />
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#bbb" }}>
                 <span>1 km</span><span>50 km</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Discounts */}
+          <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
+            <p style={labelStyle}>Rabatter</p>
+            <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
+              Förstagångsrabatt för nya kunder samt rabatt på mattvätt. Alla värden anges i procent.
+            </p>
+
+            {/* First-time discount */}
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={fieldLabelStyle}>Förstagångsrabatt</label>
+              <div style={{ position: "relative", maxWidth: "140px" }}>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={discounts.firstTimeDiscountPercent}
+                  onChange={e => setDiscounts(d => ({ ...d, firstTimeDiscountPercent: clampPct(e.target.value) }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem 2.2rem 0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
+                />
+                <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.85rem", fontWeight: 600, pointerEvents: "none" }}>%</span>
+              </div>
+              <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0.35rem 0 0", lineHeight: 1.5 }}>
+                Detta är en <strong>procentsats</strong> (0–100). T.ex. <strong>10</strong> betyder 10&nbsp;% rabatt — inte 10× pengarna tillbaka. Sätt till 0 för att stänga av.
+              </p>
+            </div>
+
+            {/* Multiple discounts toggle */}
+            <div style={{ marginBottom: "1rem", paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={discounts.multipleDiscountsAllowed}
+                  onChange={e => setDiscounts(d => ({ ...d, multipleDiscountsAllowed: e.target.checked }))}
+                  style={{ marginTop: "0.15rem", width: 16, height: 16, accentColor: "#4b8c5c", flexShrink: 0 }}
+                />
+                <span>
+                  <span style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#333" }}>Flera rabatter tillåtna</span>
+                  <span style={{ display: "block", fontSize: "0.72rem", color: "#aaa", marginTop: "0.15rem", lineHeight: 1.5 }}>
+                    På: förstagångsrabatt och produktrabatt läggs ihop. Av: endast den största rabatten per produkt används.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            {/* Mattvätt per-size discounts */}
+            <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
+              <label style={fieldLabelStyle}>Mattvätt — rabatt per storlek</label>
+              <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
+                Mattvättpriserna är fasta i koden, så deras rabatt ställs in här.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+                {([
+                  ["matta-liten", "Liten"],
+                  ["matta-stor",  "Stor"],
+                  ["matta-akta",  "Äkta"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <label style={{ display: "block", fontSize: "0.72rem", color: "#888", marginBottom: "0.25rem" }}>{label}</label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={discounts.mattvatt[key]}
+                        onChange={e => setDiscounts(d => ({ ...d, mattvatt: { ...d.mattvatt, [key]: clampPct(e.target.value) } }))}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "0.45rem 1.8rem 0.45rem 0.55rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", color: "#1a1a1a", outline: "none" }}
+                      />
+                      <span style={{ position: "absolute", right: "0.55rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>%</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </section>

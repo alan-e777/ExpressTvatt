@@ -7,12 +7,16 @@ import {
   IconScissors, IconSpray, IconSparkles,
   IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
 } from '@tabler/icons-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase-client';
 import { rutNetKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, type DiscountSettings } from '@/lib/discount';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type CatId         = 'hushallstvatt' | 'hushallstvatt-rut' | 'mattvatt' | 'hem' | 'tvatt';
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number };
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number };
 type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
 
 // ── Categories — mirrors eriksbergstvätten's five categories ────────────────────
@@ -90,6 +94,9 @@ export default function HomePage() {
   const [openCat, setOpenCat]         = useState<CatId | null>(null);
   const [sheetOpen, setSheetOpen]     = useState(false);
   const [rutAvdrag, setRutAvdrag]     = useState(false);
+  const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
+  const [hasPlacedOrder, setHasPlacedOrder]     = useState<boolean | null>(null);
+  const [userId, setUserId]                     = useState<string | undefined>();
 
   // Fetch the unified product catalogue (all categories live in StrukenTvatt)
   useEffect(() => {
@@ -106,6 +113,39 @@ export default function HomePage() {
       .catch(() => {})
       .finally(() => setLoadingProducts(false));
   }, []);
+
+  // Discount settings (public) + first-time eligibility (logged-in customers only)
+  useEffect(() => {
+    fetch('/api/discount-settings')
+      .then(r => r.json() as Promise<DiscountSettings>)
+      .then(setDiscountSettings)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, u => {
+      setUserId(u?.uid);
+      if (!u) { setHasPlacedOrder(null); return; }
+      getDoc(doc(db, 'customers', u.uid))
+        .then(snap => setHasPlacedOrder(snap.exists() ? snap.data()?.hasPlacedOrder === true : false))
+        .catch(() => setHasPlacedOrder(false));
+    });
+    return unsub;
+  }, []);
+
+  // A logged-in customer who has never completed an order gets the first-time discount.
+  const isFirstTime = !!userId && hasPlacedOrder === false;
+
+  // Per-item discount % by line id (struken from the product, mattvätt from settings).
+  const discountById = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const list of Object.values(strukenCatalog)) {
+      for (const p of list) map[p.id] = p.discountPercent ?? 0;
+    }
+    for (const m of MATT_OPTIONS) map[m.id] = discountSettings.mattvatt[m.id as keyof typeof discountSettings.mattvatt] ?? 0;
+    return map;
+  }, [strukenCatalog, discountSettings]);
+  const perItemPct = (id: string) => discountById[id] ?? 0;
 
   // Cart helpers
   function addToCart(item: Omit<CartItem, 'quantity'>) {
@@ -132,7 +172,12 @@ export default function HomePage() {
     router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}${rutParam}`);
   }
 
-  const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const { subtotalKr, totalKr: cartTotal, savingsKr } = computeCartTotals(
+    cart.map(i => ({ id: i.id, price: i.price, qty: i.quantity })),
+    perItemPct,
+    { firstTimeDiscountPercent: discountSettings.firstTimeDiscountPercent, multipleDiscountsAllowed: discountSettings.multipleDiscountsAllowed },
+    isFirstTime,
+  );
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
   // Map every selectable product id → its category, for the per-category badges.
@@ -163,6 +208,10 @@ export default function HomePage() {
   }) {
     const qty = cartQty(id);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
+    // Item-level discount applies to the displayed price; RUT preview (refund) layers on top.
+    const itemPrice = discountedUnitPrice(price, perItemPct(id), 0, discountSettings.multipleDiscountsAllowed);
+    const shownPrice = rutAvdrag ? rutNetKr(itemPrice) : itemPrice;
+    const showStrike = shownPrice !== price;
     return (
       <div
         className={`prod-tile${qty > 0 ? ' of-active' : ''}`}
@@ -177,10 +226,10 @@ export default function HomePage() {
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
           <div className="prod-tile-price">
-            {rutAvdrag ? (
+            {showStrike ? (
               <>
                 <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontWeight: 500, marginRight: 5 }}>{price}</span>
-                <span style={{ color: 'var(--forest-dark)' }}>{rutNetKr(price)} kr</span>
+                <span style={{ color: 'var(--forest-dark)' }}>{shownPrice} kr</span>
               </>
             ) : (
               <>{price} kr</>
@@ -383,8 +432,21 @@ export default function HomePage() {
               <div style={{ paddingTop: 'var(--sp-md)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                   <span className="small" style={{ color: 'var(--text-mid)' }}>Delsumma</span>
-                  <span className="small" style={{ color: 'var(--text-mid)' }}>{cartTotal} kr</span>
+                  <span className="small" style={{ color: 'var(--text-mid)' }}>{subtotalKr} kr</span>
                 </div>
+                {savingsKr > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                    <span className="small" style={{ color: 'var(--forest-dark)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      Rabatt
+                      {isFirstTime && (
+                        <span style={{ background: 'var(--forest-dark)', color: 'var(--moss)', borderRadius: 'var(--radius-pill)', padding: '1px 7px', fontSize: 10, fontWeight: 600 }}>
+                          Förstagångsrabatt
+                        </span>
+                      )}
+                    </span>
+                    <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{savingsKr} kr</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-md)' }}>
                   <span className="small" style={{ color: 'var(--text-mid)' }}>Hämtning &amp; leverans</span>
                   <span className="small" style={{ color: 'var(--text-mid)' }}>Ingår</span>
