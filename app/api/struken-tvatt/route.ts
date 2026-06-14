@@ -11,10 +11,7 @@ export async function GET() {
       .get();
 
     const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const response = NextResponse.json(products);
-    // Cache for 5 minutes (300s) — products rarely change during a session
-    response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=300');
-    return response;
+    return NextResponse.json(products);
   } catch (err) {
     console.error('[GET /api/struken-tvatt]', err);
     return NextResponse.json({ error: 'Could not fetch products.' }, { status: 500 });
