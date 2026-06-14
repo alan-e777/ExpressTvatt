@@ -244,8 +244,8 @@ function CategoryCard({
       </div>
 
       {/* Divider */}
-      <div style={{ borderTop: "1px dashed #eee", marginTop: "0.75rem", paddingTop: "0.75rem" }}>
-        {/* Add row */}
+      <div style={{ borderTop: "1px dashed #eee", marginTop: "0.75rem", paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+        {/* Row 1: icon + name */}
         <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
           <IconSelectButton value={newIcon} onChange={setNewIcon} />
           <input
@@ -255,26 +255,29 @@ function CategoryCard({
             onKeyDown={e => e.key === "Enter" && handleAdd()}
             style={{ flex: 1, padding: "0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", color: "#333", outline: "none" }}
           />
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        </div>
+        {/* Row 2: price + discount + button */}
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1 }}>
             <input
               type="number"
               placeholder="Pris"
               value={newPrice}
               onChange={e => { setNewPrice(e.target.value); setAddError(""); }}
               onKeyDown={e => e.key === "Enter" && handleAdd()}
-              style={{ width: "70px", padding: "0.4rem 1.8rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
+              style={{ width: "100%", padding: "0.4rem 2rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
             />
             <span style={{ position: "absolute", right: "0.5rem", fontSize: "0.75rem", color: "#aaa", pointerEvents: "none" }}>kr</span>
           </div>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1 }}>
             <input
               type="number"
-              placeholder="Rabatt"
+              placeholder="Rabatt %"
               value={newDiscount}
               onChange={e => { setNewDiscount(e.target.value); setAddError(""); }}
               onKeyDown={e => e.key === "Enter" && handleAdd()}
               title="Rabatt i procent (valfritt)"
-              style={{ width: "64px", padding: "0.4rem 1.5rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
+              style={{ width: "100%", padding: "0.4rem 1.8rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
             />
             <span style={{ position: "absolute", right: "0.5rem", fontSize: "0.75rem", color: "#aaa", pointerEvents: "none" }}>%</span>
           </div>
@@ -286,7 +289,7 @@ function CategoryCard({
             {adding ? "…" : "+ Lägg till"}
           </button>
         </div>
-        {addError && <p style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "0.3rem" }}>{addError}</p>}
+        {addError && <p style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "0.1rem" }}>{addError}</p>}
       </div>
     </div>
   );
