@@ -13,6 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ("name" in body && body.name?.trim()) update.name  = body.name.trim();
   if ("price" in body && !isNaN(Number(body.price)))  update.price = Number(body.price);
   if ("discountPercent" in body) update.discountPercent = clampPct(body.discountPercent);
+  if ("icon" in body && typeof body.icon === "string") update.icon = body.icon;
 
   if (Object.keys(update).length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
 

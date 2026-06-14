@@ -233,7 +233,9 @@ function CheckoutForm() {
   const deliveryFeeKr = items.length > 0 && totalKr < deliverySettings.freeDeliveryThresholdKr
     ? deliverySettings.deliveryFeeKr
     : 0;
-  const grandTotalKr = totalKr + deliveryFeeKr;
+  // RUT-avdrag is deducted directly from what the customer pays (items only).
+  const rutDiscountKr = rutAvdrag ? rutRefundKr(totalKr) : 0;
+  const grandTotalKr = totalKr - rutDiscountKr + deliveryFeeKr;
 
   // Pickup can be booked today if any time span is still open (last span ends 20:00).
   const now = new Date();
@@ -352,6 +354,12 @@ function CheckoutForm() {
             <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(savingsKr)}</span>
           </div>
         </>
+      )}
+      {rutDiscountKr > 0 && (
+        <div className="summary-row">
+          <span className="small" style={{ color: 'var(--forest-dark)' }}>RUT-avdrag −{RUT_DISCOUNT_PERCENT}%</span>
+          <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(rutDiscountKr)}</span>
+        </div>
       )}
       <div className="summary-row">
         <span className="small">Leverans</span>
@@ -661,7 +669,7 @@ function CheckoutForm() {
               </span>
             </div>
             <p className="micro" style={{ color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
-              Du betalar fullt pris nu och vi återbetalar {RUT_DISCOUNT_PERCENT}% (cirka {rutRefundKr(grandTotalKr)} kr) som skattereduktion i efterhand.
+              {RUT_DISCOUNT_PERCENT}% RUT-avdrag dras direkt från priset — du betalar bara det rabatterade beloppet.
             </p>
           </div>
         </label>
@@ -744,6 +752,12 @@ function CheckoutForm() {
                   <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(savingsKr)}</span>
                 </div>
               )}
+              {rutDiscountKr > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 'var(--sp-md)' }}>
+                  <span className="small" style={{ color: 'var(--forest-dark)' }}>RUT-avdrag −{RUT_DISCOUNT_PERCENT}%</span>
+                  <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{formatPrice(rutDiscountKr)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 'var(--sp-md)' }}>
                 <span className="small">Leverans</span>
                 <span className="small">{deliveryFeeKr > 0 ? formatPrice(deliveryFeeKr) : 'Gratis'}</span>
@@ -752,12 +766,6 @@ function CheckoutForm() {
                 <span className="small" style={{ fontWeight: 600, color: 'var(--text-dark)' }}>Totalt</span>
                 <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)' }}>{formatPrice(grandTotalKr)}</span>
               </div>
-              {rutAvdrag && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
-                  <span className="micro" style={{ color: 'var(--moss)' }}>RUT-avdrag (återbetalas senare)</span>
-                  <span className="micro" style={{ color: 'var(--moss)', fontWeight: 600 }}>−{formatPrice(rutRefundKr(grandTotalKr))}</span>
-                </div>
-              )}
             </div>
           </div>
         </>

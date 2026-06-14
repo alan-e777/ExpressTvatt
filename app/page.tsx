@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   IconShieldCheck, IconSparkles, IconClock, IconHome,
-  IconCalendarEvent, IconTruck, IconArrowRight, IconStarFilled,
+  IconCalendarEvent, IconTruck, IconArrowRight,
 } from '@tabler/icons-react';
 import LandingHeader from '@/components/LandingHeader';
 
@@ -212,18 +212,6 @@ export default function LandingPage() {
               <div className="lp-hero-cta-group">
                 <Link href="/order" className="lp-btn lp-btn--light">Boka upphämtning</Link>
                 <a href="#how" className="lp-btn lp-btn--ghost">Så fungerar det</a>
-              </div>
-            </Reveal>
-            <Reveal delay={220}>
-              <div className="lp-hero-trust">
-                <span className="lp-hero-trust-stars" aria-hidden>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <IconStarFilled key={i} size={16} />
-                  ))}
-                </span>
-                <span className="lp-hero-trust-text">
-                  <strong>4.9</strong> 1200+ upphämtningar i Stockholm
-                </span>
               </div>
             </Reveal>
           </div>

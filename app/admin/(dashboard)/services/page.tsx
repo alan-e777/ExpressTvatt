@@ -18,6 +18,7 @@ export default async function Page() {
       category:        data.category ?? "",
       order:           data.order ?? 0,
       discountPercent: data.discountPercent ?? 0,
+      icon:            data.icon ?? "",
     };
   });
 

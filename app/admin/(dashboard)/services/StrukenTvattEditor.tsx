@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 
 export type StrukenProduct = {
   id:              string;
@@ -9,7 +10,64 @@ export type StrukenProduct = {
   category:        string;
   order:           number;
   discountPercent: number;
+  icon:            string;
 };
+
+const DEFAULT_ICON = PRODUCT_ICONS[0].key;
+
+// Small grid popover for choosing one of the registered product icons.
+function IconPicker({ value, onSelect, onClose }: { value: string; onSelect: (key: string) => void; onClose: () => void }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+      <div style={{
+        position: "absolute", zIndex: 41, top: "calc(100% + 4px)", left: 0,
+        background: "#fff", border: "1px solid #e5e5e5", borderRadius: "10px",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "0.5rem",
+        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.25rem", width: "230px",
+      }}>
+        {PRODUCT_ICONS.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            title={label}
+            onClick={() => { onSelect(key); onClose(); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 40, height: 40, borderRadius: "8px", cursor: "pointer",
+              background: key === value ? "#1a1a1a" : "#f5f5f5",
+              color: key === value ? "#fff" : "#555", border: "none",
+            }}
+          >
+            <Icon size={20} stroke={1.5} />
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// A button showing the current icon; opens the picker on click.
+function IconSelectButton({ value, onChange }: { value: string; onChange: (key: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const Icon = getProductIcon(value);
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        type="button"
+        title="Välj ikon"
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 34, height: 34, borderRadius: "8px", cursor: "pointer",
+          background: "#f5f5f5", border: "1px solid #e5e5e5", color: "#555",
+        }}
+      >
+        <Icon size={18} stroke={1.5} />
+      </button>
+      {open && <IconPicker value={value} onSelect={onChange} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
 
 // Parse a percentage input into a clamped 0–100 integer.
 function clampPctInput(v: string): number {
@@ -31,17 +89,20 @@ function CategoryCard({
   onDelete,
   onUpdatePrice,
   onUpdateDiscount,
+  onUpdateIcon,
 }: {
   category:         Category;
   items:            StrukenProduct[];
-  onAdd:            (category: string, name: string, price: number, discountPercent: number) => Promise<void>;
+  onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string) => Promise<void>;
   onDelete:         (id: string) => Promise<void>;
   onUpdatePrice:    (id: string, price: number) => Promise<void>;
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
+  onUpdateIcon:     (id: string, icon: string) => Promise<void>;
 }) {
   const [newName,     setNewName]     = useState("");
   const [newPrice,    setNewPrice]    = useState("");
   const [newDiscount, setNewDiscount] = useState("");
+  const [newIcon,     setNewIcon]     = useState(DEFAULT_ICON);
   const [adding,      setAdding]      = useState(false);
   const [addError,    setAddError]    = useState("");
 
@@ -60,10 +121,11 @@ function CategoryCard({
     setAdding(true);
     setAddError("");
     try {
-      await onAdd(category, newName.trim(), price, clampPctInput(newDiscount));
+      await onAdd(category, newName.trim(), price, clampPctInput(newDiscount), newIcon);
       setNewName("");
       setNewPrice("");
       setNewDiscount("");
+      setNewIcon(DEFAULT_ICON);
     } catch {
       setAddError("Kunde inte lägga till. Försök igen.");
     } finally {
@@ -112,6 +174,9 @@ function CategoryCard({
               borderBottom: i < items.length - 1 ? "1px solid #f5f5f5" : "none",
             }}
           >
+            {/* Icon picker */}
+            <IconSelectButton value={item.icon || ""} onChange={key => onUpdateIcon(item.id, key)} />
+
             {/* Name */}
             <span style={{ flex: 1, fontSize: "0.875rem", color: "#333" }}>{item.name}</span>
 
@@ -182,6 +247,7 @@ function CategoryCard({
       <div style={{ borderTop: "1px dashed #eee", marginTop: "0.75rem", paddingTop: "0.75rem" }}>
         {/* Add row */}
         <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          <IconSelectButton value={newIcon} onChange={setNewIcon} />
           <input
             placeholder="Namn på plagg…"
             value={newName}
@@ -231,7 +297,7 @@ function CategoryCard({
 export default function StrukenTvattEditor({ initialProducts }: { initialProducts: StrukenProduct[] }) {
   const [products, setProducts] = useState<StrukenProduct[]>(initialProducts);
   const [creatingNew, setCreatingNew] = useState(false);
-  const [newCatForm, setNewCatForm] = useState({ category: "", name: "", price: "", discountPercent: "" });
+  const [newCatForm, setNewCatForm] = useState({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON });
   const [newCatError, setNewCatError] = useState("");
   const [creatingNewLoading, setCreatingNewLoading] = useState(false);
 
@@ -242,17 +308,17 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
   const byCategory = (cat: Category) =>
     products.filter(p => p.category === cat).sort((a, b) => a.order - b.order);
 
-  async function handleAdd(category: string, name: string, price: number, discountPercent: number) {
+  async function handleAdd(category: string, name: string, price: number, discountPercent: number, icon: string) {
     const res = await fetch("/api/admin/struken-tvatt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price, category, discountPercent }),
+      body: JSON.stringify({ name, price, category, discountPercent, icon }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon }]);
   }
 
   async function handleDelete(id: string) {
@@ -281,6 +347,16 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
     setProducts(prev => prev.map(p => p.id === id ? { ...p, discountPercent } : p));
   }
 
+  async function handleUpdateIcon(id: string, icon: string) {
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ icon }),
+    });
+    if (!res.ok) { alert("Kunde inte spara ikon. Försök igen."); return; }
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, icon } : p));
+  }
+
   async function saveNewCategory() {
     if (!newCatForm.category.trim()) { setNewCatError("Ange ett kategorinamn."); return; }
     if (categories.includes(newCatForm.category.trim())) { setNewCatError("Kategorin finns redan."); return; }
@@ -291,9 +367,9 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
     setCreatingNewLoading(true);
     setNewCatError("");
     try {
-      await handleAdd(newCatForm.category.trim(), newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent));
+      await handleAdd(newCatForm.category.trim(), newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent), newCatForm.icon);
       setCreatingNew(false);
-      setNewCatForm({ category: "", name: "", price: "", discountPercent: "" });
+      setNewCatForm({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON });
     } catch (e: any) {
       setNewCatError(e.message ?? "Kunde inte skapa. Försök igen.");
     } finally {
@@ -316,6 +392,7 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
             onDelete={handleDelete}
             onUpdatePrice={handleUpdatePrice}
             onUpdateDiscount={handleUpdateDiscount}
+            onUpdateIcon={handleUpdateIcon}
           />
         ))}
 
@@ -330,6 +407,10 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
               <div>
                 <Label>Plaggnamn</Label>
                 <Input value={newCatForm.name} onChange={v => setNewCatForm(f => ({ ...f, name: v }))} placeholder="t.ex. Kostym väst" />
+              </div>
+              <div>
+                <Label>Ikon</Label>
+                <IconSelectButton value={newCatForm.icon} onChange={key => setNewCatForm(f => ({ ...f, icon: key }))} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div>
@@ -346,7 +427,7 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
                 <button onClick={saveNewCategory} disabled={creatingNewLoading} style={btnDark}>
                   {creatingNewLoading ? "…" : "Skapa kategori"}
                 </button>
-                <button onClick={() => { setCreatingNew(false); setNewCatForm({ category: "", name: "", price: "", discountPercent: "" }); setNewCatError(""); }} style={btnGhost}>
+                <button onClick={() => { setCreatingNew(false); setNewCatForm({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON }); setNewCatError(""); }} style={btnGhost}>
                   Avbryt
                 </button>
               </div>

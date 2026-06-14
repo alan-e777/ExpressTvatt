@@ -6,7 +6,7 @@ import { clampPct } from "@/lib/discount";
 export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
 
-  const { name, price, category, discountPercent } = await request.json();
+  const { name, price, category, discountPercent, icon } = await request.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required." }, { status: 400 });
   if (!price || isNaN(Number(price))) return NextResponse.json({ error: "Price is required." }, { status: 400 });
   if (!category) return NextResponse.json({ error: "Category is required." }, { status: 400 });
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     category,
     order:           maxOrder + 1,
     discountPercent: clampPct(discountPercent ?? 0),
+    icon:            typeof icon === 'string' ? icon : '',
   };
 
   try {

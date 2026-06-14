@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db, auth } from '@/lib/firebase-admin';
-import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, type DiscountSettings } from '@/lib/discount';
 
 type CartItem = {
@@ -58,8 +58,9 @@ export async function POST(request: NextRequest) {
   } = body;
 
   // ── RUT-Avdrag ───────────────────────────────────────────────────────────────
-  // The customer always pays the full price; RUT_DISCOUNT_PERCENT is refunded
-  // manually later. We only persist the request + personnummer for the admin.
+  // RUT_DISCOUNT_PERCENT is deducted directly from the charged amount (the
+  // business reclaims it from Skatteverket). The deduction itself is computed
+  // further down once the item subtotal is known.
   const rutPersonnummer = rutAvdrag ? formatPersonnummer(personnummer ?? '') : '';
   if (rutAvdrag && !isValidPersonnummer(rutPersonnummer)) {
     return NextResponse.json({ error: 'Ogiltigt personnummer för RUT-avdrag.' }, { status: 400 });
@@ -208,6 +209,16 @@ export async function POST(request: NextRequest) {
   totalOre    += deliveryFeeOre;
   originalOre += deliveryFeeOre;
 
+  // Savings from item-level + first-time discounts only (computed before RUT).
+  const discountSavingsOre = originalOre - totalOre;
+
+  // ── RUT-Avdrag — deducted directly from the charged amount ───────────────────
+  // Whole-kr deduction on the items portion only (never the delivery fee), mirrored
+  // exactly on the client so the displayed total equals the charged amount.
+  const rutDiscountKr  = rutAvdrag ? rutRefundKr((totalOre - deliveryFeeOre) / 100) : 0;
+  const rutDiscountOre = rutDiscountKr * 100;
+  totalOre -= rutDiscountOre;
+
   const itemsSummary = validatedItems
     .map(i => `${i.qty}× ${i.name} (${i.discountedPrice} kr)`)
     .join(', ');
@@ -226,6 +237,7 @@ export async function POST(request: NextRequest) {
       rutAvdrag:   rutAvdrag ? 'true' : 'false',
       rutPersonnummer: rutPersonnummer,
       firstTimeDiscount: isFirstTime ? String(firstTimePct) : '0',
+      rutDiscount: String(rutDiscountKr),
       deliveryFee: String(appliedDeliveryFeeKr),
     },
   });
@@ -248,7 +260,7 @@ export async function POST(request: NextRequest) {
     // Discount bookkeeping (RUT is separate — see below).
     firstTimeDiscountApplied:  isFirstTime,
     firstTimeDiscountPercent:  firstTimePct,
-    discountSavingsOre:        originalOre - totalOre,
+    discountSavingsOre:        discountSavingsOre,
     multipleDiscountsAllowed:  discounts.multipleDiscountsAllowed,
     customerName:    name ?? '',
     careOf:          careOf ?? '',
@@ -266,12 +278,13 @@ export async function POST(request: NextRequest) {
     deliveryTime:    deliveryTime ?? '',
     notes:           notes ?? '',
     items:           validatedItems,
-    // RUT-Avdrag: full amount is still charged; these fields drive the manual
-    // refund + the admin "RUT" tag. `tags` is a free-form list independent of status.
+    // RUT-Avdrag: deducted directly from the charged amount. `rutRefundOre` holds
+    // the deducted amount (what the business reclaims from Skatteverket) and drives
+    // the admin "RUT" tag. `tags` is a free-form list independent of status.
     rutAvdrag:           !!rutAvdrag,
     rutPersonnummer:     rutPersonnummer,
     rutDiscountPercent:  rutAvdrag ? RUT_DISCOUNT_PERCENT : 0,
-    rutRefundOre:        rutAvdrag ? Math.round((totalOre * RUT_DISCOUNT_PERCENT) / 100) : 0,
+    rutRefundOre:        rutDiscountOre,
     tags:                rutAvdrag ? ['RUT'] : [],
     platform:        platform === 'mobile' ? 'mobile' : 'web',
     createdAt:       new Date(),

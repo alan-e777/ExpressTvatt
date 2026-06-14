@@ -3,21 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  IconSteam, IconNeedle, IconShirt, IconHanger, IconStar, IconWash,
-  IconScissors, IconSpray, IconSparkles,
+  IconSteam, IconStar, IconWash, IconSpray, IconSparkles,
   IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
   IconTag,
 } from '@tabler/icons-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase-client';
-import { rutNetKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { getProductIcon } from '@/lib/productIcons';
 import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, type DiscountSettings } from '@/lib/discount';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type CatId         = 'hushallstvatt' | 'mattvatt' | 'hem' | 'tvatt';
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number };
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string };
 type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
 
 // ── Categories — mirrors eriksbergstvätten's five categories ────────────────────
@@ -47,16 +47,6 @@ const MATT_OPTIONS: { id: string; name: string; price: number; Icon: React.Compo
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function productIcon(name: string) {
-  const n = name.toLowerCase();
-  if (n.includes('slips') || n.includes('halsduk') || n.includes('scarf') || n.includes('fluga')) return IconNeedle;
-  if (n.includes('byxa') || n.includes('byxor') || n.includes('byxdress'))                         return IconScissors;
-  if (n.includes('gardin') || n.includes('hängare'))                                               return IconHanger;
-  if (n.includes('klänning') || n.includes('kjol') || n.includes('brud'))                          return IconStar;
-  if (n.includes('matta') || n.includes('koskinn') || n.includes('fårskinn'))                      return IconSpray;
-  return IconShirt;
-}
 
 function SkeletonRows({ count }: { count: number }) {
   return (
@@ -187,7 +177,10 @@ export default function HomePage() {
   const deliveryFeeKr = cartCount > 0 && cartTotal < deliverySettings.freeDeliveryThresholdKr
     ? deliverySettings.deliveryFeeKr
     : 0;
-  const grandTotalKr = cartTotal + deliveryFeeKr;
+  // RUT-avdrag is deducted directly (items only, never delivery), so the total
+  // reflects the discount immediately as soon as a product is added.
+  const rutDiscountKr = rutAvdrag ? rutRefundKr(cartTotal) : 0;
+  const grandTotalKr = cartTotal - rutDiscountKr + deliveryFeeKr;
 
   // Map every selectable product id → its category, for the per-category badges.
   const idToCat = useMemo(() => {
@@ -422,7 +415,7 @@ export default function HomePage() {
             ) : (
               <div className="of-prod-grid">
                 {openProducts.map(p => (
-                  <ProductTile key={p.id} id={p.id} name={p.name} price={p.price} Icon={productIcon(p.name)} type="struken" />
+                  <ProductTile key={p.id} id={p.id} name={p.name} price={p.price} Icon={getProductIcon(p.icon, p.name)} type="struken" />
                 ))}
               </div>
             )
@@ -491,6 +484,12 @@ export default function HomePage() {
                       )}
                     </span>
                     <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{savingsKr} kr</span>
+                  </div>
+                )}
+                {rutDiscountKr > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                    <span className="small" style={{ color: 'var(--forest-dark)' }}>RUT-avdrag −{RUT_DISCOUNT_PERCENT}%</span>
+                    <span className="small" style={{ color: 'var(--forest-dark)', fontWeight: 600 }}>−{rutDiscountKr} kr</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-md)' }}>
