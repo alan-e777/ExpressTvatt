@@ -40,12 +40,17 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
   }, []);
 
   useEffect(() => {
-    const customerId = auth.currentUser?.uid ?? undefined;
-    fetch(`${API_URL}/api/create-cart-payment`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ items, customerId, address, postalCode, date, time, deliveryDate, deliveryTime, notes }),
-    })
+    const user = auth.currentUser;
+    const customerId = user?.uid ?? undefined;
+    (user ? user.getIdToken() : Promise.resolve<string | null>(null))
+      .then(idToken => fetch(`${API_URL}/api/create-cart-payment`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
+        body:    JSON.stringify({ items, customerId, address, postalCode, date, time, deliveryDate, deliveryTime, notes }),
+      }))
       .then(r => r.json())
       .then(data => {
         if (data.clientSecret) setClientSecret(data.clientSecret);

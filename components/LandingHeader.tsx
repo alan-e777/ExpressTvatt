@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 const NAV_LINKS = [
   { id: 'how',     href: '/#how',     label: 'Så fungerar det' },
   { id: 'why',     href: '/#why',     label: 'Varför oss' },
-  { id: 'reviews', href: '/#reviews', label: 'Omdömen' },
+  { id: 'reviews', href: '/#reviews', label: 'Certifikat' },
 ];
 
 export default function LandingHeader() {
