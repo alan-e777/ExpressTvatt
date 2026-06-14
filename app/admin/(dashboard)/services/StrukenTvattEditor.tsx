@@ -280,7 +280,7 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
         Klicka på ett pris eller en rabatt (%) för att ändra det. Tryck på ✕ för att ta bort ett plagg.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {CATEGORIES.map(cat => (
           <CategoryCard
             key={cat}

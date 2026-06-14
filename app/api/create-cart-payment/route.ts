@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { db } from '@/lib/firebase-admin';
+import { db, auth } from '@/lib/firebase-admin';
 import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, type DiscountSettings } from '@/lib/discount';
 
@@ -116,11 +116,34 @@ export async function POST(request: NextRequest) {
     ...(discountsSnap.exists ? (discountsSnap.data() as Partial<DiscountSettings>) : {}),
     mattvatt: { ...DISCOUNT_DEFAULTS.mattvatt, ...(discountsSnap.data()?.mattvatt ?? {}) },
   };
-  // First-timer only when a known (non-anonymous) customer has never had a paid order.
+  // Verify the caller's Firebase ID token. The first-time discount is granted ONLY
+  // to a verified, logged-in customer — never on the client-supplied customerId,
+  // which an anonymous user could spoof to claim the discount.
+  let verifiedUid: string | null = null;
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      verifiedUid = (await auth.verifyIdToken(authHeader.slice(7))).uid;
+    } catch {
+      verifiedUid = null;
+    }
+  }
+  // Attribute the order to the verified UID when present, so hasPlacedOrder is
+  // flipped on the same account the discount eligibility was checked against.
+  const effectiveCustomerId = verifiedUid ?? customerId ?? 'anonymous';
+
+  // First-timer only when a verified, logged-in customer has never placed an order.
+  // Derived authoritatively from the orders collection rather than the
+  // customers/{uid}.hasPlacedOrder flag, which the customer can write via the
+  // client SDK. Any order that got past the initial pending/failed state counts.
   let isFirstTime = false;
-  if (customerId && customerId !== 'anonymous' && discounts.firstTimeDiscountPercent > 0) {
-    const custSnap = await db.collection('customers').doc(customerId).get();
-    isFirstTime = !(custSnap.exists && custSnap.data()?.hasPlacedOrder === true);
+  if (verifiedUid && discounts.firstTimeDiscountPercent > 0) {
+    const priorOrders = await db.collection('orders').where('customerId', '==', verifiedUid).get();
+    const hasPlacedOrder = priorOrders.docs.some(d => {
+      const s = d.data().status;
+      return s && s !== 'pending_payment' && s !== 'payment_failed';
+    });
+    isFirstTime = !hasPlacedOrder;
   }
   const firstTimePct = isFirstTime ? clampPct(discounts.firstTimeDiscountPercent) : 0;
 
@@ -198,7 +221,7 @@ export async function POST(request: NextRequest) {
       serviceId:   'cart',
       serviceName: 'Express Tvätt-korg',
       priceOre:    String(totalOre),
-      customerId:  customerId ?? 'anonymous',
+      customerId:  effectiveCustomerId,
       items:       itemsSummary.slice(0, 500), // Stripe metadata limit
       rutAvdrag:   rutAvdrag ? 'true' : 'false',
       rutPersonnummer: rutPersonnummer,
@@ -214,7 +237,7 @@ export async function POST(request: NextRequest) {
     paymentIntentId: paymentIntent.id,
     serviceId:       'cart',
     serviceName:     'Express Tvätt-korg',
-    customerId:      customerId ?? 'anonymous',
+    customerId:      effectiveCustomerId,
     amount:          totalOre,
     originalAmount:  originalOre,
     currency:        'sek',

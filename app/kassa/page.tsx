@@ -296,9 +296,13 @@ function CheckoutForm() {
     setFormError('');
     setSubmitting(true);
     try {
+      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const res = await fetch('/api/create-cart-payment', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes: notes.trim(), items, rutAvdrag, personnummer: rutAvdrag ? personnummer : '' }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
