@@ -142,7 +142,15 @@ export default function LandingPage() {
     measure();
     const t = setTimeout(measure, 700); // re-measure once the reveal transforms settle
     window.addEventListener('resize', measure);
-    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+    // Re-measure on scroll so that if the section scrolls into view mid-cycle
+    // (causing Reveal transitions to fire and shift icon positions), the parcel
+    // snaps to the correct position rather than the stale pre-reveal coordinates.
+    window.addEventListener('scroll', measure, { passive: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure);
+    };
   }, []);
   // Self-heal each loop (cheap, and only when the parcel is at rest).
   useEffect(() => { if (howPhase === 'initial') measure(); }, [howPhase]);
