@@ -9,6 +9,7 @@ import {
   IconShirt, IconShirtSport, IconJacket, IconHanger, IconNeedle, IconNeedleThread,
   IconScissors, IconStar, IconSpray, IconWash, IconWashDryclean, IconSparkles,
   IconSteam, IconBed, IconSofa, IconWindow, IconDroplet, IconShoe, IconBath, IconHome,
+  IconPillow, IconTie, IconTent,
 } from '@tabler/icons-react';
 
 export type ProductIconDef = {
@@ -38,6 +39,9 @@ export const PRODUCT_ICONS: ProductIconDef[] = [
   { key: 'shoe',          label: 'Skor',         Icon: IconShoe },
   { key: 'bath',          label: 'Badtextil',    Icon: IconBath },
   { key: 'home',          label: 'Hem',          Icon: IconHome },
+  { key: 'pillow',        label: 'Sänglinne',    Icon: IconPillow },
+  { key: 'tie',          label: 'Kostym',        Icon: IconTie },
+  { key: 'tent',         label: 'Uteplagg',      Icon: IconTent },
 ];
 
 const ICON_BY_KEY = Object.fromEntries(PRODUCT_ICONS.map(i => [i.key, i.Icon]));
