@@ -4,7 +4,7 @@ import { useState, useRef, Fragment, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import * as XLSX from "xlsx";
-import { IconDeviceMobile, IconDeviceDesktop } from "@tabler/icons-react";
+import { IconDeviceMobile, IconDeviceDesktop, IconCircleCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { queueStatusEmail } from "@/lib/order-email-bus";
 
 export type BasketItem = { id: string; name: string; price: number; qty: number };
@@ -34,6 +34,7 @@ export type Order = {
   items: BasketItem[];
   tags: string[];
   rutAvdrag: boolean;
+  rutVerified: boolean;
   rutPersonnummer: string;
   rutDiscountPercent: number;
   rutRefundOre: number;
@@ -193,6 +194,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           items:           data.items ?? [],
           tags:            data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
           rutAvdrag:       !!data.rutAvdrag,
+          rutVerified:     !!data.rutVerified,
           rutPersonnummer: data.rutPersonnummer ?? "",
           rutDiscountPercent: data.rutDiscountPercent ?? 0,
           rutRefundOre:    data.rutRefundOre ?? 0,
@@ -334,6 +336,20 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       alert("Some updates failed. Refresh and try again.");
     } finally {
       setBulkUpdating(false);
+    }
+  }
+
+  async function updateRutVerified(id: string, rutVerified: boolean) {
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rutVerified }),
+      });
+      if (!res.ok) throw new Error();
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, rutVerified } : o));
+    } catch {
+      alert("Kunde inte uppdatera RUT-verifiering.");
     }
   }
 
@@ -719,12 +735,19 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
 
                 return (
                   <Fragment key={order.id}>
-                    <tr style={{
-                      borderBottom: isExpanded || !isLast ? "1px solid #f0f0f0" : "none",
-                      backgroundColor: isSelected ? "#f8f8f8" : order.rutAvdrag ? "#fff8ec" : "transparent",
-                      boxShadow: order.rutAvdrag ? "inset 3px 0 0 #d4a017" : undefined,
-                    }}>
-                      <td style={{ padding: "0.9rem 0 0.9rem 1.25rem" }}>
+                    <tr
+                      onClick={() => setExpandedNotes(isExpanded ? null : order.id)}
+                      style={{
+                        borderBottom: isExpanded || !isLast ? "1px solid #f0f0f0" : "none",
+                        backgroundColor: isSelected ? "#f8f8f8" :
+                          order.rutAvdrag ? (order.rutVerified ? "#f0fdf4" : "#fff8ec") : "transparent",
+                        boxShadow: order.rutAvdrag
+                          ? (order.rutVerified ? "inset 3px 0 0 #16a34a" : "inset 3px 0 0 #d4a017")
+                          : undefined,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <td style={{ padding: "0.9rem 0 0.9rem 1.25rem" }} onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -740,6 +763,10 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                           {order.serviceName}
                           {order.tags.map(tag => <TagPill key={tag} tag={tag} />)}
+                          {order.rutAvdrag && (order.rutVerified
+                            ? <IconCircleCheck size={15} color="#16a34a" title="RUT-berättigad verifierad" />
+                            : <IconAlertTriangle size={15} color="#d4a017" title="RUT ej verifierad" />
+                          )}
                         </span>
                       </Td>
                       <Td style={{ fontWeight: 600 }}>{formatAmount(order.amount)}</Td>
@@ -757,14 +784,14 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                           }
                         </span>
                       </Td>
-                      <Td>
+                      <Td onClick={e => e.stopPropagation()}>
                         <StatusSelect
                           value={order.status}
                           disabled={updating === order.id}
                           onChange={v => updateStatus(order.id, v)}
                         />
                       </Td>
-                      <Td>
+                      <Td onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => setExpandedNotes(isExpanded ? null : order.id)}
                           style={{
@@ -816,17 +843,39 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                               {order.rutAvdrag && (
                                 <div style={{
                                   marginTop: "0.25rem", padding: "0.6rem 0.75rem",
-                                  background: "#fff8ec", border: "1px solid #f0d9a8",
-                                  borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.4rem",
+                                  background: order.rutVerified ? "#f0fdf4" : "#fff8ec",
+                                  border: `1px solid ${order.rutVerified ? "#bbf7d0" : "#f0d9a8"}`,
+                                  borderRadius: "8px", display: "flex", flexDirection: "column", gap: "0.5rem",
                                 }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <TagPill tag="RUT" />
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8a6d1b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: order.rutVerified ? "#15803d" : "#8a6d1b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                                       RUT-Avdrag
                                     </span>
                                   </div>
                                   <DetailRow label="Personnummer" value={order.rutPersonnummer || "—"} />
-                                  <DetailRow label="Refund" value={`${order.rutDiscountPercent || 0}% · ${formatAmount(order.rutRefundOre)}`} />
+                                  <DetailRow label="Avdrag" value={`${order.rutDiscountPercent || 0}% · ${formatAmount(order.rutRefundOre)}`} />
+                                  <label
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", marginTop: "0.1rem" }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={order.rutVerified}
+                                      onChange={e => updateRutVerified(order.id, e.target.checked)}
+                                      style={{ cursor: "pointer", accentColor: "#16a34a", width: 15, height: 15, flexShrink: 0 }}
+                                    />
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1a1a1a" }}>RUT-berättigad</span>
+                                    {order.rutVerified
+                                      ? <IconCircleCheck size={14} color="#16a34a" />
+                                      : <IconAlertTriangle size={14} color="#d4a017" />
+                                    }
+                                  </label>
+                                  {!order.rutVerified && (
+                                    <p style={{ fontSize: "0.75rem", color: "#b45309", margin: 0 }}>
+                                      Verifiera att kunden är berättigad till RUT-avdrag — annars återbetala och markera ordern.
+                                    </p>
+                                  )}
                                 </div>
                               )}
                               {Object.entries(order.customFields ?? {}).map(([key, value]) => (
@@ -1004,8 +1053,8 @@ function Th({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return <td style={{ padding: "0.9rem 1.25rem", color: "#333", ...style }}>{children}</td>;
+function Td({ children, style, onClick }: { children: React.ReactNode; style?: React.CSSProperties; onClick?: React.MouseEventHandler<HTMLTableCellElement> }) {
+  return <td style={{ padding: "0.9rem 1.25rem", color: "#333", ...style }} onClick={onClick}>{children}</td>;
 }
 
 const dateInputStyle: React.CSSProperties = {

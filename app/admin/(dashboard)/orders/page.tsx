@@ -48,6 +48,7 @@ export default async function OrdersPage() {
       items:         data.items ?? [],
       tags:          data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
       rutAvdrag:     !!data.rutAvdrag,
+      rutVerified:   !!data.rutVerified,
       rutPersonnummer: data.rutPersonnummer ?? "",
       rutDiscountPercent: data.rutDiscountPercent ?? 0,
       rutRefundOre:  data.rutRefundOre ?? 0,

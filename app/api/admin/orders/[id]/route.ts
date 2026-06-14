@@ -32,6 +32,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     update.adminNotes = String(body.adminNotes ?? "");
   }
 
+  if ("rutVerified" in body) {
+    update.rutVerified = !!body.rutVerified;
+  }
+
   if (Object.keys(update).length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
   try {
