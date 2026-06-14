@@ -101,6 +101,7 @@ export default function DriverClient({ initialOrders }: { initialOrders: DriverO
   const [dropoffRunLink, setDropoffRunLink] = useState<string | null>(null);
   const [pickupRunLink,  setPickupRunLink]  = useState<string | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [fetchingLink,   setFetchingLink]   = useState(false);
   const [linkCopied,     setLinkCopied]     = useState(false);
 
   // Load start/stop from settings on mount
@@ -206,6 +207,28 @@ export default function DriverClient({ initialOrders }: { initialOrders: DriverO
       alert("Misslyckades att generera körningslänk.");
     } finally {
       setGeneratingLink(false);
+    }
+  }
+
+  // Re-open / re-share an already-active driver link for the current tab — useful
+  // when the driver lost the URL. Fetches the latest non-expired run of this type.
+  async function openExistingRunLink() {
+    setFetchingLink(true);
+    try {
+      const resp = await fetch(`/api/admin/runs?type=${tab}`);
+      const data = await resp.json();
+      if (data.token) {
+        const link = `${window.location.origin}/driver/${data.token}`;
+        if (tab === "dropoff") setDropoffRunLink(link);
+        else setPickupRunLink(link);
+        window.open(link, "_blank", "noopener,noreferrer");
+      } else {
+        alert("Ingen aktiv körningslänk hittades för denna flik.");
+      }
+    } catch {
+      alert("Kunde inte hämta befintlig körningslänk.");
+    } finally {
+      setFetchingLink(false);
     }
   }
 
@@ -442,6 +465,23 @@ export default function DriverClient({ initialOrders }: { initialOrders: DriverO
                   {generatingLink ? "Genererar…" : activeRunLink ? "Ny körningslänk" : "Generera körningslänk"}
                 </button>
               )}
+
+              <button
+                onClick={openExistingRunLink}
+                disabled={fetchingLink}
+                style={{
+                  width: "100%", padding: "0.65rem 1rem",
+                  background: "transparent", color: "#555",
+                  border: "1px dashed #d0d0d0", borderRadius: "8px",
+                  fontSize: "0.825rem", fontWeight: 600,
+                  cursor: fetchingLink ? "not-allowed" : "pointer",
+                  opacity: fetchingLink ? 0.6 : 1,
+                  marginTop: activeQueue.length > 0 ? "0.5rem" : 0,
+                  marginBottom: activeRunLink ? "0.75rem" : 0,
+                }}
+              >
+                {fetchingLink ? "Hämtar…" : "Öppna befintlig körningslänk"}
+              </button>
 
               {activeRunLink && (
                 <div>
