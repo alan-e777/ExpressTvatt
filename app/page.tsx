@@ -190,6 +190,8 @@ export default function LandingPage() {
 
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="lp-hero">
+        <div className="lp-hero-bg" aria-hidden />
+        <div className="lp-hero-scrim" aria-hidden />
         <div className="lp-hero-pattern" aria-hidden />
         <div className="lp-hero-inner">
 
@@ -212,26 +214,19 @@ export default function LandingPage() {
                 <a href="#how" className="lp-btn lp-btn--ghost">Så fungerar det</a>
               </div>
             </Reveal>
-          </div>
-
-          <Reveal delay={120} variant="scale" className="lp-hero-visual-col">
-            <div className="lp-hero-visual">
-              <div className="lp-hero-visual-glow" aria-hidden />
-              <div className="lp-hero-float">
-                <div className="lp-hero-ring" aria-hidden />
-                <div className="lp-hero-disc">
-                  <Image
-                    src="/logo-icon.png"
-                    alt="Express Tvätt"
-                    width={240}
-                    height={216}
-                    className="lp-hero-mark"
-                    priority
-                  />
-                </div>
+            <Reveal delay={220}>
+              <div className="lp-hero-trust">
+                <span className="lp-hero-trust-stars" aria-hidden>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <IconStarFilled key={i} size={16} />
+                  ))}
+                </span>
+                <span className="lp-hero-trust-text">
+                  <strong>4.9</strong> 1200+ upphämtningar i Stockholm
+                </span>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          </div>
 
         </div>
       </section>

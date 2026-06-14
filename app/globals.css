@@ -2118,6 +2118,37 @@ input, textarea, select { font-family: inherit; }
   padding: 120px 0 80px;
   overflow: hidden;
 }
+/* Product photo, anchored to the right so the garment bag clears the copy */
+.lp-hero-bg {
+  position: absolute;
+  inset: 0;
+  background: url('/heroImage.png') no-repeat;
+  background-size: cover;
+  background-position: 72% center;
+  pointer-events: none;
+}
+/* Deep-teal grade: opaque over the text, fading to a light tint over the photo */
+.lp-hero-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      var(--p) 0%,
+      rgba(8, 63, 65, 0.97) 30%,
+      rgba(8, 63, 65, 0.82) 48%,
+      rgba(8, 63, 65, 0.55) 68%,
+      rgba(8, 63, 65, 0.42) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(8, 63, 65, 0.35) 0%,
+      rgba(8, 63, 65, 0) 35%,
+      rgba(8, 63, 65, 0) 70%,
+      rgba(8, 63, 65, 0.45) 100%
+    );
+}
 .lp-hero-pattern {
   position: absolute;
   inset: 0;
@@ -2617,8 +2648,18 @@ input, textarea, select { font-family: inherit; }
   .lp-section-inner, .lp-nav-inner, .lp-hero-inner, .lp-trust-inner { padding-left: 24px; padding-right: 24px; }
   .lp-final, .lp-footer { padding-left: 24px; padding-right: 24px; }
   .lp-hero-inner { grid-template-columns: 1fr; gap: 48px; }
-  .lp-hero-visual-col { order: -1; }
-  .lp-hero-visual { width: min(280px, 70%); }
+  /* Photo drops behind the copy; the bag stays visible lower-right */
+  .lp-hero-bg { background-position: 78% center; }
+  .lp-hero-scrim {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(8, 63, 65, 0.92) 0%,
+        rgba(8, 63, 65, 0.80) 38%,
+        rgba(8, 63, 65, 0.55) 70%,
+        rgba(8, 63, 65, 0.78) 100%
+      );
+  }
   .lp-why-inner { grid-template-columns: 1fr; gap: 40px; }
   /* Two columns: all icons stacked on the left, each step's text on the right.
      The parcel animation runs straight down the left icon column. */

@@ -6,8 +6,7 @@ export default function ServicesPage({
   initialStrukenProducts,
 }: {
   initialStrukenProducts: StrukenProduct[];
-})
-
+}) {
   return (
     <div>
       {/* Page header */}
