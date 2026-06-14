@@ -20,8 +20,7 @@ function clampPctInput(v: string): number {
 
 // Mirrors the customer order page (app/order/page.tsx). Mattvätt is omitted here
 // because it uses fixed local sizes, not the StrukenTvatt catalogue.
-const CATEGORIES = ["Hushållstvätt", "Hushållstvätt RUT", "Hem", "Tvätt"] as const;
-type Category = (typeof CATEGORIES)[number];
+type Category = string;
 
 // ─── Category card ────────────────────────────────────────────────────────────
 
@@ -231,6 +230,13 @@ function CategoryCard({
 
 export default function StrukenTvattEditor({ initialProducts }: { initialProducts: StrukenProduct[] }) {
   const [products, setProducts] = useState<StrukenProduct[]>(initialProducts);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newCatForm, setNewCatForm] = useState({ category: "", name: "", price: "", discountPercent: "" });
+  const [newCatError, setNewCatError] = useState("");
+  const [creatingNewLoading, setCreatingNewLoading] = useState(false);
+
+  // Extract unique categories from products, sorted
+  const categories = Array.from(new Set(products.map(p => p.category))).sort();
 
   // Group by category
   const byCategory = (cat: Category) =>
@@ -275,13 +281,33 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
     setProducts(prev => prev.map(p => p.id === id ? { ...p, discountPercent } : p));
   }
 
+  async function saveNewCategory() {
+    if (!newCatForm.category.trim()) { setNewCatError("Ange ett kategorinamn."); return; }
+    if (categories.includes(newCatForm.category.trim())) { setNewCatError("Kategorin finns redan."); return; }
+    if (!newCatForm.name.trim()) { setNewCatError("Ange ett plaggnamn."); return; }
+    const price = parseFloat(newCatForm.price);
+    if (!newCatForm.price || isNaN(price) || price <= 0) { setNewCatError("Ange ett giltigt pris."); return; }
+
+    setCreatingNewLoading(true);
+    setNewCatError("");
+    try {
+      await handleAdd(newCatForm.category.trim(), newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent));
+      setCreatingNew(false);
+      setNewCatForm({ category: "", name: "", price: "", discountPercent: "" });
+    } catch (e: any) {
+      setNewCatError(e.message ?? "Kunde inte skapa. Försök igen.");
+    } finally {
+      setCreatingNewLoading(false);
+    }
+  }
+
   return (
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
         Klicka på ett pris eller en rabatt (%) för att ändra det. Tryck på ✕ för att ta bort ett plagg.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {CATEGORIES.map(cat => (
+        {categories.map(cat => (
           <CategoryCard
             key={cat}
             category={cat}
@@ -292,8 +318,68 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
             onUpdateDiscount={handleUpdateDiscount}
           />
         ))}
+
+        {creatingNew ? (
+          <div style={{ ...cardStyle, borderStyle: "dashed", borderColor: "#d1d5db" }}>
+            <p style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "1rem", color: "#555" }}>Skapa ny kategori</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div>
+                <Label>Kategorinamn</Label>
+                <Input value={newCatForm.category} onChange={v => setNewCatForm(f => ({ ...f, category: v }))} placeholder="t.ex. Kostymer" />
+              </div>
+              <div>
+                <Label>Plaggnamn</Label>
+                <Input value={newCatForm.name} onChange={v => setNewCatForm(f => ({ ...f, name: v }))} placeholder="t.ex. Kostym väst" />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div>
+                  <Label>Pris (kr)</Label>
+                  <Input type="number" value={newCatForm.price} onChange={v => setNewCatForm(f => ({ ...f, price: v }))} />
+                </div>
+                <div>
+                  <Label>Rabatt (%)</Label>
+                  <Input type="number" value={newCatForm.discountPercent} onChange={v => setNewCatForm(f => ({ ...f, discountPercent: v }))} />
+                </div>
+              </div>
+              {newCatError && <p style={errorStyle}>{newCatError}</p>}
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button onClick={saveNewCategory} disabled={creatingNewLoading} style={btnDark}>
+                  {creatingNewLoading ? "…" : "Skapa kategori"}
+                </button>
+                <button onClick={() => { setCreatingNew(false); setNewCatForm({ category: "", name: "", price: "", discountPercent: "" }); setNewCatError(""); }} style={btnGhost}>
+                  Avbryt
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setCreatingNew(true)}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1.25rem", background: "transparent", border: "2px dashed #d1d5db", borderRadius: "10px", cursor: "pointer", color: "#888", fontSize: "0.875rem", fontWeight: 500, width: "100%", justifyContent: "center" }}
+          >
+            + Ny kategori
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+// ─── Components ───────────────────────────────────────────────────────────────
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#666", marginBottom: "0.3rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{children}</label>;
+}
+
+function Input({ value, onChange, type = "text", placeholder }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid #ddd", borderRadius: "6px", fontSize: "0.875rem", boxSizing: "border-box" }}
+    />
   );
 }
 
@@ -305,3 +391,6 @@ const cardStyle: React.CSSProperties = {
   borderRadius: "10px",
   padding:      "1.1rem 1.25rem",
 };
+const errorStyle: React.CSSProperties = { color: "#dc2626", fontSize: "0.8rem" };
+const btnDark: React.CSSProperties = { padding: "0.45rem 1rem", background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" };
+const btnGhost: React.CSSProperties = { padding: "0.45rem 1rem", background: "transparent", color: "#555", border: "1px solid #ddd", borderRadius: "6px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" };

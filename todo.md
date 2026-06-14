@@ -1,4 +1,53 @@
-## TODO
+#  TODO
+## Current
+
+
+## Website
+
+### UI
+ - Ändra mina adresser färg på text
+ - Inte 2x2 grid på desktop
+ - För telefon, högra kortraden cuttas ut av  
+
+
+
+
+
+## APP
+
+### Backend
+ - fixa Google places API
+
+### UI
+ - Jättebuggig slider för mattvätt
+ - Chat funktion: input är för högt över tangentbordet 
+ - Obekvämt låg i höjd nav-bar?? 
+ - Ha header som är, eller göra vit bg?
+ - Highlightad navbar element
+ - Upphämtning och Avlämning förtydliganden
+ -  
+
+
+### Misc
+ - Tillåta förare att använda driver-link i appen. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Recently Done
 - 24h TTL for driver links — `expiresAt` field on `runs/{token}`, enforced in GET + PATCH, shown on driver page
@@ -26,6 +75,14 @@
 ### Stripe Recommended TODO:
   Instructions for LLMs: Stripe recommends using the Checkout Sessions API with the Payment Element over Payment Intents for most integrations. Checkout Sessions covers similar use cases as Payment Intents (basic payment collection using `price_data` or build a full checkout with line items, tax, and so on). Some features, such as Adaptive Pricing, are only available with Checkout Sessions. Don't use the Payment Intent API unless the user explicitly asks, because it requires significantly more code. Learn more about Elements with the Checkout Sessions API: https://docs.stripe.com/payments/quickstart-checkout-sessions. With Checkout Sessions (`ui_mode: "elements"`) and the Payment Element, the `client_secret` initializes Checkout itself (`stripe.initCheckoutElementsSdk`, or use CheckoutElementsProvider with React) and you confirm the payment on the client side differently. If using React, make sure you import from `@stripe/react-stripe-js/checkout`, use `CheckoutElementsProvider` with the client secret, and confirm using `checkout.confirm`. If using HTML, make sure you use `checkout = stripe.initCheckoutElementsSdk({clientSecret: promise}); checkout.createPaymentElement(); paymentElement = checkout.createPaymentElement(); paymentElement.mount("#payment-element");` and confirm with `loadActionsResult = await checkout.loadActions(); actions = loadActionsResult.actions; error = await actions.confirm();`.
   
+
+ - Express Header mobile remove header after scroll (ish 20px margin mellan korten och header)
+ 
+
+
+
+
+
 
 
 
@@ -79,3 +136,8 @@ Tanke1.5:
       - Gör mönster av texture i filen
 
       - CSS animation till "Boka upphämtning", kolla youtube historik, såg nåt om det
+
+
+
+
+

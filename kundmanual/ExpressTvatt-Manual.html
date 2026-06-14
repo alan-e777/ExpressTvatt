@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Express Tvätt – Manual</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 14mm 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+    color: #1f2a2a; font-size: 10.3px; line-height: 1.5; margin: 0;
+  }
+  h1, h2, h3 { font-family: "Poppins", sans-serif; color: #063F41; margin: 0; }
+  .cover { background: #063F41; color: #fff; padding: 22px 24px; border-radius: 10px; margin-bottom: 18px; }
+  .cover h1 { color: #fff; font-size: 26px; letter-spacing: -0.5px; }
+  .cover p { margin: 6px 0 0; color: #bfe0db; font-size: 11px; }
+  .cover .gold { color: #d9b25f; font-weight: 600; }
+  h2 {
+    font-size: 14px; margin: 18px 0 7px;
+    border-left: 4px solid #d9b25f; padding-left: 9px;
+  }
+  h3 { font-size: 11px; color: #0a5559; margin: 11px 0 3px; }
+  p { margin: 4px 0; }
+  ul { margin: 4px 0 6px; padding-left: 17px; }
+  li { margin: 2.5px 0; }
+  b, strong { color: #063F41; }
+  .pill {
+    display: inline-block; background: #eef5f4; color: #0a5559;
+    border-radius: 5px; padding: 1px 6px; font-weight: 600; font-size: 9.5px;
+  }
+  .tip {
+    background: #fbf4e3; border: 1px solid #ecd9a8; border-radius: 7px;
+    padding: 8px 11px; margin: 8px 0; font-size: 9.8px;
+  }
+  .tip b { color: #8a6d22; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+  .lead { color: #4a5a5a; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps li { counter-increment: s; padding-left: 22px; position: relative; }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0;
+    background: #063F41; color: #fff; width: 15px; height: 15px;
+    border-radius: 50%; font-size: 9px; text-align: center; line-height: 15px; font-weight: 700;
+  }
+  footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e3eae9; color: #93a3a2; font-size: 8.6px; }
+  .nav-tags span { display:inline-block; background:#063F41; color:#fff; border-radius:5px; padding:2px 8px; margin:2px 3px 2px 0; font-size:9px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>Express Tvätt</h1>
+  <p>Manual för adminpanelen &amp; webbplatsen — <span class="gold">så sköter du den dagliga driften</span></p>
+</div>
+
+<p class="lead">Den här guiden går igenom allt du behöver för att driva tjänsten själv: ta emot bokningar, ändra
+priser, planera körningar och prata med kunder. Du behöver inte kunna något tekniskt — allt sker via
+adminpanelen i webbläsaren. Ta det lugnt och klicka dig fram; du kan inte ha sönder något.</p>
+
+<h2>Logga in i adminpanelen</h2>
+<ul>
+  <li>Gå till webbadressen och lägg till <span class="pill">/admin</span> på slutet (t.ex. <i>dittdomän.se/admin</i>).</li>
+  <li>Logga in med e-post och lösenord du fått. Du förblir inloggad på samma dator tills du loggar ut.</li>
+  <li>Längst upp finns menyn: <span class="nav-tags"><span>Dashboard</span><span>Orders</span><span>Customers</span><span>Calendar</span><span>Chat</span><span>Services</span><span>Driver</span><span>Inställningar</span></span></li>
+</ul>
+
+<h2>Dashboard (startsidan)</h2>
+<p>Snabb överblick: en <b>karta</b> som visar var dagens bokningar finns, och en lista med de <b>senaste ordrarna</b>.
+Använd den som morgonkoll — för att jobba med en order klickar du dig vidare till <b>Orders</b>.</p>
+
+<h2>Orders — hjärtat i panelen</h2>
+<p>Här landar varje bokning som en kund gör och betalar för. Allt uppdateras automatiskt i realtid, så du behöver aldrig ladda om sidan.</p>
+
+<h3>Statusar — så följer en order sin resa</h3>
+<p>Varje order har en status som du ändrar genom att klicka på den färgade etiketten. Stegen är:</p>
+<ul>
+  <li><b>New</b> – nyinkommen, betald, väntar på att hämtas.</li>
+  <li><b>Collected</b> – plaggen är upphämtade hos kunden.</li>
+  <li><b>In progress</b> – tvätt/behandling pågår.</li>
+  <li><b>Ready for delivery</b> – klart, redo att köras ut.</li>
+  <li><b>Delivered</b> – levererat till kunden.</li>
+  <li><b>Completed</b> – helt avslutat och klart.</li>
+  <li>Övriga vid behov: <b>Cancelled</b>, <b>Payment failed</b>, <b>Refunded</b>.</li>
+</ul>
+
+<div class="tip"><b>Viktigt — automatiskt mejl:</b> varje gång du byter status får kunden ett mejl om det.
+En liten ruta dyker upp i 10 sekunder med en nedräkning innan mejlet skickas — ångrar du dig hinner du
+avbryta där. Byt alltså inte status fram och tillbaka i onödan.</div>
+
+<h3>Hitta och hantera ordrar</h3>
+<ul>
+  <li><b>Filter:</b> överst kan du filtrera på status och på datumintervall (visar normalt denna månad fram till idag).</li>
+  <li><b>Klicka på en order</b> för att se allt: kunduppgifter, plagg/tjänster, kundens anteckning, bokningsdetaljer och belopp.</li>
+  <li><b>Flera samtidigt:</b> bocka i flera ordrar och sätt samma status på alla på en gång.</li>
+  <li><b>Rensa klara:</b> knappen <span class="pill">🗑 Delete Completed</span> tar bort alla avslutade ordrar. Du får en
+  bekräftelseruta först — detta går <b>inte</b> att ångra, så använd den bara för att städa undan gammalt.</li>
+</ul>
+
+<h2>Calendar — öppet eller stängt per dag</h2>
+<ul>
+  <li>Månadsvy. Klicka på en dag för att se vilka ordrar som ligger den dagen.</li>
+  <li><b>Blockera en dag</b> (t.ex. helgdag eller semester) så att kunder inte kan boka upphämtning då.</li>
+  <li>Får du en <b>varning</b> betyder det att det redan finns bokningar på en dag du stängt — kontrollera dem.</li>
+</ul>
+
+<h2>Customers — dina kunder</h2>
+<p>Lista över alla kunder. <b>Sök</b> på namn, e-post eller telefon. Klicka på en kund för kontaktuppgifter,
+hur mycket de handlat för totalt och deras orderhistorik.</p>
+
+<h2>Chat — prata med kunder live</h2>
+<p>Kunder kan starta en chatt på webbplatsen. Inkommande meddelanden syns under <b>Chat</b> (en liten markering
+visar olästa). Svara direkt i rutan — kunden ser svaret på sidan i realtid.</p>
+
+<h2>Services — tjänster &amp; priser</h2>
+<p>Här styr du allt kunden kan boka och vad det kostar. Ändringar slår igenom på webbplatsen direkt.</p>
+<ul>
+  <li><b>Ny tjänst:</b> ange namn, beskrivning, pris (kr) och en ikon (emoji).</li>
+  <li><b>Redigera:</b> klicka <i>Edit</i> på en rad för att ändra text eller pris, eller ta bort den.</li>
+  <li><b>Rabatt (%) per tjänst:</b> sätt en procentsats på en enskild tjänst så visas och tas det reducerade priset automatiskt.</li>
+  <li><b>Struken Tvätt:</b> egen flik längst ner för stryktjänsten — sköts på samma sätt.</li>
+</ul>
+
+<h2>Driver — planera körningar</h2>
+<p>Verktyg för att samla ihop dagens stopp och skicka en färdig rutt till chauffören.</p>
+<ol class="steps">
+  <li>Välj flik: <b>Utkörning</b> (leverans ut) eller <b>Upphämtning</b> (hämta hos kund).</li>
+  <li>Lägg till de ordrar som ska med i kön.</li>
+  <li>Sätt <b>start-</b> och <b>slutplats</b>, och låt verktyget <b>optimera rutten</b> till kortaste väg.</li>
+  <li>Klicka <b>generera körningslänk</b> och <b>kopiera</b> den — skicka länken till chauffören (sms/app).
+  Chauffören öppnar länken i mobilen och får adresserna i rätt ordning, utan att logga in.</li>
+</ol>
+
+<h2>Inställningar</h2>
+<h3>Chaufförens platser &amp; tjänsteområde</h3>
+<ul>
+  <li>Ange chaufförens <b>standardplats</b> (där rutter normalt startar).</li>
+  <li><b>Tjänsteområde:</b> skriv in en <b>centrumadress</b> och dra i <b>radie-reglaget</b> (km). På kartan kan du
+  <b>dra i cirkelns kant</b> för att ändra storlek och <b>dra mitten</b> för att flytta. Kunder utanför cirkeln kan inte boka.</li>
+</ul>
+<h3>Rabatter</h3>
+<ul>
+  <li><b>Förstagångsrabatt (%):</b> dras automatiskt på en kunds allra första order.</li>
+  <li><b>Flera rabatter tillåtna:</b> <span class="pill">PÅ</span> = förstagångs- och tjänsterabatt staplas (gäller båda).
+  <span class="pill">AV</span> = bara den största enskilda rabatten gäller.</li>
+  <li><b>Mattvätt — rabatt per storlek:</b> egen procentsats för liten, stor och äkta matta.</li>
+</ul>
+<div class="tip"><b>Glöm inte:</b> tryck på <b>Spara inställningar</b> nere till vänster. Det står <i>✓ Sparat</i> en kort stund när det gått igenom.</div>
+
+<h2>Webbplatsen (det kunden ser)</h2>
+<p>Du behöver inte göra något här löpande — den fylls automatiskt av dina tjänster och inställningar. Bra att känna till hur kundens resa ser ut:</p>
+<div class="grid">
+  <ul>
+    <li><b>Startsida:</b> presentation, "så funkar det", omdömen och knappen <i>Boka upphämtning</i>.</li>
+    <li><b>Tjänster:</b> alla tjänster och priser du lagt upp.</li>
+    <li><b>Boka / Order:</b> kunden väljer plagg och tjänster i en varukorg.</li>
+  </ul>
+  <ul>
+    <li><b>Kassa:</b> kontaktuppgifter, adress, datum &amp; tid. <b>RUT-avdrag</b>-knappen visar priset med 50 % avdrag. Betalning sker säkert via kort (Stripe).</li>
+    <li><b>Profil:</b> kunden kan spara adresser och se sina pågående ordrar.</li>
+    <li><b>Chatt:</b> kunden når dig direkt (visas i din Chat-flik).</li>
+  </ul>
+</div>
+
+<div class="tip"><b>Tre saker att minnas i vardagen:</b> 1) Håll varje orders status uppdaterad — det mejlar kunden automatiskt.
+2) Spara alltid efter ändringar i Inställningar och Services. 3) Blockera dagar i Calendar innan en stängd dag, inte efter att bokningar redan kommit in.</div>
+
+<footer>Express Tvätt — internt driftsdokument. Kontakta din utvecklare om något ser fel ut eller om du vill ändra hur en funktion fungerar.</footer>
+
+</body>
+</html>
