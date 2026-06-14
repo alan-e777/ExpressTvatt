@@ -16,7 +16,7 @@ import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, type Discoun
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type CatId         = 'hushallstvatt' | 'hushallstvatt-rut' | 'mattvatt' | 'hem' | 'tvatt';
+type CatId         = 'hushallstvatt' | 'mattvatt' | 'hem' | 'tvatt';
 type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number };
 type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
 
@@ -34,7 +34,6 @@ type CatMeta = {
 
 const CATEGORIES: CatMeta[] = [
   { id: 'hushallstvatt',     label: 'Hushållstvätt',     dbCategory: 'Hushållstvätt',     Icon: IconWash,     desc: 'Tvätt per kilo & plagg',         subtitle: 'Tvätt per kilo och styckvis — hämtning & leverans ingår' },
-  { id: 'hushallstvatt-rut', label: 'Hushållstvätt RUT', dbCategory: 'Hushållstvätt RUT', Icon: IconShirt,    desc: 'Hushållstvätt med RUT-avdrag',   subtitle: 'Hushållstvätt berättigad till RUT-avdrag' },
   { id: 'mattvatt',          label: 'Mattvätt',          dbCategory: null,                Icon: IconSpray,    desc: 'Djuptvätt av mattor',            subtitle: 'Djuptvätt av mattor — hämtning & leverans ingår alltid' },
   { id: 'hem',               label: 'Hem',               dbCategory: 'Hem',               Icon: IconSparkles, desc: 'Hemtextil & möbeltextil',        subtitle: 'Täcken, kuddar, gardiner, madrasser & möbeltextil' },
   { id: 'tvatt',             label: 'Tvätt',             dbCategory: 'Tvätt',             Icon: IconSteam,    desc: 'Kemtvätt & finare plagg',        subtitle: 'Kemtvätt av kostym, klänning, ytterplagg m.m.' },
