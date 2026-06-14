@@ -212,16 +212,6 @@ export default function LandingPage() {
                 <a href="#how" className="lp-btn lp-btn--ghost">Så fungerar det</a>
               </div>
             </Reveal>
-            <Reveal delay={220}>
-              <div className="lp-hero-trust">
-                <span className="lp-hero-trust-stars" aria-hidden>
-                  {Array.from({ length: 5 }).map((_, i) => <IconStarFilled key={i} size={14} />)}
-                </span>
-                <span className="lp-hero-trust-text">
-                  <strong>4,9</strong> · 1&nbsp;200+ upphämtningar i Stockholm
-                </span>
-              </div>
-            </Reveal>
           </div>
 
           <Reveal delay={120} variant="scale" className="lp-hero-visual-col">
