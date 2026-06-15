@@ -7,6 +7,7 @@ import { IconHome, IconUser, IconMessage } from '@tabler/icons-react-native';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 
 import { auth } from '../lib/firebase';
+import { CartProvider } from '../lib/cart';
 import HomeScreen from '../screens/HomeScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import CartPaymentScreen from '../screens/CartPaymentScreen';
@@ -15,18 +16,14 @@ import ChatScreen from '../screens/ChatScreen';
 import AuthScreen from '../screens/AuthScreen';
 import Logo from '../components/Logo';
 import { colors } from '../theme/colors';
-import { type Service, type CartItem } from '../types';
+import { type Service } from '../types';
 
 export type HomeStackParamList = {
   Home:         undefined;
   StrukenTvatt: undefined;
-  Checkout: {
-    items: CartItem[];
-    total: number;
-  };
+  // Checkout reads the basket from the cart context.
+  Checkout:     undefined;
   CartPayment: {
-    items:        CartItem[];
-    total:        number;
     address:      string;
     postalCode:   string;
     date:         string; // pickup (Upphämtning)
@@ -34,6 +31,20 @@ export type HomeStackParamList = {
     deliveryDate: string; // delivery (Avlämning)
     deliveryTime: string;
     notes:        string;
+    // Contact (collected/edited in checkout — the website kassa fields)
+    name:         string;
+    email:        string;
+    phone:        string;
+    // RUT-Avdrag
+    rutAvdrag:    boolean;
+    personnummer: string;
+    // Price breakdown for display (server re-validates the charged amount)
+    subtotalKr:     number;
+    savingsKr:      number;
+    rutDiscountKr:  number;
+    deliveryFeeKr:  number;
+    grandTotalKr:   number;
+    isFirstTime:    boolean;
   };
 };
 
@@ -133,7 +144,9 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Tabs />
+      <CartProvider>
+        <Tabs />
+      </CartProvider>
     </NavigationContainer>
   );
 }
