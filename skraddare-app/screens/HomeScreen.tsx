@@ -23,6 +23,7 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
+import ScreenBackground from '../components/ScreenBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -278,6 +279,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenBackground />
       <TopBar />
 
       <ScrollView

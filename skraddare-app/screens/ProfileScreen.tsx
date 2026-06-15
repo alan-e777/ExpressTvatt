@@ -16,6 +16,7 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
+import ScreenBackground from '../components/ScreenBackground';
 import CTAButton from '../components/CTAButton';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ActiveOrderCard from '../components/home/ActiveOrderCard';
@@ -167,6 +168,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenBackground />
       <TopBar />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">

@@ -16,6 +16,7 @@ import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import CTAButton from '../components/CTAButton';
 import Logo from '../components/Logo';
+import ScreenBackground from '../components/ScreenBackground';
 
 // Fullscreen authentication gate. Rendered (instead of the tab navigator) whenever
 // no user is signed in — "no authentication = no access". On success, the root
@@ -71,6 +72,7 @@ export default function AuthScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenBackground />
       <StatusBar style="light" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView

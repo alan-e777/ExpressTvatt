@@ -16,6 +16,7 @@ import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
 import CTAButton from '../components/CTAButton';
+import ScreenBackground from '../components/ScreenBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -86,23 +87,24 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
     const orderNo = orderId ? `#${orderId.slice(-7).toUpperCase()}` : '—';
     return (
       <View style={styles.container}>
+        <ScreenBackground />
         <TopBar title="Bekräftelse" />
-        <View style={styles.successContent}>
-          <View style={styles.successIcon}><Text style={styles.successCheck}>✓</Text></View>
-          <Text style={[typography.h1, { textAlign: 'center', marginBottom: spacing.md, color: colors.white }]}>
-            Din beställning är mottagen
-          </Text>
-          <Text style={[typography.body, { textAlign: 'center', color: colors.moss, marginBottom: spacing.lg }]}>
-            Vi har tagit hand om din order och{'\n'}bekräftat din upphämtning.
-          </Text>
-          <View style={styles.orderPill}>
-            <Text style={styles.orderPillLabel}>Viktigt! Spara detta</Text>
-            <Text style={styles.orderPillValue}>{orderNo}</Text>
+        <View style={styles.successWrap}>
+          <View style={styles.successCard}>
+            <View style={styles.successIcon}><Text style={styles.successCheck}>✓</Text></View>
+            <Text style={styles.successTitle}>Din beställning är mottagen</Text>
+            <Text style={styles.successText}>
+              Vi har tagit hand om din order och bekräftat din upphämtning.
+            </Text>
+            <View style={styles.orderPill}>
+              <Text style={styles.orderPillLabel}>Viktigt! Spara detta</Text>
+              <Text style={styles.orderPillValue}>{orderNo}</Text>
+            </View>
+            <Text style={styles.successSteps}>
+              Du får uppdateringar i varje steg:{'\n'}upphämtning → tvätt → leverans.
+            </Text>
+            <CTAButton label="Tillbaka till startsidan" onPress={() => navigation.popToTop()} style={{ alignSelf: 'stretch' }} />
           </View>
-          <Text style={[typography.small, { textAlign: 'center', color: colors.moss, marginTop: spacing.lg, marginBottom: spacing.xxl, lineHeight: 20 }]}>
-            Du får uppdateringar i varje steg:{'\n'}upphämtning → tvätt → leverans.
-          </Text>
-          <CTAButton label="Tillbaka till startsidan" onPress={() => navigation.popToTop()} />
         </View>
       </View>
     );
@@ -111,6 +113,7 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
   // ── Payment form ───────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
+      <ScreenBackground />
       <TopBar title="Betala" onBack={() => navigation.goBack()} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -231,13 +234,24 @@ const styles = StyleSheet.create({
   cardField: { height: 50, marginBottom: spacing.lg },
   trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg },
 
-  successContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl },
-  successIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.moss, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl },
+  // Success — a white card floating on the gradient canvas (mirrors the website's
+  // success-box; dark text on white for the premium, contained feel).
+  successWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  successCard: {
+    backgroundColor: colors.white, borderRadius: radius.xl,
+    paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl,
+    alignItems: 'center', width: '100%', maxWidth: 360,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 8,
+  },
+  successIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.moss, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
   successCheck: { fontFamily: 'Inter_600', fontSize: 28, color: colors.forestDark },
+  successTitle: { fontFamily: 'Inter_700', fontSize: 20, color: colors.textDark, textAlign: 'center', marginBottom: spacing.sm },
+  successText: { fontFamily: 'Inter_400', fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21, marginBottom: spacing.lg, maxWidth: 280 },
   orderPill: {
-    backgroundColor: colors.linen, borderRadius: radius.md, borderWidth: 1, borderColor: colors.moss,
-    paddingVertical: spacing.md, paddingHorizontal: spacing.xl, alignItems: 'center',
+    backgroundColor: colors.mint, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(74,124,89,0.25)',
+    paddingVertical: spacing.md, paddingHorizontal: spacing.xl, alignItems: 'center', alignSelf: 'stretch',
   },
   orderPillLabel: { fontFamily: 'Inter_500', fontSize: 10, color: colors.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' } as any,
   orderPillValue: { fontFamily: 'Inter_700', fontSize: 22, color: colors.forestDark, marginTop: 2, letterSpacing: 1 },
+  successSteps: { fontFamily: 'Inter_400', fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 19, marginTop: spacing.lg, marginBottom: spacing.xl },
 });

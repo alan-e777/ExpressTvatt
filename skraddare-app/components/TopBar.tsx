@@ -34,7 +34,8 @@ export default function TopBar({ onBack }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor:   colors.forestDark,
+    // Transparent so the screen's gradient canvas flows through the header.
+    backgroundColor:   'transparent',
     paddingHorizontal: 20,
     paddingBottom:     12,
     flexDirection:     'row',

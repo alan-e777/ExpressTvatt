@@ -11,6 +11,7 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
+import ScreenBackground from '../components/ScreenBackground';
 
 type Message = { id: string; text: string; from: 'customer' | 'admin'; timestamp: number };
 
@@ -55,6 +56,7 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenBackground />
       <TopBar />
       <KeyboardAvoidingView
         style={{ flex: 1 }}

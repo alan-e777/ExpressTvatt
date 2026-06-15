@@ -22,6 +22,7 @@ import AddressAutocomplete from '../components/AddressAutocomplete';
 import DatePickerModal from '../components/DatePickerModal';
 import TimeSpanPickerModal, { SPAN_LABEL, type TimeSpan } from '../components/TimeSpanPickerModal';
 import TopBar from '../components/TopBar';
+import ScreenBackground from '../components/ScreenBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -185,6 +186,7 @@ export default function CheckoutScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <ScreenBackground />
       <TopBar title="Uppgifter & datum" onBack={() => navigation.goBack()} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={88}>
