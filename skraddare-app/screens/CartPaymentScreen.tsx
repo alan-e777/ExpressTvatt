@@ -17,6 +17,7 @@ import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
 import CTAButton from '../components/CTAButton';
 import ScreenBackground from '../components/ScreenBackground';
+import Confetti from '../components/Confetti';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -103,9 +104,10 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
             <Text style={styles.successSteps}>
               Du får uppdateringar i varje steg:{'\n'}upphämtning → tvätt → leverans.
             </Text>
-            <CTAButton label="Tillbaka till startsidan" onPress={() => navigation.popToTop()} style={{ alignSelf: 'stretch' }} />
+            <CTAButton label="Tillbaka till startsidan" onPress={() => navigation.popToTop()} large style={{ alignSelf: 'stretch' }} />
           </View>
         </View>
+        <Confetti />
       </View>
     );
   }

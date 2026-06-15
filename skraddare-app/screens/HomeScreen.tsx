@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Modal, Pressable,
+  StyleSheet, ActivityIndicator, Modal, Pressable, Animated,
 } from 'react-native';
 import {
   IconStar, IconSpray, IconWash, IconSteam, IconSparkles,
@@ -24,6 +24,7 @@ import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
 import ScreenBackground from '../components/ScreenBackground';
+import { useCollapsibleHeader } from '../lib/useCollapsibleHeader';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -183,6 +184,7 @@ const pt = StyleSheet.create({
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const cart = useCart();
+  const header = useCollapsibleHeader();
 
   const [catalog, setCatalog]   = useState<Record<string, StrukenProduct[]>>({});
   const [loading, setLoading]   = useState(true);
@@ -280,12 +282,13 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <ScreenBackground />
-      <TopBar />
 
-      <ScrollView
+      <Animated.ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, cartCount > 0 && { paddingBottom: 120 }]}
+        contentContainerStyle={[styles.content, { paddingTop: header.headerHeight }, cartCount > 0 && { paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={header.onScroll}
+        scrollEventThrottle={16}
       >
         <ProgressSteps />
 
@@ -392,7 +395,14 @@ export default function HomeScreen() {
             </View>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
+
+      <Animated.View
+        style={[styles.header, { transform: [{ translateY: header.translateY }], opacity: header.opacity }]}
+        onLayout={e => header.onHeaderLayout(e.nativeEvent.layout.height)}
+      >
+        <TopBar />
+      </Animated.View>
 
       {/* ── Fixed bottom bar ──────────────────────────────────────────────── */}
       {cartCount > 0 && (
@@ -482,6 +492,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content:   { padding: spacing.lg, paddingBottom: spacing.xxl },
+  header:    { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
 
   serviceCard: {
     backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.xl,

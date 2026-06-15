@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput,
-  TouchableOpacity, StyleSheet, Alert, Modal, Pressable, KeyboardAvoidingView, Platform,
+  TouchableOpacity, StyleSheet, Alert, Modal, Pressable, KeyboardAvoidingView, Platform, Animated,
 } from 'react-native';
 import {
   IconMapPin, IconClock, IconCalendar, IconLock, IconChevronUp, IconX, IconCheck,
@@ -23,6 +23,7 @@ import DatePickerModal from '../components/DatePickerModal';
 import TimeSpanPickerModal, { SPAN_LABEL, type TimeSpan } from '../components/TimeSpanPickerModal';
 import TopBar from '../components/TopBar';
 import ScreenBackground from '../components/ScreenBackground';
+import { useCollapsibleHeader } from '../lib/useCollapsibleHeader';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -33,6 +34,7 @@ type Props = { navigation: NativeStackNavigationProp<HomeStackParamList, 'Checko
 export default function CheckoutScreen({ navigation }: Props) {
   const cart = useCart();
   const items = cart.lines;
+  const header = useCollapsibleHeader();
 
   // Contact (mirrors the website kassa — editable, with a profile card)
   const [name,  setName]  = useState('');
@@ -187,14 +189,15 @@ export default function CheckoutScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <ScreenBackground />
-      <TopBar title="Uppgifter & datum" onBack={() => navigation.goBack()} />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={88}>
-        <ScrollView
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Animated.ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingTop: header.headerHeight }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={header.onScroll}
+          scrollEventThrottle={16}
         >
           <View style={styles.card}>
 
@@ -342,8 +345,15 @@ export default function CheckoutScreen({ navigation }: Props) {
             </View>
 
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </KeyboardAvoidingView>
+
+      <Animated.View
+        style={[styles.header, { transform: [{ translateY: header.translateY }], opacity: header.opacity }]}
+        onLayout={e => header.onHeaderLayout(e.nativeEvent.layout.height)}
+      >
+        <TopBar title="Uppgifter & datum" onBack={() => navigation.goBack()} />
+      </Animated.View>
 
       {/* ── Fixed bottom bar ──────────────────────────────────────────────── */}
       <View style={styles.bar}>
@@ -445,6 +455,7 @@ function addDaysYMD(ymd: string, n: number): string {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content:   { padding: spacing.lg, paddingBottom: 110 },
+  header:    { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
 
   card: {
     backgroundColor: colors.white, borderRadius: radius.xl, padding: spacing.lg,

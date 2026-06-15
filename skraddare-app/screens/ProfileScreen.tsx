@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, StyleSheet,
-  TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
+  TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Animated,
 } from 'react-native';
 import { IconUser, IconMail, IconPhone, IconMapPin, IconPlus } from '@tabler/icons-react-native';
 import { signOut, type User } from 'firebase/auth';
@@ -17,6 +17,7 @@ import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
 import TopBar from '../components/TopBar';
 import ScreenBackground from '../components/ScreenBackground';
+import { useCollapsibleHeader } from '../lib/useCollapsibleHeader';
 import CTAButton from '../components/CTAButton';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import ActiveOrderCard from '../components/home/ActiveOrderCard';
@@ -51,6 +52,7 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 export default function ProfileScreen() {
+  const header = useCollapsibleHeader();
   const [user, setUser]       = useState<User | null>(auth.currentUser);
   const [orders, setOrders]   = useState<Order[]>([]);
   const [phone, setPhone]     = useState('');
@@ -169,9 +171,15 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <ScreenBackground />
-      <TopBar />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <Animated.ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.content, { paddingTop: header.headerHeight }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onScroll={header.onScroll}
+          scrollEventThrottle={16}
+        >
 
           {/* Avatar / user */}
           <View style={styles.avatarBlock}>
@@ -313,8 +321,15 @@ export default function ProfileScreen() {
           </View>
 
           <CTAButton label="Logga ut" onPress={handleSignOut} variant="secondary" style={{ marginTop: spacing.xl }} />
-        </ScrollView>
+        </Animated.ScrollView>
       </KeyboardAvoidingView>
+
+      <Animated.View
+        style={[styles.header, { transform: [{ translateY: header.translateY }], opacity: header.opacity }]}
+        onLayout={e => header.onHeaderLayout(e.nativeEvent.layout.height)}
+      >
+        <TopBar />
+      </Animated.View>
     </View>
   );
 }
@@ -340,6 +355,7 @@ const infoStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content:   { padding: spacing.lg, paddingBottom: spacing.xxl },
+  header:    { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
 
   avatarBlock:  { alignItems: 'center', marginBottom: spacing.xl, paddingTop: spacing.sm },
   avatarCircle: { width: 80, height: 80, borderRadius: radius.pill, backgroundColor: colors.moss, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: spacing.sm },
