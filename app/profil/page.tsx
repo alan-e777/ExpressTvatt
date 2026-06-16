@@ -288,6 +288,10 @@ export default function ProfilPage() {
     setOrders([]);
     setView('login');
     await signOut(auth);
+    // Hard reload guarantees a clean state — Firebase re-reads the now-cleared
+    // persistence and renders the login view fresh, with no stale listener able
+    // to re-hydrate the session.
+    window.location.assign('/profil');
   }
 
   async function handleSavePhone(e: React.FormEvent) {
@@ -467,7 +471,12 @@ export default function ProfilPage() {
                 </div>
                 {phoneError && <p className="error-msg">{phoneError}</p>}
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="submit" className="btn-primary" disabled={savingPhone} style={{ flex: 1, fontSize: 13 }}>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={savingPhone}
+                    style={{ flex: 1, fontSize: 13, background: 'var(--gold)', color: 'var(--forest-dark)', fontWeight: 600 }}
+                  >
                     {savingPhone ? 'Sparar…' : 'Spara'}
                   </button>
                   <button type="button" onClick={() => setShowPhoneForm(false)}
