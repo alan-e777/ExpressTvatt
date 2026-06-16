@@ -31,3 +31,7 @@ See `structure.md` for full file map.
 
 ## Env vars
 - `ADMIN_UID` — Firebase UID of the admin user (in `.env.local`)
+
+## Test accounts
+- **Admin**: zupimcarl@gmail.com / wallahi007
+- **Test user**: testgubbe44@gmail.com / password123
