@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   updateProfile, signOut, User,
@@ -94,6 +94,7 @@ export default function ProfilPage() {
   const [view,       setView]       = useState<ViewMode>('loading');
   const [user,       setUser]       = useState<User | null>(null);
   const [orders,     setOrders]     = useState<Order[]>([]);
+  const justSignedOut = useRef(false);
 
   const [name,       setName]       = useState('');
   const [email,      setEmail]      = useState('');
@@ -102,6 +103,12 @@ export default function ProfilPage() {
   const [showPass,   setShowPass]   = useState(false);
   const [formError,  setFormError]  = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const [savedPhone,      setSavedPhone]      = useState('');
+  const [editPhone,       setEditPhone]       = useState('');
+  const [showPhoneForm,   setShowPhoneForm]   = useState(false);
+  const [savingPhone,     setSavingPhone]     = useState(false);
+  const [phoneError,      setPhoneError]      = useState('');
 
   const [addresses,   setAddresses]   = useState<SavedAddress[]>([]);
   const [newAddr,          setNewAddr]          = useState('');
@@ -120,6 +127,12 @@ export default function ProfilPage() {
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(currentUser => {
+      // Block re-hydration immediately after an explicit sign-out
+      if (justSignedOut.current) {
+        if (!currentUser) justSignedOut.current = false;
+        return;
+      }
+
       setUser(currentUser);
       setView(currentUser ? 'profile' : 'login');
 
@@ -146,12 +159,13 @@ export default function ProfilPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setAddresses([]); return; }
+    if (!user) { setAddresses([]); setSavedPhone(''); return; }
     const unsub = onSnapshot(doc(db, 'customers', user.uid), snap => {
       const data = snap.data();
       setAddresses((data?.addresses ?? []) as SavedAddress[]);
       setRutEnabled(!!data?.rutEnabled);
       setRutPersonnummer(formatPersonnummer((data?.personnummer ?? '') as string));
+      setSavedPhone((data?.phone ?? '') as string);
     });
     return unsub;
   }, [user]);
@@ -269,7 +283,26 @@ export default function ProfilPage() {
 
   async function handleSignOut() {
     if (!confirm('Är du säker på att du vill logga ut?')) return;
+    justSignedOut.current = true;
+    setUser(null);
+    setOrders([]);
+    setView('login');
     await signOut(auth);
+  }
+
+  async function handleSavePhone(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editPhone.trim()) { setPhoneError('Ange ett telefonnummer.'); return; }
+    if (!user) return;
+    setSavingPhone(true); setPhoneError('');
+    try {
+      await setDoc(doc(db, 'customers', user.uid), { phone: editPhone.trim() }, { merge: true });
+      setShowPhoneForm(false);
+    } catch {
+      setPhoneError('Kunde inte spara. Försök igen.');
+    } finally {
+      setSavingPhone(false);
+    }
   }
 
   // Loading
@@ -403,7 +436,50 @@ export default function ProfilPage() {
           </div>
           <div className="h3">{user?.displayName ?? 'Användare'}</div>
           <div className="small" style={{ marginTop: 2 }}>{user?.email}</div>
+          {savedPhone && (
+            <div className="small" style={{ marginTop: 2, color: 'var(--text-muted)' }}>{savedPhone}</div>
+          )}
         </div>
+
+        {!savedPhone && (
+          <div style={{ width: '100%', marginBottom: 'var(--sp-md)' }}>
+            {!showPhoneForm ? (
+              <button
+                type="button"
+                onClick={() => { setShowPhoneForm(true); setEditPhone(''); setPhoneError(''); }}
+                style={{ background: 'none', border: 'none', color: 'var(--moss)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, cursor: 'pointer', padding: 0 }}
+              >
+                + Lägg till telefonnummer
+              </button>
+            ) : (
+              <form onSubmit={handleSavePhone} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="auth-input-wrap">
+                  <span className="auth-icon-left"><IconPhone size={16} stroke={1.5} /></span>
+                  <input
+                    className="input"
+                    style={{ paddingLeft: 40 }}
+                    placeholder="Telefonnummer"
+                    value={editPhone}
+                    onChange={e => setEditPhone(e.target.value)}
+                    type="tel"
+                    autoComplete="tel"
+                  />
+                </div>
+                {phoneError && <p className="error-msg">{phoneError}</p>}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="submit" className="btn-primary" disabled={savingPhone} style={{ flex: 1, fontSize: 13 }}>
+                    {savingPhone ? 'Sparar…' : 'Spara'}
+                  </button>
+                  <button type="button" onClick={() => setShowPhoneForm(false)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
+                    Avbryt
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
         <button className="btn-secondary" onClick={handleSignOut}>
           Logga ut
         </button>
