@@ -14,3 +14,6 @@ memory.md
 PROMPT.md
 promptHomeScreen.md
 prompts/
+
+# Expo dev logs (can contain env vars)
+.expo/dev/logs/
