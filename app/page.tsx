@@ -396,7 +396,7 @@ export default function LandingPage() {
         </div>
         <div className="lp-footer-base">
           © {new Date().getFullYear()} Expresstvätt AB
-          <span style={{ color: "#083F41", fontSize: "0.65rem", marginLeft: "1.5rem", userSelect: "none" }}>Made by Carl Nilsson</span>
+          <span style={{ color: "rgba(255,255,255,0.02)", fontSize: "0.65rem", marginLeft: "1.5rem", userSelect: "none" }}>Made by Carl Nilsson</span>
         </div>
       </footer>
 
