@@ -383,19 +383,21 @@ export default function LandingPage() {
 
           <div className="lp-footer-col">
             <div className="lp-footer-h">Kontakt</div>
-            <a href="mailto:hej@expresstvatt.se">hej@expresstvatt.se</a>
-            <a href="tel:+46812345678">08-123 456 78</a>
-            <span>Stockholm</span>
+            <a href="mailto:info@expresstvatt.se">info@expresstvatt.se</a>
+            <a href="tel:+4681800077">08-18 00 77</a>
+            <span>Svandammsvägen 20, 126 34 Hägersten</span>
           </div>
 
           <div className="lp-footer-col">
             <div className="lp-footer-h">Företaget</div>
-            <span>Express Tvätt AB</span>
-            <span>Org.nr 556000-0000</span>
-            <span>Sedan 1987</span>
+            <span>Expresstvätt AB</span>
+            <span>Org.nr 556097-5640</span>
           </div>
         </div>
-        <div className="lp-footer-base">© {new Date().getFullYear()} Express Tvätt AB</div>
+        <div className="lp-footer-base">
+          © {new Date().getFullYear()} Expresstvätt AB
+          <span style={{ color: "#083F41", fontSize: "0.65rem", marginLeft: "1.5rem", userSelect: "none" }}>Made by Carl Nilsson</span>
+        </div>
       </footer>
 
     </div>
