@@ -385,7 +385,7 @@ export default function LandingPage() {
             <div className="lp-footer-h">Kontakt</div>
             <a href="mailto:info@expresstvatt.se">info@expresstvatt.se</a>
             <a href="tel:+4681800077">08-18 00 77</a>
-            <span>Svandammsvägen 20, 126 34 Hägersten</span>
+            <span>Svandammsvägen 20<br />126 34 Hägersten</span>
           </div>
 
           <div className="lp-footer-col">
