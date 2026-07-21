@@ -510,6 +510,9 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
             </div>
           </section>
 
+          {/* Admin accounts */}
+          <AdminAccounts />
+
           {/* Save button */}
           <button
             onClick={save}
@@ -555,6 +558,177 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         </section>
       </div>
     </div>
+  );
+}
+
+// ── Admin accounts management ────────────────────────────────────────────────
+
+type AdminRow = {
+  uid: string;
+  email: string;
+  createdAt: number | null;
+  mustChangePassword: boolean;
+  isRoot: boolean;
+  isSelf: boolean;
+};
+
+function AdminAccounts() {
+  const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/admins");
+      const data = await res.json();
+      if (res.ok) setAdmins(data.admins ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function addAdmin() {
+    setError(null);
+    setCreated(null);
+    const value = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setError("Ange en giltig e-postadress.");
+      return;
+    }
+    setAdding(true);
+    try {
+      const res = await fetch("/api/admin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: value }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Kunde inte lägga till administratören."); return; }
+      setCreated({ email: data.email, tempPassword: data.tempPassword });
+      setEmail("");
+      load();
+    } catch {
+      setError("Nätverksfel — försök igen.");
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function removeAdmin(uid: string, adminEmail: string) {
+    if (!confirm(`Ta bort administratören ${adminEmail}? Kontot tas bort permanent.`)) return;
+    try {
+      const res = await fetch(`/api/admin/admins?uid=${encodeURIComponent(uid)}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error ?? "Kunde inte ta bort administratören."); return; }
+      load();
+    } catch {
+      setError("Nätverksfel — försök igen.");
+    }
+  }
+
+  function copyPassword() {
+    if (!created) return;
+    navigator.clipboard?.writeText(created.tempPassword).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }
+
+  return (
+    <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
+      <p style={labelStyle}>Administratörer</p>
+      <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
+        Lägg till fler administratörer. De får ett tillfälligt lösenord som måste bytas vid första inloggningen.
+      </p>
+
+      {/* Existing admins */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
+        {loading ? (
+          <p style={{ fontSize: "0.8rem", color: "#bbb" }}>Laddar…</p>
+        ) : admins.length === 0 ? (
+          <p style={{ fontSize: "0.8rem", color: "#bbb" }}>Inga administratörer ännu.</p>
+        ) : (
+          admins.map(a => (
+            <div key={a.uid} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.5rem 0.7rem" }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontSize: "0.83rem", color: "#1a1a1a", fontWeight: 600, wordBreak: "break-all" }}>{a.email || a.uid}</span>
+                <span style={{ display: "flex", gap: "0.4rem", marginTop: "0.15rem", flexWrap: "wrap" }}>
+                  {a.isRoot && <Tag color="#4b8c5c">Huvudadmin</Tag>}
+                  {a.isSelf && <Tag color="#888">Du</Tag>}
+                  {a.mustChangePassword && <Tag color="#c0392b">Väntar på lösenordsbyte</Tag>}
+                </span>
+              </div>
+              {!a.isRoot && !a.isSelf && (
+                <button
+                  onClick={() => removeAdmin(a.uid, a.email)}
+                  style={{ flexShrink: 0, background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                >
+                  Ta bort
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Temp-password reveal */}
+      {created && (
+        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.85rem", marginBottom: "1rem" }}>
+          <p style={{ fontSize: "0.78rem", color: "#15803d", fontWeight: 600, margin: "0 0 0.4rem" }}>
+            Konto skapat för {created.email}
+          </p>
+          <p style={{ fontSize: "0.72rem", color: "#666", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
+            Ge detta tillfälliga lösenord till den nya administratören. Det visas bara en gång och måste bytas vid första inloggningen.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <code style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "0.15em", color: "#1a1a1a", background: "#fff", border: "1px solid #d6f0dc", borderRadius: "6px", padding: "0.4rem 0.9rem" }}>
+              {created.tempPassword}
+            </code>
+            <button
+              onClick={copyPassword}
+              style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "6px", padding: "0.45rem 0.8rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+            >
+              {copied ? "✓ Kopierat" : "Kopiera"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add form */}
+      <label style={fieldLabelStyle}>Lägg till administratör</label>
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <input
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setError(null); }}
+          onKeyDown={e => e.key === "Enter" && !adding && addAdmin()}
+          placeholder="ny.admin@example.com"
+          style={{ flex: "1 1 200px", minWidth: 0, boxSizing: "border-box", padding: "0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
+        />
+        <button
+          onClick={addAdmin}
+          disabled={adding}
+          style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontSize: "0.85rem", fontWeight: 600, cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
+        >
+          {adding ? "Lägger till…" : "Lägg till admin"}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: "0.75rem", color: "#dc2626", margin: "0.4rem 0 0" }}>{error}</p>}
+    </section>
+  );
+}
+
+function Tag({ children, color }: { children: React.ReactNode; color: string }) {
+  return (
+    <span style={{ fontSize: "0.66rem", fontWeight: 600, color, background: `${color}14`, border: `1px solid ${color}33`, borderRadius: "4px", padding: "0.05rem 0.35rem" }}>
+      {children}
+    </span>
   );
 }
 

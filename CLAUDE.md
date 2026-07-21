@@ -26,11 +26,13 @@ Read `style.md` before creating or editing any screen or component.
 
 ## Admin dashboard (`app/admin/`)
 Protected by `middleware.ts` + cookie-based session (`admin-session`).
-Auth flow: Firebase client auth → POST `/api/admin/session` (verifies UID against `ADMIN_UID` env var) → sets httpOnly cookie.
+Multi-admin: admins live in the Firestore `admins/{uid}` collection (managed server-side via Admin SDK). `ADMIN_UID` is the bootstrap/root admin so the owner can never be locked out. `lib/admin-auth.ts` (`isAdminUid`/`getAdminSession`/`mustChangePassword`) is the single source of truth for admin checks.
+Auth flow: Firebase client auth → POST `/api/admin/session` (accepts the bootstrap UID **or** any `admins/{uid}` entry) → sets httpOnly cookie.
+Add-admin flow: Settings → "Administratörer" → `POST /api/admin/admins` creates a Firebase Auth user with a random 4-digit temp password (shown once) + an `admins` doc with `mustChangePassword:true`. The dashboard layout gate (`(dashboard)/layout.tsx`) redirects such admins to `/admin/change-password` (non-skippable) until they set a real password via `POST /api/admin/change-password`.
 See `structure.md` for full file map.
 
 ## Env vars
-- `ADMIN_UID` — Firebase UID of the admin user (in `.env.local`)
+- `ADMIN_UID` — Firebase UID of the bootstrap/root admin (in `.env.local`)
 
 ## Test accounts
 - **Admin**: zupimcarl@gmail.com / wallahi007

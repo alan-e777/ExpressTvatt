@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/firebase-admin";
+import { isAdminUid } from "@/lib/admin-auth";
 import { cookies } from "next/headers";
 
 const SESSION_DURATION_MS = 60 * 60 * 24 * 14 * 1000; // 14 days
@@ -9,9 +10,10 @@ export async function POST(request: NextRequest) {
   const { idToken } = await request.json();
 
   try {
-    // Verify the ID token and check it belongs to the admin
+    // Verify the ID token and check the user is a registered admin (bootstrap
+    // ADMIN_UID or an entry in the Firestore `admins` collection).
     const decoded = await auth.verifyIdToken(idToken);
-    if (decoded.uid !== process.env.ADMIN_UID) {
+    if (!(await isAdminUid(decoded.uid))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

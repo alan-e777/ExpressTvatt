@@ -1,9 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import ChatNavLink from "./ChatNavLink";
 import OrderStatusNotifier from "@/components/admin/OrderStatusNotifier";
 import AdminMobileNav from "./AdminMobileNav";
+import { getAdminSession, mustChangePassword } from "@/lib/admin-auth";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Server-side gate: an admin created with a temporary password cannot reach any
+  // dashboard page until they have set a real password (non-skippable).
+  const session = await getAdminSession();
+  if (!session) redirect("/admin/login");
+  if (await mustChangePassword(session.uid)) redirect("/admin/change-password");
+
   return (
     <>
       <style>{`
