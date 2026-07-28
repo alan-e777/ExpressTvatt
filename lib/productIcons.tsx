@@ -10,6 +10,11 @@ import {
   IconScissors, IconStar, IconSpray, IconWash, IconWashDryclean, IconSparkles,
   IconSteam, IconBed, IconSofa, IconWindow, IconDroplet, IconShoe, IconBath, IconHome,
   IconPillow, IconTie, IconTent,
+  // Additional tailor / laundry / garment icons (all @tabler outline style).
+  IconHanger2, IconClothesRack, IconSock, IconMoodKid, IconRuler, IconRulerMeasure,
+  IconWashMachine, IconWashTumbleDry, IconWashHand, IconWashGentle, IconWashEco,
+  IconIroning, IconIroningSteam, IconBasket, IconCrown, IconDiamond, IconShoppingBag,
+  IconBriefcase, IconBackpack, IconWind,
 } from '@tabler/icons-react';
 
 export type ProductIconDef = {
@@ -42,6 +47,26 @@ export const PRODUCT_ICONS: ProductIconDef[] = [
   { key: 'pillow',        label: 'Sänglinne',    Icon: IconPillow },
   { key: 'tie',          label: 'Kostym',        Icon: IconTie },
   { key: 'tent',         label: 'Uteplagg',      Icon: IconTent },
+  { key: 'hanger2',       label: 'Galge',         Icon: IconHanger2 },
+  { key: 'clothes-rack',  label: 'Klädställ',     Icon: IconClothesRack },
+  { key: 'sock',          label: 'Strumpor',      Icon: IconSock },
+  { key: 'mood-kid',      label: 'Barnkläder',    Icon: IconMoodKid },
+  { key: 'ruler',         label: 'Mått',          Icon: IconRuler },
+  { key: 'ruler-measure', label: 'Uppmätning',    Icon: IconRulerMeasure },
+  { key: 'wash-machine',  label: 'Tvättmaskin',   Icon: IconWashMachine },
+  { key: 'tumble-dry',    label: 'Torktumling',   Icon: IconWashTumbleDry },
+  { key: 'wash-hand',     label: 'Handtvätt',     Icon: IconWashHand },
+  { key: 'wash-gentle',   label: 'Skontvätt',     Icon: IconWashGentle },
+  { key: 'wash-eco',      label: 'Miljötvätt',    Icon: IconWashEco },
+  { key: 'ironing',       label: 'Strykjärn',     Icon: IconIroning },
+  { key: 'ironing-steam', label: 'Ångstrykning',  Icon: IconIroningSteam },
+  { key: 'basket',        label: 'Tvättkorg',     Icon: IconBasket },
+  { key: 'crown',         label: 'Lyx',           Icon: IconCrown },
+  { key: 'diamond',       label: 'Premium',       Icon: IconDiamond },
+  { key: 'shopping-bag',  label: 'Kasse',         Icon: IconShoppingBag },
+  { key: 'briefcase',     label: 'Portfölj',      Icon: IconBriefcase },
+  { key: 'backpack',      label: 'Ryggsäck',      Icon: IconBackpack },
+  { key: 'wind',          label: 'Lufttork',      Icon: IconWind },
 ];
 
 const ICON_BY_KEY = Object.fromEntries(PRODUCT_ICONS.map(i => [i.key, i.Icon]));

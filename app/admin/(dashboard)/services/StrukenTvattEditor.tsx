@@ -25,6 +25,7 @@ function IconPicker({ value, onSelect, onClose }: { value: string; onSelect: (ke
         background: "#fff", border: "1px solid #e5e5e5", borderRadius: "10px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "0.5rem",
         display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.25rem", width: "230px",
+        maxHeight: "280px", overflowY: "auto",
       }}>
         {PRODUCT_ICONS.map(({ key, label, Icon }) => (
           <button
