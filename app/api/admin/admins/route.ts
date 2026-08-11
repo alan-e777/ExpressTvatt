@@ -170,11 +170,23 @@ export async function DELETE(request: NextRequest) {
   }
 
   await ref.delete();
-  // Remove the auth account too so the login can no longer be used at all.
+
+  // Demote only — never delete the Auth account.
+  //
+  // Admins are usually promoted customer logins, so deleting the account here
+  // destroyed a real customer's login and orphaned their `customers/{uid}`
+  // profile. Removing the `admins` doc is already enough: `isAdminUid` fails
+  // immediately, so the dashboard is closed to them. Revoking refresh tokens
+  // makes that take effect on any session they already have open rather than
+  // waiting for the 14-day session cookie to lapse.
+  //
+  // An account that should genuinely cease to exist is deleted from the
+  // Firebase console, which keeps an irreversible action out of a two-click
+  // dashboard flow.
   try {
-    await auth.deleteUser(uid);
+    await auth.revokeRefreshTokens(uid);
   } catch {
-    /* ignore — the admins-doc removal already revokes dashboard access */
+    /* ignore — the admins-doc removal already closes the dashboard */
   }
 
   return NextResponse.json({ ok: true });

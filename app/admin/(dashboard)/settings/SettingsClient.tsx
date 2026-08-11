@@ -622,7 +622,7 @@ function AdminAccounts() {
   }
 
   async function removeAdmin(uid: string, adminEmail: string) {
-    if (!confirm(`Ta bort administratören ${adminEmail}? Kontot tas bort permanent.`)) return;
+    if (!confirm(`Ta bort ${adminEmail} som administratör?\n\nDe förlorar åtkomst till adminpanelen direkt. Inloggningen och kundkontot finns kvar — ta bort kontot helt i Firebase om det behövs.`)) return;
     try {
       const res = await fetch(`/api/admin/admins?uid=${encodeURIComponent(uid)}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
