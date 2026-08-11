@@ -1,6 +1,7 @@
 import { db } from "@/lib/firebase-admin";
 import ServicesPage from "./ServicesPage";
 import type { StrukenProduct } from "./StrukenTvattEditor";
+import type { ProductWarning } from "./WarningsManager";
 
 // Always re-read Firestore on each request. Without this the route is served
 // from Next's static full-route cache, so adds/deletes don't appear on reload.
@@ -19,10 +20,19 @@ export default async function Page() {
       order:           data.order ?? 0,
       discountPercent: data.discountPercent ?? 0,
       icon:            data.icon ?? "",
+      warningIds:      data.warningIds ?? [],
     };
   });
 
+  // Reusable "bra att veta" remarks, referenced by the products above.
+  const warningsSnap = await db.collection("product_warnings").orderBy("order").get();
+  const warnings: ProductWarning[] = warningsSnap.docs.map(d => ({
+    id:    d.id,
+    text:  d.data().text ?? "",
+    order: d.data().order ?? 0,
+  }));
+
   return (
-    <ServicesPage initialStrukenProducts={strukenProducts} />
+    <ServicesPage initialStrukenProducts={strukenProducts} initialWarnings={warnings} />
   );
 }

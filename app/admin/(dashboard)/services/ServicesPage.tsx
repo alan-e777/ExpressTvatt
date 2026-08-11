@@ -1,11 +1,14 @@
 "use client";
 
 import StrukenTvattEditor, { type StrukenProduct } from "./StrukenTvattEditor";
+import type { ProductWarning } from "./WarningsManager";
 
 export default function ServicesPage({
   initialStrukenProducts,
+  initialWarnings,
 }: {
   initialStrukenProducts: StrukenProduct[];
+  initialWarnings: ProductWarning[];
 }) {
   return (
     <div>
@@ -17,7 +20,10 @@ export default function ServicesPage({
         </p>
       </div>
 
-      <StrukenTvattEditor initialProducts={initialStrukenProducts} />
+      <StrukenTvattEditor
+        initialProducts={initialStrukenProducts}
+        initialWarnings={initialWarnings}
+      />
     </div>
   );
 }

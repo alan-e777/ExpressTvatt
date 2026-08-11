@@ -2826,6 +2826,7 @@ input, textarea, select { font-family: inherit; }
   gap: 14px;
 }
 .site-shell .prod-tile {
+  position: relative;             /* anchors the "bra att veta" marker */
   aspect-ratio: 3 / 5;            /* height:width = 5:3 (portrait) */
   display: flex;
   flex-direction: column;
@@ -2842,6 +2843,76 @@ input, textarea, select { font-family: inherit; }
 .site-shell .prod-tile:hover {
   border-color: rgba(8,63,65,0.18);
   box-shadow: 0 6px 18px rgba(15,23,42,0.07);
+}
+
+/* ── "Bra att veta" marker on a product tile ─────────────────────────────── */
+.site-shell .prod-warn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  line-height: 0;
+}
+.site-shell .prod-warn-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(212,175,55,0.5);
+  background: #FBF3DC;
+  color: #8A6D1F;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.site-shell .prod-warn-btn:hover,
+.site-shell .prod-warn-btn[aria-expanded="true"] {
+  background: #D4AF37;
+  color: #063F41;
+}
+.site-shell .prod-warn-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -4px;
+  z-index: 20;
+  width: max-content;
+  max-width: min(260px, 68vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #063F41;
+  color: #EAF3F1;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(6,63,65,0.28);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.55;
+  text-align: left;
+  white-space: pre-wrap;
+  cursor: default;
+}
+/* Little pointer up towards the marker */
+.site-shell .prod-warn-pop::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 9px;
+  width: 10px;
+  height: 10px;
+  background: #063F41;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+.site-shell .prod-warn-line + .prod-warn-line {
+  padding-top: 8px;
+  border-top: 1px solid rgba(234,243,241,0.18);
 }
 .site-shell .prod-tile-icon {
   width: 54px;

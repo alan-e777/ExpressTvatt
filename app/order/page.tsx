@@ -17,7 +17,7 @@ import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, type Discoun
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type CatId         = 'hushallstvatt' | 'mattvatt' | 'hem' | 'tvatt';
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string };
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[] };
 type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
 
 // ── Categories — mirrors eriksbergstvätten's five categories ────────────────────
@@ -73,6 +73,43 @@ function PulseQty({ value }: { value: number }) {
   );
 }
 
+/**
+ * "Bra att veta" marker on a product tile.
+ *
+ * Opens on hover for pointer devices and on tap for touch, where hover does not
+ * exist. Clicks are swallowed so tapping the marker never adds the item to the
+ * cart — the whole tile is a button.
+ */
+function WarningBadge({ texts, label }: { texts: string[]; label: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <span
+      className="prod-warn"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className="prod-warn-btn"
+        aria-label={`Bra att veta om ${label}`}
+        aria-expanded={open}
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        onKeyDown={e => e.stopPropagation()}
+      >
+        !
+      </button>
+      {open && (
+        <span className="prod-warn-pop" role="tooltip" onClick={e => e.stopPropagation()}>
+          {texts.map((t, i) => (
+            <span key={i} className="prod-warn-line">{t}</span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // ── HomePage ──────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -88,6 +125,8 @@ export default function HomePage() {
   const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
   const [hasPlacedOrder, setHasPlacedOrder]     = useState<boolean | null>(null);
   const [userId, setUserId]                     = useState<string | undefined>();
+  // Reusable "bra att veta" remarks, keyed by id and referenced per product.
+  const [warnings, setWarnings]                 = useState<Record<string, string>>({});
 
   // Fetch the unified product catalogue (all categories live in StrukenTvatt)
   useEffect(() => {
@@ -103,6 +142,11 @@ export default function HomePage() {
       })
       .catch(() => {})
       .finally(() => setLoadingProducts(false));
+
+    fetch('/api/warnings')
+      .then(r => r.json() as Promise<Record<string, string>>)
+      .then(setWarnings)
+      .catch(() => {});
   }, []);
 
   // Discount settings (public) + first-time eligibility (logged-in customers only)
@@ -203,10 +247,11 @@ export default function HomePage() {
   const openProducts = openMeta?.dbCategory ? (strukenCatalog[openMeta.dbCategory] ?? []) : [];
 
   // A single product tile (mattvätt + catalogue items share the same shape)
-  function ProductTile({ id, name, price, Icon, type }: {
+  function ProductTile({ id, name, price, Icon, type, warningTexts = [] }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
     type: CartItem['type'];
+    warningTexts?: string[];
   }) {
     const qty = cartQty(id);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -224,6 +269,7 @@ export default function HomePage() {
         onClick={() => addToCart({ id, name, price, type })}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart({ id, name, price, type }); } }}
       >
+        {warningTexts.length > 0 && <WarningBadge texts={warningTexts} label={name} />}
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
@@ -415,7 +461,15 @@ export default function HomePage() {
             ) : (
               <div className="of-prod-grid">
                 {openProducts.map(p => (
-                  <ProductTile key={p.id} id={p.id} name={p.name} price={p.price} Icon={getProductIcon(p.icon, p.name)} type="struken" />
+                  <ProductTile
+                    key={p.id}
+                    id={p.id}
+                    name={p.name}
+                    price={p.price}
+                    Icon={getProductIcon(p.icon, p.name)}
+                    type="struken"
+                    warningTexts={(p.warningIds ?? []).map(w => warnings[w]).filter(Boolean)}
+                  />
                 ))}
               </div>
             )

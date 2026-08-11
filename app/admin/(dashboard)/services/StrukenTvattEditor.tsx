@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
+import WarningsManager, { type ProductWarning } from "./WarningsManager";
 
 export type StrukenProduct = {
   id:              string;
@@ -11,6 +12,8 @@ export type StrukenProduct = {
   order:           number;
   discountPercent: number;
   icon:            string;
+  /** Ids of the reusable warnings that apply to this specific garment. */
+  warningIds:      string[];
 };
 
 const DEFAULT_ICON = PRODUCT_ICONS[0].key;
@@ -71,6 +74,78 @@ function IconSelectButton({ value, onChange }: { value: string; onChange: (key: 
 }
 
 // Parse a percentage input into a clamped 0–100 integer.
+/**
+ * Per-item warning picker. Attaching is done on the individual garment rather
+ * than the category, so two items inside "Hem" can carry different remarks.
+ */
+function WarningSelectButton({
+  selected,
+  warnings,
+  onToggle,
+}: {
+  selected: string[];
+  warnings: ProductWarning[];
+  onToggle: (warningId: string, next: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = selected.length;
+
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        title={count > 0 ? `${count} anmärkning(ar) kopplade` : "Koppla anmärkning"}
+        style={{
+          width: 24, height: 24, borderRadius: "50%", cursor: "pointer",
+          border: count > 0 ? "1px solid #fbbf24" : "1px solid #eee",
+          background: count > 0 ? "#fef3c7" : "#fafafa",
+          color: count > 0 ? "#b45309" : "#ccc",
+          fontSize: "0.78rem", fontWeight: 700, lineHeight: 1,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        !
+      </button>
+
+      {open && (
+        <>
+          {/* Click-away layer */}
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: "absolute", top: "28px", right: 0, zIndex: 41, width: "min(300px, 78vw)",
+            background: "#fff", border: "1px solid #e5e5e5", borderRadius: "8px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "0.6rem", maxHeight: "260px", overflowY: "auto",
+          }}>
+            {warnings.length === 0 ? (
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "#aaa", lineHeight: 1.5 }}>
+                Inga anmärkningar finns än. Skapa en under “Varningar &amp; bra att veta” högst upp.
+              </p>
+            ) : (
+              warnings.map(w => {
+                const checked = selected.includes(w.id);
+                return (
+                  <label
+                    key={w.id}
+                    style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start", padding: "0.35rem 0.2rem", cursor: "pointer", borderRadius: "5px" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={e => onToggle(w.id, e.target.checked)}
+                      style={{ marginTop: "0.15rem", flexShrink: 0, cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: "0.76rem", color: "#444", lineHeight: 1.45 }}>{w.text}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function clampPctInput(v: string): number {
   const n = Math.round(parseFloat(v));
   if (!Number.isFinite(n)) return 0;
@@ -91,6 +166,8 @@ function CategoryCard({
   onUpdatePrice,
   onUpdateDiscount,
   onUpdateIcon,
+  warnings,
+  onToggleWarning,
 }: {
   category:         Category;
   items:            StrukenProduct[];
@@ -99,6 +176,8 @@ function CategoryCard({
   onUpdatePrice:    (id: string, price: number) => Promise<void>;
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
   onUpdateIcon:     (id: string, icon: string) => Promise<void>;
+  warnings:         ProductWarning[];
+  onToggleWarning:  (id: string, warningId: string, next: boolean) => Promise<void>;
 }) {
   const [newName,     setNewName]     = useState("");
   const [newPrice,    setNewPrice]    = useState("");
@@ -230,6 +309,13 @@ function CategoryCard({
               </button>
             )}
 
+            {/* Per-item warnings */}
+            <WarningSelectButton
+              selected={item.warningIds ?? []}
+              warnings={warnings}
+              onToggle={(warningId, next) => onToggleWarning(item.id, warningId, next)}
+            />
+
             {/* Remove */}
             <button
               onClick={() => { if (confirm(`Ta bort "${item.name}"?`)) onDelete(item.id); }}
@@ -298,8 +384,15 @@ function CategoryCard({
 
 // ─── Main editor ──────────────────────────────────────────────────────────────
 
-export default function StrukenTvattEditor({ initialProducts }: { initialProducts: StrukenProduct[] }) {
+export default function StrukenTvattEditor({
+  initialProducts,
+  initialWarnings,
+}: {
+  initialProducts: StrukenProduct[];
+  initialWarnings: ProductWarning[];
+}) {
   const [products, setProducts] = useState<StrukenProduct[]>(initialProducts);
+  const [warnings, setWarnings] = useState<ProductWarning[]>(initialWarnings);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newCatForm, setNewCatForm] = useState({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON });
   const [newCatError, setNewCatError] = useState("");
@@ -322,8 +415,37 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [] }]);
   }
+
+  /**
+   * Attach or detach a reusable warning on one garment. Applied optimistically
+   * and rolled back on failure, matching the other inline edits here.
+   */
+  async function handleToggleWarning(id: string, warningId: string, next: boolean) {
+    const product = products.find(p => p.id === id);
+    if (!product) return;
+    const previous = product.warningIds ?? [];
+    const warningIds = next
+      ? [...previous, warningId]
+      : previous.filter(w => w !== warningId);
+
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, warningIds } : p));
+
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ warningIds }),
+    });
+    if (!res.ok) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, warningIds: previous } : p));
+      alert("Kunde inte spara anmärkningen. Försök igen.");
+    }
+  }
+
+  /** How many garments a given warning is attached to. */
+  const usageCount = (warningId: string) =>
+    products.filter(p => (p.warningIds ?? []).includes(warningId)).length;
 
   async function handleDelete(id: string) {
     const res = await fetch(`/api/admin/struken-tvatt/${id}`, { method: "DELETE" });
@@ -384,8 +506,27 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
   return (
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
-        Klicka på ett pris eller en rabatt (%) för att ändra det. Tryck på ✕ för att ta bort ett plagg.
+        Klicka på ett pris eller en rabatt (%) för att ändra det. Tryck på ! för att koppla en
+        anmärkning till ett plagg, och på ✕ för att ta bort plagget.
       </p>
+
+      <WarningsManager
+        warnings={warnings}
+        usageCount={usageCount}
+        onChange={next => {
+          setWarnings(next);
+          // A deleted warning is detached server-side too; mirror that locally
+          // so the "!" badges and usage counts stay truthful without a reload.
+          const live = new Set(next.map(w => w.id));
+          setProducts(prev =>
+            prev.map(p => {
+              const kept = (p.warningIds ?? []).filter(id => live.has(id));
+              return kept.length === (p.warningIds ?? []).length ? p : { ...p, warningIds: kept };
+            }),
+          );
+        }}
+      />
+
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {categories.map(cat => (
           <CategoryCard
@@ -397,6 +538,8 @@ export default function StrukenTvattEditor({ initialProducts }: { initialProduct
             onUpdatePrice={handleUpdatePrice}
             onUpdateDiscount={handleUpdateDiscount}
             onUpdateIcon={handleUpdateIcon}
+            warnings={warnings}
+            onToggleWarning={handleToggleWarning}
           />
         ))}
 

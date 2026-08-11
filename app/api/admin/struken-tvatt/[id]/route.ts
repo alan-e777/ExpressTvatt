@@ -14,6 +14,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ("price" in body && !isNaN(Number(body.price)))  update.price = Number(body.price);
   if ("discountPercent" in body) update.discountPercent = clampPct(body.discountPercent);
   if ("icon" in body && typeof body.icon === "string") update.icon = body.icon;
+  // Which reusable warnings apply to this specific garment. Set per item, not
+  // per category, so "Hem" can hold items with entirely different remarks.
+  if ("warningIds" in body && Array.isArray(body.warningIds)) {
+    update.warningIds = body.warningIds.filter((w: unknown) => typeof w === "string");
+  }
 
   if (Object.keys(update).length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
 
