@@ -647,36 +647,6 @@ function AdminAccounts() {
         Lägg till fler administratörer. De får ett tillfälligt lösenord som måste bytas vid första inloggningen.
       </p>
 
-      {/* Existing admins */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
-        {loading ? (
-          <p style={{ fontSize: "0.8rem", color: "#bbb" }}>Laddar…</p>
-        ) : admins.length === 0 ? (
-          <p style={{ fontSize: "0.8rem", color: "#bbb" }}>Inga administratörer ännu.</p>
-        ) : (
-          admins.map(a => (
-            <div key={a.uid} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.5rem 0.7rem" }}>
-              <div style={{ minWidth: 0 }}>
-                <span style={{ fontSize: "0.83rem", color: "#1a1a1a", fontWeight: 600, wordBreak: "break-all" }}>{a.email || a.uid}</span>
-                <span style={{ display: "flex", gap: "0.4rem", marginTop: "0.15rem", flexWrap: "wrap" }}>
-                  {a.isRoot && <Tag color="#4b8c5c">Huvudadmin</Tag>}
-                  {a.isSelf && <Tag color="#888">Du</Tag>}
-                  {a.mustChangePassword && <Tag color="#c0392b">Väntar på lösenordsbyte</Tag>}
-                </span>
-              </div>
-              {!a.isRoot && !a.isSelf && (
-                <button
-                  onClick={() => removeAdmin(a.uid, a.email)}
-                  style={{ flexShrink: 0, background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
-                >
-                  Ta bort
-                </button>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
       {/* Temp-password reveal */}
       {created && (
         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.85rem", marginBottom: "1rem" }}>
@@ -720,6 +690,47 @@ function AdminAccounts() {
         </button>
       </div>
       {error && <p style={{ fontSize: "0.75rem", color: "#dc2626", margin: "0.4rem 0 0" }}>{error}</p>}
+
+      {/* Existing admins — listed below the add form */}
+      <div style={{ borderTop: "1px solid #eee", margin: "1.25rem 0 0", paddingTop: "1rem" }}>
+        <label style={{ ...fieldLabelStyle, marginBottom: "0.6rem" }}>
+          Nuvarande administratörer{!loading && admins.length > 0 ? ` (${admins.length})` : ""}
+        </label>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          {loading ? (
+            <p style={{ fontSize: "0.8rem", color: "#bbb", margin: 0 }}>Laddar…</p>
+          ) : admins.length === 0 ? (
+            <p style={{ fontSize: "0.8rem", color: "#bbb", margin: 0 }}>Inga administratörer ännu.</p>
+          ) : (
+            admins.map(a => (
+              <div key={a.uid} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.5rem 0.7rem" }}>
+                <div style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: "0.83rem", color: "#1a1a1a", fontWeight: 600, wordBreak: "break-all" }}>{a.email || a.uid}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.15rem", flexWrap: "wrap" }}>
+                    {a.isRoot && <Tag color="#4b8c5c">Huvudadmin</Tag>}
+                    {a.isSelf && <Tag color="#888">Du</Tag>}
+                    {a.mustChangePassword && <Tag color="#c0392b">Väntar på lösenordsbyte</Tag>}
+                    {a.createdAt && (
+                      <span style={{ fontSize: "0.68rem", color: "#aaa" }}>
+                        Tillagd {new Date(a.createdAt).toLocaleDateString("sv-SE")}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {!a.isRoot && !a.isSelf && (
+                  <button
+                    onClick={() => removeAdmin(a.uid, a.email)}
+                    style={{ flexShrink: 0, background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Ta bort
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </section>
   );
 }
