@@ -228,6 +228,9 @@ export async function POST(request: NextRequest) {
   const paymentIntent = await stripe.paymentIntents.create({
     amount:   totalOre,
     currency: 'sek',
+    // Stripe's own receipt is an independent backstop: the customer gets proof
+    // of payment even if Resend is misconfigured.
+    receipt_email: email?.trim() || undefined,
     metadata: {
       serviceId:   'cart',
       serviceName: 'Express Tvätt-korg',

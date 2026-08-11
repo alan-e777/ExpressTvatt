@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/firebase-admin';
+import { resolveCustomerContact } from '@/lib/customer-contact';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -14,6 +15,9 @@ export async function POST(request: NextRequest) {
     notes,
     customFields,
     platform,
+    name,
+    email,
+    phone,
   } = body;
 
   if (!serviceId) {
@@ -27,9 +31,18 @@ export async function POST(request: NextRequest) {
   }
   const service = serviceDoc.data()!;
 
+  // The Expo app posts no contact details — fill them from the stored profile so
+  // the order can actually be confirmed and the customer reached.
+  const contact = await resolveCustomerContact(customerId, {
+    customerName:  name,
+    customerEmail: email,
+    customerPhone: phone,
+  });
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount: service.price_ore,
     currency: 'sek',
+    receipt_email: contact.customerEmail || undefined,
     metadata: {
       serviceId: service.id,
       serviceName: service.name,
@@ -46,6 +59,9 @@ export async function POST(request: NextRequest) {
     serviceId: service.id,
     serviceName: service.name,
     customerId: customerId || 'anonymous',
+    customerName:  contact.customerName,
+    customerEmail: contact.customerEmail,
+    customerPhone: contact.customerPhone,
     amount: service.price_ore,
     currency: 'sek',
     status: 'pending_payment',

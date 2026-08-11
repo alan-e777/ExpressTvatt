@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
-import { isAdmin } from "@/lib/admin-auth";
+import { isAdmin, getAdminSession } from "@/lib/admin-auth";
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
   const { id } = await params;
   try {
+    // Tombstone first, then delete. The reconcile sweep treats a succeeded
+    // Stripe intent with no order doc as a paid-but-lost order and rebuilds it;
+    // without this marker it would resurrect every order an admin deleted on
+    // purpose (including bulk "Delete Completed") for as long as the intent
+    // stays inside the sweep's lookback window.
+    await db.collection("deleted_orders").doc(id).set({
+      deletedAt: new Date(),
+      deletedBy: (await getAdminSession())?.uid ?? "unknown",
+    });
     await db.collection("orders").doc(id).delete();
     return NextResponse.json({ ok: true });
   } catch (err) {

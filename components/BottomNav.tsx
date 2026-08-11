@@ -6,7 +6,7 @@ import { IconHome, IconScissors, IconMessageCircle, IconUser } from '@tabler/ico
 
 const LINKS = [
   { href: '/',        label: 'Hem',      Icon: IconHome },
-  { href: '/tjanster',label: 'Tjänster', Icon: IconScissors },
+  { href: '/order',   label: 'Tjänster', Icon: IconScissors },
   { href: '/chatt',   label: 'Chatt',    Icon: IconMessageCircle },
   { href: '/profil',  label: 'Profil',   Icon: IconUser },
 ];

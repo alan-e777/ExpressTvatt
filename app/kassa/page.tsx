@@ -76,13 +76,28 @@ function PaymentForm({ totalKr, orderId, onBack, onPaid }: { totalKr: number; or
     if (!stripe || !elements) return;
     setStatus('processing');
     setErrorMsg(null);
-    const { error } = await stripe.confirmPayment({
+    // `return_url` is required for redirect-based methods (Klarna, Swish, bank
+    // redirects). Card payments still resolve inline thanks to `if_required`.
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: {},
+      confirmParams: { return_url: `${window.location.origin}/order-bekraftelse` },
       redirect: 'if_required',
     });
-    if (error) { setErrorMsg(error.message ?? 'Betalningen misslyckades.'); setStatus('error'); }
-    else { setStatus('success'); onPaid(); }
+    if (error) { setErrorMsg(error.message ?? 'Betalningen misslyckades.'); setStatus('error'); return; }
+
+    // Settle the order server-side without waiting for Stripe's webhook, so a
+    // misconfigured or failing webhook can never leave a paid order looking
+    // like an abandoned checkout. Idempotent — safe if the webhook won the race.
+    if (paymentIntent?.id) {
+      await fetch('/api/confirm-order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ paymentIntentId: paymentIntent.id }),
+      }).catch(() => { /* webhook + reconcile cron remain as backstops */ });
+    }
+
+    setStatus('success');
+    onPaid();
   }
 
   if (status === 'success') {

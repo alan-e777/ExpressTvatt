@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/firebase-admin';
+import { resolveCustomerContact } from '@/lib/customer-contact';
 
 type BasketItem = { id: string; name: string; price: number; qty: number };
 
@@ -56,15 +57,20 @@ export async function POST(request: NextRequest) {
     .map(i => `${i.qty}× ${i.name} (${i.price} kr)`)
     .join(', ');
 
+  // No contact details are posted to this route — fill them from the stored
+  // profile so the order can be confirmed and the customer reached.
+  const contact = await resolveCustomerContact(customerId);
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount:   totalOre,
     currency: 'sek',
+    receipt_email: contact.customerEmail || undefined,
     metadata: {
       serviceId:   'struken-tvatt',
       serviceName: 'Struken tvätt',
       priceOre:    String(totalOre),
       customerId:  customerId ?? 'anonymous',
-      items:       itemsSummary,
+      items:       itemsSummary.slice(0, 500), // Stripe metadata value limit
     },
   });
 
@@ -74,6 +80,9 @@ export async function POST(request: NextRequest) {
     serviceId:      'struken-tvatt',
     serviceName:    'Struken tvätt',
     customerId:     customerId ?? 'anonymous',
+    customerName:   contact.customerName,
+    customerEmail:  contact.customerEmail,
+    customerPhone:  contact.customerPhone,
     amount:         totalOre,
     currency:       'sek',
     status:         'pending_payment',
