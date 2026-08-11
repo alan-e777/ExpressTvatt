@@ -578,8 +578,9 @@ function AdminAccounts() {
   const [email, setEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
+  const [created, setCreated] = useState<{ email: string; tempPassword: string | null; promoted: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [resetting, setResetting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -610,7 +611,7 @@ function AdminAccounts() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Kunde inte lägga till administratören."); return; }
-      setCreated({ email: data.email, tempPassword: data.tempPassword });
+      setCreated({ email: data.email, tempPassword: data.tempPassword ?? null, promoted: !!data.promoted });
       setEmail("");
       load();
     } catch {
@@ -633,11 +634,33 @@ function AdminAccounts() {
   }
 
   function copyPassword() {
-    if (!created) return;
+    if (!created?.tempPassword) return;
     navigator.clipboard?.writeText(created.tempPassword).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
+  }
+
+  /** Issue a fresh one-shot password when the original was lost. */
+  async function resetPassword(uid: string, adminEmail: string) {
+    if (!confirm(`Skapa ett nytt tillfälligt lösenord för ${adminEmail}?\n\nDet gamla slutar fungera direkt och personen loggas ut.`)) return;
+    setError(null);
+    setResetting(uid);
+    try {
+      const res = await fetch("/api/admin/admins/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Kunde inte återställa lösenordet."); return; }
+      setCreated({ email: adminEmail, tempPassword: data.tempPassword, promoted: false });
+      load();
+    } catch {
+      setError("Nätverksfel — försök igen.");
+    } finally {
+      setResetting(null);
+    }
   }
 
   return (
@@ -651,22 +674,34 @@ function AdminAccounts() {
       {created && (
         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.85rem", marginBottom: "1rem" }}>
           <p style={{ fontSize: "0.78rem", color: "#15803d", fontWeight: 600, margin: "0 0 0.4rem" }}>
-            Konto skapat för {created.email}
+            {created.promoted
+              ? `${created.email} är nu administratör`
+              : `Konto skapat för ${created.email}`}
           </p>
-          <p style={{ fontSize: "0.72rem", color: "#666", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
-            Ge detta tillfälliga lösenord till den nya administratören. Det visas bara en gång och måste bytas vid första inloggningen.
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <code style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "0.15em", color: "#1a1a1a", background: "#fff", border: "1px solid #d6f0dc", borderRadius: "6px", padding: "0.4rem 0.9rem" }}>
-              {created.tempPassword}
-            </code>
-            <button
-              onClick={copyPassword}
-              style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "6px", padding: "0.45rem 0.8rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
-            >
-              {copied ? "✓ Kopierat" : "Kopiera"}
-            </button>
-          </div>
+
+          {created.promoted ? (
+            <p style={{ fontSize: "0.72rem", color: "#666", margin: 0, lineHeight: 1.5 }}>
+              Kontot fanns redan, så personen loggar in på <strong>samma lösenord som vanligt</strong> —
+              inget nytt lösenord behövs. Behöver de ändå ett nytt, använd “Nytt lösenord” i listan nedan.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: "0.72rem", color: "#666", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
+                Ge detta tillfälliga lösenord till administratören. Det visas bara en gång och måste bytas vid första inloggningen.
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "1.15rem", fontWeight: 700, letterSpacing: "0.12em", color: "#1a1a1a", background: "#fff", border: "1px solid #d6f0dc", borderRadius: "6px", padding: "0.4rem 0.9rem" }}>
+                  {created.tempPassword}
+                </code>
+                <button
+                  onClick={copyPassword}
+                  style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "6px", padding: "0.45rem 0.8rem", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}
+                >
+                  {copied ? "✓ Kopierat" : "Kopiera"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -718,13 +753,25 @@ function AdminAccounts() {
                     )}
                   </span>
                 </div>
-                {!a.isRoot && !a.isSelf && (
-                  <button
-                    onClick={() => removeAdmin(a.uid, a.email)}
-                    style={{ flexShrink: 0, background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Ta bort
-                  </button>
+                {!a.isRoot && (
+                  <span style={{ display: "flex", gap: "0.35rem", flexShrink: 0 }}>
+                    <button
+                      onClick={() => resetPassword(a.uid, a.email)}
+                      disabled={resetting === a.uid}
+                      title="Skapa ett nytt tillfälligt lösenord"
+                      style={{ background: "transparent", border: "1px solid #e0e0e0", color: "#555", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: resetting === a.uid ? "not-allowed" : "pointer", opacity: resetting === a.uid ? 0.6 : 1, whiteSpace: "nowrap" }}
+                    >
+                      {resetting === a.uid ? "…" : "Nytt lösenord"}
+                    </button>
+                    {!a.isSelf && (
+                      <button
+                        onClick={() => removeAdmin(a.uid, a.email)}
+                        style={{ background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Ta bort
+                      </button>
+                    )}
+                  </span>
                 )}
               </div>
             ))

@@ -2845,6 +2845,32 @@ input, textarea, select { font-family: inherit; }
   box-shadow: 0 6px 18px rgba(15,23,42,0.07);
 }
 
+/* ── Admin Orders: fill the viewport height ──────────────────────────────────
+   The dashboard <main> is a flex column, so without this the orders table only
+   claims its natural height and leaves dead space below it on short lists. The
+   table card takes the remaining height and scrolls inside itself, which keeps
+   the page itself from scrolling — and `auto` means no scrollbar appears at all
+   until the rows actually overflow.                                          */
+.orders-fill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+/* Header and the bulk-action bar keep their natural size... */
+.orders-fill > * { flex-shrink: 0; }
+/* ...and the table card absorbs whatever height is left. */
+.orders-fill-body {
+  flex: 1;
+  min-height: 0;
+}
+/* On phones the sticky header and narrow viewport make an inner scroll region
+   awkward, so fall back to natural height and let the page scroll as before. */
+@media (max-width: 767px) {
+  .orders-fill { display: block; }
+  .orders-fill-body { flex: none; min-height: 0; }
+}
+
 /* ── "Bra att veta" marker on a product tile ─────────────────────────────── */
 .site-shell .prod-warn {
   position: absolute;

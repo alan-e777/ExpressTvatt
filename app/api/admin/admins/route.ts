@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, db } from "@/lib/firebase-admin";
 import admin from "@/lib/firebase-admin";
 import { getAdminSession } from "@/lib/admin-auth";
+import { generateTempPassword } from "@/lib/temp-password";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** A random 4-digit temporary password (1000–9999). Shown once to the creator. */
-function generateTempPassword(): string {
-  return String(1000 + Math.floor(Math.random() * 9000));
-}
 
 type AdminRow = {
   uid: string;
@@ -83,17 +79,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Ange en giltig e-postadress." }, { status: 400 });
   }
 
-  // Reject if this email already belongs to an existing account.
+  // An existing account is not a conflict — it is the normal case. Almost
+  // everyone being made an admin already has a customer login, so treat this as
+  // promoting that account rather than refusing it. Their existing password
+  // keeps working, so no temporary password is issued.
+  let existing: Awaited<ReturnType<typeof auth.getUserByEmail>> | null = null;
   try {
-    await auth.getUserByEmail(email);
-    return NextResponse.json(
-      { error: "Ett konto med den här e-postadressen finns redan." },
-      { status: 409 },
-    );
+    existing = await auth.getUserByEmail(email);
   } catch (e: any) {
     if (e?.code !== "auth/user-not-found") {
       return NextResponse.json({ error: "Kunde inte kontrollera e-postadressen." }, { status: 500 });
     }
+  }
+
+  if (existing) {
+    if (existing.uid === process.env.ADMIN_UID) {
+      return NextResponse.json(
+        { error: "Det här är redan huvudadministratören." },
+        { status: 409 },
+      );
+    }
+    if ((await db.collection("admins").doc(existing.uid).get()).exists) {
+      return NextResponse.json(
+        { error: "Den här användaren är redan administratör." },
+        { status: 409 },
+      );
+    }
+
+    await db.collection("admins").doc(existing.uid).set({
+      email,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: session.uid,
+      // They already have a password of their own choosing, so there is nothing
+      // temporary to force them past.
+      mustChangePassword: false,
+      promotedExistingAccount: true,
+    });
+
+    return NextResponse.json({ email, promoted: true, tempPassword: null });
   }
 
   const tempPassword = generateTempPassword();
@@ -120,7 +143,7 @@ export async function POST(request: NextRequest) {
   });
 
   // The temp password is returned exactly once; never persisted or logged.
-  return NextResponse.json({ email, tempPassword });
+  return NextResponse.json({ email, tempPassword, promoted: false });
 }
 
 // ── Remove an admin ──────────────────────────────────────────────────────────
