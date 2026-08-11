@@ -8,8 +8,7 @@ import {
   IconTag,
 } from '@tabler/icons-react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase-client';
+import { auth } from '@/lib/firebase-client';
 import { rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { getProductIcon } from '@/lib/productIcons';
 import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, type DiscountSettings } from '@/lib/discount';
@@ -123,7 +122,7 @@ export default function HomePage() {
   const [rutAvdrag, setRutAvdrag]     = useState(false);
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
-  const [hasPlacedOrder, setHasPlacedOrder]     = useState<boolean | null>(null);
+  const [isFirstTime, setIsFirstTime]           = useState(false);
   const [userId, setUserId]                     = useState<string | undefined>();
   // Reusable "bra att veta" remarks, keyed by id and referenced per product.
   const [warnings, setWarnings]                 = useState<Record<string, string>>({});
@@ -161,19 +160,25 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  // First-time eligibility comes from the server, which decides it with the same
+  // function the payment route prices with — so the discount advertised here is
+  // always the discount actually applied. The customer's own Firestore doc is
+  // client-writable and therefore not usable for pricing.
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => {
+    const unsub = onAuthStateChanged(auth, async u => {
       setUserId(u?.uid);
-      if (!u) { setHasPlacedOrder(null); return; }
-      getDoc(doc(db, 'customers', u.uid))
-        .then(snap => setHasPlacedOrder(snap.exists() ? snap.data()?.hasPlacedOrder === true : false))
-        .catch(() => setHasPlacedOrder(false));
+      if (!u) { setIsFirstTime(false); return; }
+      try {
+        const token = await u.getIdToken();
+        const res = await fetch('/api/first-time-eligibility', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        setIsFirstTime(!!data?.isFirstTime);
+      } catch {
+        setIsFirstTime(false);
+      }
     });
     return unsub;
   }, []);
-
-  // A logged-in customer who has never completed an order gets the first-time discount.
-  const isFirstTime = !!userId && hasPlacedOrder === false;
 
   // Per-item discount % by line id (struken from the product, mattvätt from settings).
   const discountById = useMemo(() => {
@@ -341,7 +346,7 @@ export default function HomePage() {
       </div>
 
       {/* ── First-time discount banner — only logged-in users who haven't ordered yet ── */}
-      {!!userId && hasPlacedOrder === false && discountSettings.firstTimeDiscountPercent > 0 && (
+      {isFirstTime && discountSettings.firstTimeDiscountPercent > 0 && (
         <div style={{
           background: 'var(--forest-dark)',
           borderRadius: 'var(--radius-lg)',

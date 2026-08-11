@@ -167,7 +167,7 @@ function CheckoutForm() {
   const [sheetOpen,        setSheetOpen]        = useState(false);
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [strukenDiscounts, setStrukenDiscounts] = useState<Record<string, number>>({});
-  const [hasPlacedOrder,   setHasPlacedOrder]   = useState<boolean | null>(null);
+  const [isFirstTime,      setIsFirstTime]      = useState(false);
   const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
 
   useEffect(() => {
@@ -210,7 +210,6 @@ function CheckoutForm() {
     const u = auth.currentUser;
     getDoc(doc(db, 'customers', userId)).then(snap => {
       const data = snap.exists() ? snap.data() : {};
-      setHasPlacedOrder(snap.exists() ? data.hasPlacedOrder === true : false);
       setSavedAddresses((data.addresses ?? []) as SavedAddress[]);
       const n = u?.displayName || data.name || '';
       const e = u?.email       || data.email || '';
@@ -229,9 +228,20 @@ function CheckoutForm() {
     }).catch(() => {});
   }, [userId]);
 
-  // First-timer = logged in and never completed an order. Must match the server's
-  // create-cart-payment check so the displayed total equals the charged amount.
-  const isFirstTime = !!userId && hasPlacedOrder === false;
+  // First-time eligibility is decided by the server, from the same function
+  // create-cart-payment uses to price the order — so the total on screen always
+  // matches the amount charged. Deriving it here from the customer's own
+  // Firestore doc could disagree, since that doc is client-writable.
+  useEffect(() => {
+    if (!userId) { setIsFirstTime(false); return; }
+    let cancelled = false;
+    auth.currentUser?.getIdToken()
+      .then(token => fetch('/api/first-time-eligibility', { headers: { Authorization: `Bearer ${token}` } }))
+      .then(r => r?.json())
+      .then(d => { if (!cancelled) setIsFirstTime(!!d?.isFirstTime); })
+      .catch(() => { if (!cancelled) setIsFirstTime(false); });
+    return () => { cancelled = true; };
+  }, [userId]);
   const perItemPct = (id: string) =>
     id.startsWith('matta-')
       ? (discountSettings.mattvatt[id as keyof typeof discountSettings.mattvatt] ?? 0)

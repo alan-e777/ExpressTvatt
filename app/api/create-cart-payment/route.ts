@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { db, auth } from '@/lib/firebase-admin';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, type DiscountSettings } from '@/lib/discount';
+import { isFirstTimeCustomer } from '@/lib/first-time';
 
 type CartItem = {
   id:    string;
@@ -133,19 +134,12 @@ export async function POST(request: NextRequest) {
   // flipped on the same account the discount eligibility was checked against.
   const effectiveCustomerId = verifiedUid ?? customerId ?? 'anonymous';
 
-  // First-timer only when a verified, logged-in customer has never placed an order.
-  // Derived authoritatively from the orders collection rather than the
-  // customers/{uid}.hasPlacedOrder flag, which the customer can write via the
-  // client SDK. Any order that got past the initial pending/failed state counts.
-  let isFirstTime = false;
-  if (verifiedUid && discounts.firstTimeDiscountPercent > 0) {
-    const priorOrders = await db.collection('orders').where('customerId', '==', verifiedUid).get();
-    const hasPlacedOrder = priorOrders.docs.some(d => {
-      const s = d.data().status;
-      return s && s !== 'pending_payment' && s !== 'payment_failed';
-    });
-    isFirstTime = !hasPlacedOrder;
-  }
+  // First-timer only when a verified, logged-in customer has never placed an
+  // order. `isFirstTimeCustomer` is the same function /api/first-time-eligibility
+  // serves to the checkout screen, so the displayed price and the charged amount
+  // can never disagree about this.
+  const isFirstTime =
+    discounts.firstTimeDiscountPercent > 0 && (await isFirstTimeCustomer(verifiedUid));
   const firstTimePct = isFirstTime ? clampPct(discounts.firstTimeDiscountPercent) : 0;
 
   // Per-item discount % for a line, by type/id.
