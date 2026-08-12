@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import ChatNavLink from "./ChatNavLink";
 import OrderStatusNotifier from "@/components/admin/OrderStatusNotifier";
+import WishlistOverlay from "@/components/admin/WishlistOverlay";
 import AdminMobileNav from "./AdminMobileNav";
 import { getAdminSession, mustChangePassword } from "@/lib/admin-auth";
 
@@ -93,6 +94,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
 
       <OrderStatusNotifier />
+
+      {/* TEMPORARY — remove after launch along with the wishlist feature. */}
+      <WishlistOverlay />
     </>
   );
 }

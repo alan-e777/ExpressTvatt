@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { DriverSettings } from "@/app/api/admin/settings/route";
 import { DISCOUNT_DEFAULTS, clampPct, type DiscountSettings } from "@/lib/discount";
+import WishlistPanel from "./WishlistPanel";
 
 type Prediction = { description: string; placeId: string };
 
@@ -534,7 +535,8 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           </button>
         </div>
 
-        {/* ── Right: map ───────────────────────────────────────────────────── */}
+        {/* ── Right: map, with the wishlist stacked under it ────────────────── */}
+        <div>
         <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden" }}>
           <div style={{ padding: "1rem 1.25rem 0.5rem", borderBottom: "1px solid #f0f0f0" }}>
             <p style={labelStyle}>Karta — tjänsteområde</p>
@@ -556,6 +558,10 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
             )}
           </div>
         </section>
+
+        {/* TEMPORARY — remove after launch along with the wishlist feature. */}
+        <WishlistPanel />
+        </div>
       </div>
     </div>
   );
