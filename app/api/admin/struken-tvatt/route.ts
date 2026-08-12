@@ -8,7 +8,11 @@ export async function POST(request: NextRequest) {
 
   const { name, price, category, discountPercent, icon } = await request.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required." }, { status: 400 });
-  if (!price || isNaN(Number(price))) return NextResponse.json({ error: "Price is required." }, { status: 400 });
+  // Must be positive: the payment route prices from this catalogue, so a
+  // negative value would subtract from the rest of the customer's basket.
+  if (!Number.isFinite(Number(price)) || Number(price) <= 0) {
+    return NextResponse.json({ error: "Priset måste vara större än 0." }, { status: 400 });
+  }
   if (!category) return NextResponse.json({ error: "Category is required." }, { status: 400 });
 
   // Auto-assign order as max + 1 within the category

@@ -11,7 +11,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const update: Record<string, unknown> = {};
 
   if ("name" in body && body.name?.trim()) update.name  = body.name.trim();
-  if ("price" in body && !isNaN(Number(body.price)))  update.price = Number(body.price);
+  // A negative price is not merely odd — the payment route treats the catalogue
+  // as authoritative, so a mistyped "-50" would quietly subtract from the rest
+  // of the customer's basket.
+  if ("price" in body) {
+    const price = Number(body.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      return NextResponse.json({ error: "Priset måste vara större än 0." }, { status: 400 });
+    }
+    update.price = price;
+  }
   if ("discountPercent" in body) update.discountPercent = clampPct(body.discountPercent);
   if ("icon" in body && typeof body.icon === "string") update.icon = body.icon;
   // Which reusable warnings apply to this specific garment. Set per item, not

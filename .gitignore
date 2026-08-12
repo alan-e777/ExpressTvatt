@@ -17,3 +17,8 @@ prompts/
 
 # Expo dev logs (can contain env vars)
 .expo/dev/logs/
+
+# macOS / build artifacts — should never have been tracked
+.DS_Store
+**/.DS_Store
+*.tsbuildinfo

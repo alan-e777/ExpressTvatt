@@ -175,7 +175,10 @@ export async function POST(request: NextRequest) {
       priceKr = servicePrices[item.id] ?? null;
     }
 
-    if (priceKr === null) continue;
+    // Skip anything that isn't a sane positive price. A zero or negative entry
+    // in the catalogue would otherwise subtract from the rest of the basket
+    // rather than simply being ignored.
+    if (priceKr === null || !Number.isFinite(priceKr) || priceKr <= 0) continue;
 
     const itemPct = itemDiscountPct(item);
     const unitKr  = discountedUnitPrice(priceKr, itemPct, firstTimePct, discounts.multipleDiscountsAllowed);
