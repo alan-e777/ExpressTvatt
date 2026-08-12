@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, db } from "@/lib/firebase-admin";
 import admin from "@/lib/firebase-admin";
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSession, ROOT_DISPLAY_NAME, ROOT_ROLE } from "@/lib/admin-auth";
 import { generateTempPassword } from "@/lib/temp-password";
+import { canManageAdmins, toRole, DEFAULT_ROLE, type AdminRole } from "@/lib/admin-roles";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AdminRow = {
   uid: string;
   email: string;
+  /** Overrides the email as the label when set (only the bootstrap admin has one). */
+  displayName: string | null;
+  role: AdminRole;
   createdAt: number | null;
   mustChangePassword: boolean;
   isRoot: boolean;
@@ -31,6 +35,8 @@ export async function GET() {
     return {
       uid: d.id,
       email: data.email ?? "",
+      displayName: null,
+      role: toRole(data.role),
       createdAt,
       mustChangePassword: data.mustChangePassword === true,
       isRoot: d.id === rootUid,
@@ -49,6 +55,8 @@ export async function GET() {
     rows.unshift({
       uid: rootUid,
       email,
+      displayName: ROOT_DISPLAY_NAME,
+      role: ROOT_ROLE,
       createdAt: null,
       mustChangePassword: false,
       isRoot: true,
@@ -57,7 +65,9 @@ export async function GET() {
   }
 
   rows.sort((a, b) => (b.createdAt ?? Infinity) - (a.createdAt ?? Infinity));
-  return NextResponse.json({ admins: rows });
+  // The client hides management controls for roles that cannot use them; the
+  // routes below enforce the same rule independently.
+  return NextResponse.json({ admins: rows, canManage: canManageAdmins(session.role) });
 }
 
 // ── Add a new admin ──────────────────────────────────────────────────────────
@@ -66,8 +76,14 @@ export async function POST(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!canManageAdmins(session.role)) {
+    return NextResponse.json(
+      { error: "Bara huvudadmin kan lägga till administratörer." },
+      { status: 403 },
+    );
+  }
 
-  let body: { email?: string };
+  let body: { email?: string; role?: string };
   try {
     body = await request.json();
   } catch {
@@ -78,6 +94,9 @@ export async function POST(request: NextRequest) {
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Ange en giltig e-postadress." }, { status: 400 });
   }
+
+  // `developer` is reserved for the bootstrap admin and is never assignable.
+  const role: AdminRole = body.role === "huvudadmin" ? "huvudadmin" : DEFAULT_ROLE;
 
   // An existing account is not a conflict — it is the normal case. Almost
   // everyone being made an admin already has a customer login, so treat this as
@@ -114,9 +133,10 @@ export async function POST(request: NextRequest) {
       // temporary to force them past.
       mustChangePassword: false,
       promotedExistingAccount: true,
+      role,
     });
 
-    return NextResponse.json({ email, promoted: true, tempPassword: null });
+    return NextResponse.json({ email, promoted: true, tempPassword: null, role });
   }
 
   const tempPassword = generateTempPassword();
@@ -140,10 +160,11 @@ export async function POST(request: NextRequest) {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     createdBy: session.uid,
     mustChangePassword: true,
+    role,
   });
 
   // The temp password is returned exactly once; never persisted or logged.
-  return NextResponse.json({ email, tempPassword, promoted: false });
+  return NextResponse.json({ email, tempPassword, promoted: false, role });
 }
 
 // ── Remove an admin ──────────────────────────────────────────────────────────
@@ -152,16 +173,24 @@ export async function DELETE(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!canManageAdmins(session.role)) {
+    return NextResponse.json(
+      { error: "Bara huvudadmin kan ta bort administratörer." },
+      { status: 403 },
+    );
+  }
 
   const uid = new URL(request.url).searchParams.get("uid");
   if (!uid) {
     return NextResponse.json({ error: "Missing uid" }, { status: 400 });
   }
   if (uid === process.env.ADMIN_UID) {
-    return NextResponse.json({ error: "Huvudadministratören kan inte tas bort." }, { status: 400 });
+    return NextResponse.json({ error: "Huvudkontot kan inte tas bort." }, { status: 400 });
   }
+  // Nobody may revoke their own access — the surest way to lock the shop out of
+  // its own dashboard is to let the last huvudadmin remove themselves.
   if (uid === session.uid) {
-    return NextResponse.json({ error: "Du kan inte ta bort ditt eget konto." }, { status: 400 });
+    return NextResponse.json({ error: "Du kan inte ta bort din egen åtkomst." }, { status: 400 });
   }
 
   const ref = db.collection("admins").doc(uid);

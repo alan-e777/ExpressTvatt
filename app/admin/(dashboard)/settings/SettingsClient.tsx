@@ -563,9 +563,25 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 
 // ── Admin accounts management ────────────────────────────────────────────────
 
+type AdminRole = "developer" | "huvudadmin" | "admin";
+
+const ROLE_LABELS: Record<AdminRole, string> = {
+  developer:  "Developer",
+  huvudadmin: "Huvudadmin",
+  admin:      "Admin",
+};
+
+const ROLE_COLORS: Record<AdminRole, string> = {
+  developer:  "#6d28d9",
+  huvudadmin: "#4b8c5c",
+  admin:      "#64748b",
+};
+
 type AdminRow = {
   uid: string;
   email: string;
+  displayName: string | null;
+  role: AdminRole;
   createdAt: number | null;
   mustChangePassword: boolean;
   isRoot: boolean;
@@ -581,16 +597,37 @@ function AdminAccounts() {
   const [created, setCreated] = useState<{ email: string; tempPassword: string | null; promoted: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   const [resetting, setResetting] = useState<string | null>(null);
+  const [newRole, setNewRole] = useState<AdminRole>("admin");
+  // Whether the signed-in admin may manage others. The server enforces this too.
+  const [canManage, setCanManage] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/admins");
       const data = await res.json();
-      if (res.ok) setAdmins(data.admins ?? []);
+      if (res.ok) {
+        setAdmins(data.admins ?? []);
+        setCanManage(!!data.canManage);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function changeRole(uid: string, role: AdminRole) {
+    const previous = admins;
+    setAdmins(prev => prev.map(a => (a.uid === uid ? { ...a, role } : a)));
+    setError(null);
+    const res = await fetch("/api/admin/admins/role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid, role }),
+    });
+    if (!res.ok) {
+      setAdmins(previous);
+      setError((await res.json().catch(() => ({}))).error ?? "Kunde inte ändra rollen.");
+    }
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -607,7 +644,7 @@ function AdminAccounts() {
       const res = await fetch("/api/admin/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: value }),
+        body: JSON.stringify({ email: value, role: newRole }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Kunde inte lägga till administratören."); return; }
@@ -667,7 +704,9 @@ function AdminAccounts() {
     <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
       <p style={labelStyle}>Administratörer</p>
       <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
-        Lägg till fler administratörer. De får ett tillfälligt lösenord som måste bytas vid första inloggningen.
+        {canManage
+          ? "Lägg till fler administratörer och välj deras roll. Nya konton får ett tillfälligt lösenord som måste bytas vid första inloggningen — befintliga konton behåller sitt lösenord."
+          : "Bara huvudadmin kan lägga till, ta bort eller ändra roll för administratörer."}
       </p>
 
       {/* Temp-password reveal */}
@@ -705,25 +744,38 @@ function AdminAccounts() {
         </div>
       )}
 
-      {/* Add form */}
-      <label style={fieldLabelStyle}>Lägg till administratör</label>
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <input
-          type="email"
-          value={email}
-          onChange={e => { setEmail(e.target.value); setError(null); }}
-          onKeyDown={e => e.key === "Enter" && !adding && addAdmin()}
-          placeholder="ny.admin@example.com"
-          style={{ flex: "1 1 200px", minWidth: 0, boxSizing: "border-box", padding: "0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
-        />
-        <button
-          onClick={addAdmin}
-          disabled={adding}
-          style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontSize: "0.85rem", fontWeight: 600, cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
-        >
-          {adding ? "Lägger till…" : "Lägg till admin"}
-        </button>
-      </div>
+      {/* Add form — only for admins who may manage others */}
+      {canManage && (
+        <>
+          <label style={fieldLabelStyle}>Lägg till administratör</label>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <input
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setError(null); }}
+              onKeyDown={e => e.key === "Enter" && !adding && addAdmin()}
+              placeholder="ny.admin@example.com"
+              style={{ flex: "1 1 180px", minWidth: 0, boxSizing: "border-box", padding: "0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
+            />
+            <select
+              value={newRole}
+              onChange={e => setNewRole(e.target.value as AdminRole)}
+              title="Roll för den nya administratören"
+              style={{ boxSizing: "border-box", padding: "0.5rem 0.6rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", color: "#1a1a1a", background: "#fff", cursor: "pointer" }}
+            >
+              <option value="admin">Admin</option>
+              <option value="huvudadmin">Huvudadmin</option>
+            </select>
+            <button
+              onClick={addAdmin}
+              disabled={adding}
+              style={{ background: "#1a1a1a", color: "#fff", border: "none", borderRadius: "8px", padding: "0.5rem 1rem", fontSize: "0.85rem", fontWeight: 600, cursor: adding ? "not-allowed" : "pointer", opacity: adding ? 0.6 : 1, whiteSpace: "nowrap" }}
+            >
+              {adding ? "Lägger till…" : "Lägg till admin"}
+            </button>
+          </div>
+        </>
+      )}
       {error && <p style={{ fontSize: "0.75rem", color: "#dc2626", margin: "0.4rem 0 0" }}>{error}</p>}
 
       {/* Existing admins — listed below the add form */}
@@ -739,11 +791,18 @@ function AdminAccounts() {
             <p style={{ fontSize: "0.8rem", color: "#bbb", margin: 0 }}>Inga administratörer ännu.</p>
           ) : (
             admins.map(a => (
-              <div key={a.uid} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.5rem 0.7rem" }}>
-                <div style={{ minWidth: 0 }}>
-                  <span style={{ fontSize: "0.83rem", color: "#1a1a1a", fontWeight: 600, wordBreak: "break-all" }}>{a.email || a.uid}</span>
+              <div key={a.uid} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.5rem 0.7rem", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+                  <span style={{ fontSize: "0.83rem", color: "#1a1a1a", fontWeight: 600, wordBreak: "break-all" }}>
+                    {a.displayName || a.email || a.uid}
+                  </span>
+                  {a.displayName && a.email && (
+                    <span style={{ fontSize: "0.72rem", color: "#aaa", marginLeft: "0.4rem", wordBreak: "break-all" }}>
+                      {a.email}
+                    </span>
+                  )}
                   <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.15rem", flexWrap: "wrap" }}>
-                    {a.isRoot && <Tag color="#4b8c5c">Huvudadmin</Tag>}
+                    <Tag color={ROLE_COLORS[a.role]}>{ROLE_LABELS[a.role]}</Tag>
                     {a.isSelf && <Tag color="#888">Du</Tag>}
                     {a.mustChangePassword && <Tag color="#c0392b">Väntar på lösenordsbyte</Tag>}
                     {a.createdAt && (
@@ -753,8 +812,21 @@ function AdminAccounts() {
                     )}
                   </span>
                 </div>
-                {!a.isRoot && (
-                  <span style={{ display: "flex", gap: "0.35rem", flexShrink: 0 }}>
+
+                {/* Management controls. Hidden for the fixed bootstrap account,
+                    for your own row (nobody may revoke or re-role themselves),
+                    and for roles without management rights. */}
+                {canManage && !a.isRoot && !a.isSelf && (
+                  <span style={{ display: "flex", gap: "0.35rem", flexShrink: 0, alignItems: "center" }}>
+                    <select
+                      value={a.role}
+                      onChange={e => changeRole(a.uid, e.target.value as AdminRole)}
+                      title="Ändra roll"
+                      style={{ border: "1px solid #e0e0e0", background: "#fff", color: "#333", borderRadius: "6px", padding: "0.3rem 0.4rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      <option value="huvudadmin">Huvudadmin</option>
+                      <option value="admin">Admin</option>
+                    </select>
                     <button
                       onClick={() => resetPassword(a.uid, a.email)}
                       disabled={resetting === a.uid}
@@ -763,14 +835,12 @@ function AdminAccounts() {
                     >
                       {resetting === a.uid ? "…" : "Nytt lösenord"}
                     </button>
-                    {!a.isSelf && (
-                      <button
-                        onClick={() => removeAdmin(a.uid, a.email)}
-                        style={{ background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
-                      >
-                        Ta bort
-                      </button>
-                    )}
+                    <button
+                      onClick={() => removeAdmin(a.uid, a.email)}
+                      style={{ background: "transparent", border: "1px solid #f0c4c0", color: "#c0392b", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Ta bort
+                    </button>
                   </span>
                 )}
               </div>

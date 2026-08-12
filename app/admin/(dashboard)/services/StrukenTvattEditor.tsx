@@ -23,12 +23,17 @@ function IconPicker({ value, onSelect, onClose }: { value: string; onSelect: (ke
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+      {/* Columns are sized in fixed px and the box is `max-content`, so the grid
+          always fits its own contents exactly — no scrollbar in either axis, and
+          none of the clipping the previous 5×1fr/230px combination produced once
+          the icon set grew past a couple of rows. */}
       <div style={{
         position: "absolute", zIndex: 41, top: "calc(100% + 4px)", left: 0,
+        boxSizing: "border-box",
         background: "#fff", border: "1px solid #e5e5e5", borderRadius: "10px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "0.5rem",
-        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.25rem", width: "230px",
-        maxHeight: "280px", overflowY: "auto",
+        display: "grid", gridTemplateColumns: "repeat(7, 34px)", gap: "4px",
+        width: "max-content", overflow: "hidden",
       }}>
         {PRODUCT_ICONS.map(({ key, label, Icon }) => (
           <button
@@ -37,12 +42,12 @@ function IconPicker({ value, onSelect, onClose }: { value: string; onSelect: (ke
             onClick={() => { onSelect(key); onClose(); }}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: 40, height: 40, borderRadius: "8px", cursor: "pointer",
+              width: 34, height: 34, padding: 0, borderRadius: "8px", cursor: "pointer",
               background: key === value ? "#1a1a1a" : "#f5f5f5",
               color: key === value ? "#fff" : "#555", border: "none",
             }}
           >
-            <Icon size={20} stroke={1.5} />
+            <Icon size={18} stroke={1.5} />
           </button>
         ))}
       </div>
@@ -166,6 +171,7 @@ function CategoryCard({
   onUpdatePrice,
   onUpdateDiscount,
   onUpdateIcon,
+  onUpdateName,
   warnings,
   onToggleWarning,
 }: {
@@ -176,6 +182,7 @@ function CategoryCard({
   onUpdatePrice:    (id: string, price: number) => Promise<void>;
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
   onUpdateIcon:     (id: string, icon: string) => Promise<void>;
+  onUpdateName:     (id: string, name: string) => Promise<void>;
   warnings:         ProductWarning[];
   onToggleWarning:  (id: string, warningId: string, next: boolean) => Promise<void>;
 }) {
@@ -193,6 +200,18 @@ function CategoryCard({
   // Inline discount editing
   const [editingDisc, setEditingDisc] = useState<string | null>(null);
   const [editDiscVal, setEditDiscVal] = useState("");
+
+  // Inline name editing — renaming used to mean deleting the item and re-adding it.
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameVal, setEditNameVal] = useState("");
+
+  async function handleNameSave(id: string) {
+    const name = editNameVal.trim();
+    setEditingName(null);
+    const current = items.find(i => i.id === id);
+    if (!name || name === current?.name) return;
+    await onUpdateName(id, name);
+  }
 
   async function handleAdd() {
     if (!newName.trim()) { setAddError("Ange ett namn."); return; }
@@ -257,8 +276,26 @@ function CategoryCard({
             {/* Icon picker */}
             <IconSelectButton value={item.icon || ""} onChange={key => onUpdateIcon(item.id, key)} />
 
-            {/* Name */}
-            <span style={{ flex: 1, fontSize: "0.875rem", color: "#333" }}>{item.name}</span>
+            {/* Name — click to edit inline */}
+            {editingName === item.id ? (
+              <input
+                type="text"
+                value={editNameVal}
+                autoFocus
+                onChange={e => setEditNameVal(e.target.value)}
+                onBlur={() => handleNameSave(item.id)}
+                onKeyDown={e => { if (e.key === "Enter") handleNameSave(item.id); if (e.key === "Escape") setEditingName(null); }}
+                style={{ flex: 1, minWidth: 0, padding: "0.2rem 0.4rem", border: "1px solid #aaa", borderRadius: "4px", fontSize: "0.875rem", color: "#333", outline: "none" }}
+              />
+            ) : (
+              <button
+                title="Klicka för att ändra namn"
+                onClick={() => { setEditingName(item.id); setEditNameVal(item.name); }}
+                style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: "0.2rem 0", fontSize: "0.875rem", color: "#333", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                {item.name}
+              </button>
+            )}
 
             {/* Price — click to edit inline */}
             {editingPrice === item.id ? (
@@ -473,6 +510,20 @@ export default function StrukenTvattEditor({
     setProducts(prev => prev.map(p => p.id === id ? { ...p, discountPercent } : p));
   }
 
+  async function handleUpdateName(id: string, name: string) {
+    const previous = products.find(p => p.id === id)?.name;
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, name } : p));
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, name: previous ?? p.name } : p));
+      alert("Kunde inte spara namnet. Försök igen.");
+    }
+  }
+
   async function handleUpdateIcon(id: string, icon: string) {
     const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
       method: "PATCH",
@@ -506,7 +557,7 @@ export default function StrukenTvattEditor({
   return (
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
-        Klicka på ett pris eller en rabatt (%) för att ändra det. Tryck på ! för att koppla en
+        Klicka på namn, pris eller rabatt (%) för att ändra. Tryck på ! för att koppla en
         anmärkning till ett plagg, och på ✕ för att ta bort plagget.
       </p>
 
@@ -538,6 +589,7 @@ export default function StrukenTvattEditor({
             onUpdatePrice={handleUpdatePrice}
             onUpdateDiscount={handleUpdateDiscount}
             onUpdateIcon={handleUpdateIcon}
+            onUpdateName={handleUpdateName}
             warnings={warnings}
             onToggleWarning={handleToggleWarning}
           />

@@ -1,7 +1,23 @@
 import { cookies } from "next/headers";
 import { auth, db } from "@/lib/firebase-admin";
+import { toRole, type AdminRole } from "@/lib/admin-roles";
 
-export type AdminSession = { uid: string; email: string | null };
+export type AdminSession = { uid: string; email: string | null; role: AdminRole };
+
+/**
+ * The bootstrap admin's role and display name are fixed in code rather than
+ * stored, so they cannot be edited away from the dashboard and can never be
+ * demoted into a lockout.
+ */
+export const ROOT_DISPLAY_NAME = "Carl";
+export const ROOT_ROLE: AdminRole = "developer";
+
+/** The role for a given uid — `developer` for the bootstrap admin. */
+export async function getAdminRole(uid: string): Promise<AdminRole> {
+  if (uid === process.env.ADMIN_UID) return ROOT_ROLE;
+  const doc = await db.collection("admins").doc(uid).get();
+  return toRole(doc.data()?.role);
+}
 
 /**
  * Multi-admin registry.
@@ -33,7 +49,11 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   try {
     const decoded = await auth.verifySessionCookie(token, true);
     if (!(await isAdminUid(decoded.uid))) return null;
-    return { uid: decoded.uid, email: decoded.email ?? null };
+    return {
+      uid: decoded.uid,
+      email: decoded.email ?? null,
+      role: await getAdminRole(decoded.uid),
+    };
   } catch {
     return null;
   }

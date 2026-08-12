@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, db } from "@/lib/firebase-admin";
 import { getAdminSession } from "@/lib/admin-auth";
 import { generateTempPassword } from "@/lib/temp-password";
+import { canManageAdmins } from "@/lib/admin-roles";
 
 /**
  * Issues a fresh temporary password for an existing admin.
@@ -16,6 +17,12 @@ export async function POST(request: NextRequest) {
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!canManageAdmins(session.role)) {
+    return NextResponse.json(
+      { error: "Bara huvudadmin kan återställa lösenord." },
+      { status: 403 },
+    );
   }
 
   let uid: string | undefined;
