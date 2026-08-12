@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "chats": {
+      ".read": "auth != null && (auth.token.admin === true || auth.uid === 'kAT4ZuSCzGgTZ1RR85scNheVRrE3')",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || auth.token.admin === true || auth.uid === 'kAT4ZuSCzGgTZ1RR85scNheVRrE3')",
+        ".write": "auth != null && (auth.uid === $userId || auth.token.admin === true || auth.uid === 'kAT4ZuSCzGgTZ1RR85scNheVRrE3')"
+      }
+    }
+  }
+}

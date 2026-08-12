@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 import { auth, realtimeDb } from '@/lib/firebase-client';
+import { ensureAdminFirebaseAuth } from '@/lib/admin-firebase-signin';
 
 const STORAGE_KEY = 'adminChatLastRead';
 
@@ -32,16 +33,14 @@ export default function ChatNavLink() {
       });
     }
 
+    // Being signed in is not sufficient — the rules require the `admin` claim,
+    // which an email/password login does not carry. This component runs on every
+    // dashboard page, so it is what gets the claim in place for the live
+    // Firestore listeners elsewhere (notably the Orders table).
     const unsubAuth = onAuthStateChanged(auth, user => {
-      if (user) {
-        startListening();
-      } else {
-        fetch('/api/admin/firebase-token')
-          .then(r => r.json())
-          .then(({ token }) => signInWithCustomToken(auth, token))
-          .catch(() => {});
-        // startListening runs on the next onAuthStateChanged callback (after sign-in)
-      }
+      ensureAdminFirebaseAuth(user)
+        .then(startListening)
+        .catch(() => {});
     });
 
     return () => {

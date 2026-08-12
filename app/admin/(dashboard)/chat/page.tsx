@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { signInWithCustomToken } from 'firebase/auth';
 import { ref, onValue, query, orderByChild, update } from 'firebase/database';
 import { auth, realtimeDb } from '@/lib/firebase-client';
+import { ensureAdminFirebaseAuth } from '@/lib/admin-firebase-signin';
 
 type Conversation = {
   uid: string;
@@ -31,15 +31,7 @@ export default function AdminChatPage() {
 
   // Sign in admin with custom Firebase token so RTDB rules are satisfied
   useEffect(() => {
-    fetch('/api/admin/firebase-token')
-      .then(r => {
-        if (!r.ok) throw new Error(`Token request failed: ${r.status}`);
-        return r.json();
-      })
-      .then(({ token }) => {
-        if (!token) throw new Error('No token returned');
-        return signInWithCustomToken(auth, token);
-      })
+    ensureAdminFirebaseAuth(auth.currentUser)
       .then(() => setReady(true))
       .catch(err => {
         console.error('Firebase auth error:', err);
