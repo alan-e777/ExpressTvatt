@@ -2845,6 +2845,67 @@ input, textarea, select { font-family: inherit; }
   box-shadow: 0 6px 18px rgba(15,23,42,0.07);
 }
 
+/* ── Legal pages (integritetspolicy) ─────────────────────────────────────── */
+.legal-page {
+  background: #FDFCF9;
+  color: #0F172A;
+  min-height: 100vh;
+  padding: 48px 20px 80px;
+}
+.legal-inner { max-width: 760px; margin: 0 auto; }
+.legal-back {
+  display: inline-block;
+  font-size: 13px;
+  color: #0E5C5B;
+  text-decoration: none;
+  margin-bottom: 28px;
+}
+.legal-back:hover { text-decoration: underline; }
+.legal-h1 {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 700;
+  color: #063F41;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+.legal-meta { font-size: 13px; color: #64748B; margin: 0 0 36px; }
+.legal-meta a { color: #0E5C5B; }
+.legal-body h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #063F41;
+  margin: 32px 0 10px;
+}
+.legal-h2-lang { font-size: 24px !important; margin-top: 0 !important; }
+.legal-body p,
+.legal-body li {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #334155;
+}
+.legal-body p { margin: 0 0 12px; }
+.legal-body ul { margin: 0 0 12px; padding-left: 22px; }
+.legal-body li { margin-bottom: 7px; }
+.legal-body a { color: #0E5C5B; }
+.legal-body strong { color: #0F172A; }
+.legal-rule { border: none; border-top: 1px solid rgba(15,23,42,0.12); margin: 56px 0 40px; }
+.legal-foot {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(15,23,42,0.08);
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+/* Small, unobtrusive policy link in the landing-page footer base row. */
+.lp-footer-legal {
+  color: rgba(255,255,255,0.40);
+  text-decoration: none;
+  margin-left: 18px;
+  font-size: 12px;
+}
+.lp-footer-legal:hover { color: rgba(255,255,255,0.75); text-decoration: underline; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    WISHLIST — TEMPORARY, REMOVE AFTER LAUNCH
 

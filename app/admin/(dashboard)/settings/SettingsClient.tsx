@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { DriverSettings } from "@/app/api/admin/settings/route";
 import { DISCOUNT_DEFAULTS, clampPct, type DiscountSettings } from "@/lib/discount";
 import WishlistPanel from "./WishlistPanel";
+import GdprSettingsPanel from "./GdprSettingsPanel";
 
 type Prediction = { description: string; placeId: string };
 
@@ -513,6 +514,9 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 
           {/* Admin accounts */}
           <AdminAccounts />
+
+          {/* GDPR / privacy policy inputs */}
+          <GdprSettingsPanel />
 
           {/* Save button */}
           <button

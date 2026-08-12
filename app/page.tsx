@@ -390,12 +390,13 @@ export default function LandingPage() {
 
           <div className="lp-footer-col">
             <div className="lp-footer-h">Företaget</div>
-            <span>Expresstvätt AB</span>
+            <span>Nya Ringens Kemiska Tvätt Aktiebolag</span>
             <span>Org.nr 556097-5640</span>
           </div>
         </div>
         <div className="lp-footer-base">
-          © {new Date().getFullYear()} Expresstvätt AB
+          © {new Date().getFullYear()} Nya Ringens Kemiska Tvätt Aktiebolag
+          <Link href="/integritetspolicy" className="lp-footer-legal">Integritetspolicy</Link>
           <span style={{ color: "rgba(255,255,255,0.02)", fontSize: "0.65rem", marginLeft: "1.5rem", userSelect: "none" }}>Made by Carl Nilsson</span>
         </div>
       </footer>
