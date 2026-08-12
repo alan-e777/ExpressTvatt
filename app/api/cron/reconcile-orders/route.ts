@@ -14,10 +14,21 @@ import { settlePaidOrder } from "@/lib/order-fulfillment";
  *
  * Scheduled from `vercel.json`. Vercel Cron sends `Authorization: Bearer
  * $CRON_SECRET`, so set CRON_SECRET in the Vercel project env.
+ *
+ * The schedule is daily (03:00) because Vercel's Hobby plan rejects any cron
+ * that runs more than once a day — and it rejects it by failing the whole
+ * deployment, not just the cron. On Pro, a every-15-minutes schedule is the
+ * better setting: this is a backstop for a customer closing the tab at the
+ * moment of payment, and a daily run means such an order can sit unnoticed
+ * until the next sweep.
+ * Note the webhook and the browser's confirm-order call still cover that order
+ * immediately in every other case.
+ *
+ * `maxDuration` is deliberately not set: it is also plan-limited, and the
+ * lookback window keeps each run small enough for the default.
  */
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 const LOOKBACK_HOURS = 48;
 
