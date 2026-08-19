@@ -5,15 +5,23 @@ import { DISCOUNT_DEFAULTS, clampPct, type DiscountSettings } from "@/lib/discou
 
 const DOC = () => db.collection("settings").doc("discounts");
 
+// Only the two rug types are editable; the legacy fixed-size keys are mirrored
+// from "Normal" so the iOS app, which still sells them, keeps its discount.
+function mergeMattvatt(m: Partial<DiscountSettings["mattvatt"]> | undefined) {
+  const normal = clampPct(m?.["matta-normal"] ?? 0);
+  return {
+    "matta-normal": normal,
+    "matta-akta":   clampPct(m?.["matta-akta"] ?? 0),
+    "matta-liten":  normal,
+    "matta-stor":   normal,
+  };
+}
+
 function merge(data: Partial<DiscountSettings>): DiscountSettings {
   return {
     firstTimeDiscountPercent: clampPct(data.firstTimeDiscountPercent ?? DISCOUNT_DEFAULTS.firstTimeDiscountPercent),
     multipleDiscountsAllowed: !!(data.multipleDiscountsAllowed ?? DISCOUNT_DEFAULTS.multipleDiscountsAllowed),
-    mattvatt: {
-      "matta-liten": clampPct(data.mattvatt?.["matta-liten"] ?? 0),
-      "matta-stor":  clampPct(data.mattvatt?.["matta-stor"] ?? 0),
-      "matta-akta":  clampPct(data.mattvatt?.["matta-akta"] ?? 0),
-    },
+    mattvatt: mergeMattvatt(data.mattvatt),
   };
 }
 

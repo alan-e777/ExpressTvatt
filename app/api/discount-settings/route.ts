@@ -8,13 +8,16 @@ export async function GET() {
   try {
     const snap = await db.collection("settings").doc("discounts").get();
     const data = snap.exists ? (snap.data() as Partial<DiscountSettings>) : {};
+    const normal = clampPct(data.mattvatt?.["matta-normal"] ?? 0);
     const payload: DiscountSettings = {
       firstTimeDiscountPercent: clampPct(data.firstTimeDiscountPercent ?? DISCOUNT_DEFAULTS.firstTimeDiscountPercent),
       multipleDiscountsAllowed: !!(data.multipleDiscountsAllowed ?? DISCOUNT_DEFAULTS.multipleDiscountsAllowed),
       mattvatt: {
-        "matta-liten": clampPct(data.mattvatt?.["matta-liten"] ?? 0),
-        "matta-stor":  clampPct(data.mattvatt?.["matta-stor"] ?? 0),
-        "matta-akta":  clampPct(data.mattvatt?.["matta-akta"] ?? 0),
+        "matta-normal": normal,
+        "matta-akta":   clampPct(data.mattvatt?.["matta-akta"] ?? 0),
+        // Legacy fixed sizes, mirrored from "Normal" for the iOS app.
+        "matta-liten":  normal,
+        "matta-stor":   normal,
       },
     };
     const res = NextResponse.json(payload);

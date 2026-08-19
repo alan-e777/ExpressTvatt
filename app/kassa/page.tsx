@@ -14,7 +14,7 @@ import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
 import Confetti from '@/components/Confetti';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
-import { DISCOUNT_DEFAULTS, computeCartTotals, type DiscountSettings } from '@/lib/discount';
+import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -244,7 +244,7 @@ function CheckoutForm() {
   }, [userId]);
   const perItemPct = (id: string) =>
     id.startsWith('matta-')
-      ? (discountSettings.mattvatt[id as keyof typeof discountSettings.mattvatt] ?? 0)
+      ? mattvattLinePct(discountSettings.mattvatt, id)
       : (strukenDiscounts[id] ?? 0);
   const { subtotalKr, totalKr, savingsKr } = computeCartTotals(
     items,

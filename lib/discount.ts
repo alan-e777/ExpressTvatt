@@ -14,22 +14,28 @@
 //   • ON  → both apply, multiplicatively (never exceeds 100% off).
 //   • OFF → only the single largest discount applies (the cheapest result).
 
+import { parseMattaLineId } from './mattvatt';
+
 export type MattvattDiscounts = {
-  'matta-liten': number;
-  'matta-stor':  number;
-  'matta-akta':  number;
+  'matta-normal': number;
+  'matta-akta':   number;
+  // Legacy fixed-size keys. The iOS app still sells the three old fixed sizes,
+  // so the APIs keep serving these — mirrored from 'matta-normal' — until it
+  // moves over to the area-based lines the website now uses.
+  'matta-liten':  number;
+  'matta-stor':   number;
 };
 
 export interface DiscountSettings {
   firstTimeDiscountPercent: number;       // 0–100
   multipleDiscountsAllowed: boolean;
-  mattvatt: MattvattDiscounts;            // per-size %, fixed Mattvätt has no Firestore doc
+  mattvatt: MattvattDiscounts;            // per rug type %, keyed by cart line id
 }
 
 export const DISCOUNT_DEFAULTS: DiscountSettings = {
   firstTimeDiscountPercent: 0,
   multipleDiscountsAllowed: false,
-  mattvatt: { 'matta-liten': 0, 'matta-stor': 0, 'matta-akta': 0 },
+  mattvatt: { 'matta-normal': 0, 'matta-akta': 0, 'matta-liten': 0, 'matta-stor': 0 },
 };
 
 // Clamp any numeric input into a valid percentage. Guards against NaN, negatives,
@@ -38,6 +44,14 @@ export function clampPct(n: unknown): number {
   const v = Number(n);
   if (!Number.isFinite(v)) return 0;
   return Math.min(100, Math.max(0, v));
+}
+
+// Per-item discount % for a mattvätt line. Area-based lines carry their rug type
+// in the id (`matta-normal-3.5`); the legacy fixed sizes are looked up directly.
+export function mattvattLinePct(discounts: MattvattDiscounts, lineId: string): number {
+  const parsed = parseMattaLineId(lineId);
+  const key = (parsed?.type ?? lineId) as keyof MattvattDiscounts;
+  return clampPct(discounts[key] ?? 0);
 }
 
 // Discounted price (kr) for one unit, rounded to whole kronor.

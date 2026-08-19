@@ -4,10 +4,55 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { DriverSettings } from "@/app/api/admin/settings/route";
 import { DISCOUNT_DEFAULTS, clampPct, type DiscountSettings } from "@/lib/discount";
+import {
+  MATTA_TYPES, MATTVATT_DEFAULTS, SQM_STEP, clampKrPerSqm, clampSqm,
+  formatSqm, mattaPriceKr, normalizeMattvattSettings, type MattvattSettings,
+} from "@/lib/mattvatt";
 import WishlistPanel from "./WishlistPanel";
 import GdprSettingsPanel from "./GdprSettingsPanel";
 
 type Prediction = { description: string; placeId: string };
+
+// ── Settings search ──────────────────────────────────────────────────────────
+// Every section declares the words it answers to. The box under the header hides
+// the ones that do not match, so the page stays navigable as settings pile up.
+
+const SECTION_TERMS = {
+  driver:    "chaufför chaufförens platser startplats slutplats adress adresser rutt ruttplanering start slut",
+  area:      "tjänsteområde område radie km cirkel centrum karta google maps adresser räckvidd",
+  delivery:  "leverans leveransavgift frakt gratis fri tröskel gränsvärde hemleverans upphämtning avgift kr",
+  discounts: "rabatt rabatter förstagångsrabatt procent kampanj ny kund mattvätt matta flera",
+  mattvatt:  "mattvätt matta mattor pris priser kvadratmeter kvm m2 m² kr per storlek min max minsta största normal äkta orientalisk slider reglage",
+  admins:    "administratörer admin adminkonton konto konton roll roller huvudadmin lösenord behörighet användare",
+  gdpr:      "gdpr integritetspolicy personuppgifter dataskydd policy juridik företagsuppgifter organisationsnummer",
+  map:       "karta google maps tjänsteområde radie cirkel centrum",
+  wishlist:  "önskelista önskemål wishlist funktioner idéer förslag",
+} as const;
+
+type SectionKey = keyof typeof SECTION_TERMS;
+
+const normalizeTerm = (s: string) =>
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function matchesQuery(query: string, terms: string): boolean {
+  const q = normalizeTerm(query).trim();
+  if (!q) return true;
+  const haystack = normalizeTerm(terms);
+  return q.split(/\s+/).every(word => haystack.includes(word));
+}
+
+/**
+ * Hides its section when the search does not match it.
+ *
+ * `display: contents` rather than unmounting: the map inside must stay mounted
+ * at all times (swapping it out makes it blink on every re-render), and a
+ * `contents` wrapper adds no box of its own, so a visible section lays out
+ * exactly as it did before.
+ */
+function Filterable({ query, section, children }: { query: string; section: SectionKey; children: React.ReactNode }) {
+  const shown = matchesQuery(query, `${SECTION_TERMS[section]} ${section}`);
+  return <div style={{ display: shown ? "contents" : "none" }}>{children}</div>;
+}
 
 // ── Autocomplete input (locked to Sweden + service area) ─────────────────────
 
@@ -133,10 +178,12 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
     deliveryFeeKr: 0,
   });
   const [discounts, setDiscounts] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
+  const [mattvatt, setMattvatt] = useState<MattvattSettings>(MATTVATT_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   // Map refs
   const mapDivRef = useRef<HTMLDivElement>(null);
@@ -157,6 +204,14 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
     fetch("/api/admin/discounts")
       .then(r => r.json())
       .then((data: DiscountSettings) => setDiscounts({ ...DISCOUNT_DEFAULTS, ...data, mattvatt: { ...DISCOUNT_DEFAULTS.mattvatt, ...(data.mattvatt ?? {}) } }))
+      .catch(() => {});
+  }, []);
+
+  // Load mattvätt pricing (kr per m² + the size range the slider offers)
+  useEffect(() => {
+    fetch("/api/admin/mattvatt")
+      .then(r => r.json())
+      .then((data: Partial<MattvattSettings>) => setMattvatt(normalizeMattvattSettings(data)))
       .catch(() => {});
   }, []);
 
@@ -288,6 +343,11 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(discounts),
         }),
+        fetch("/api/admin/mattvatt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mattvatt),
+        }),
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -304,13 +364,46 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
     );
   }
 
+  // Which sections survive the current search. The save button and the right
+  // column follow along, so nothing is left stranded next to an empty result.
+  const shows = (section: SectionKey) => matchesQuery(query, `${SECTION_TERMS[section]} ${section}`);
+  const noMatches       = (Object.keys(SECTION_TERMS) as SectionKey[]).every(k => !shows(k));
+  const showsSaveButton = (["driver", "area", "delivery", "discounts", "mattvatt"] as SectionKey[]).some(shows);
+  const showsRightColumn = shows("map") || shows("wishlist");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "auto" }}>
       {/* Header */}
-      <div style={{ marginBottom: "1.75rem" }}>
+      <div style={{ marginBottom: "1.25rem" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.2rem" }}>Inställningar</h1>
-        <p style={{ color: "#999", fontSize: "0.875rem" }}>Chaufförens standardplatser och tjänsteområde</p>
+        <p style={{ color: "#999", fontSize: "0.875rem" }}>Priser, leverans, tjänsteområde och administratörer</p>
       </div>
+
+      {/* Search — filters the sections below */}
+      <div style={{ position: "relative", maxWidth: "420px", marginBottom: "1.75rem" }}>
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Sök inställning — t.ex. mattvätt, rabatt, leverans…"
+          aria-label="Sök inställning"
+          style={{
+            width: "100%", boxSizing: "border-box",
+            padding: "0.6rem 2.2rem 0.6rem 0.75rem",
+            border: "1px solid #e0e0e0", borderRadius: "8px",
+            fontSize: "0.875rem", color: "#1a1a1a", background: "#fff", outline: "none",
+          }}
+        />
+        <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#bbb", fontSize: "0.9rem", pointerEvents: "none" }}>
+          ⌕
+        </span>
+      </div>
+
+      {noMatches && (
+        <p style={{ fontSize: "0.85rem", color: "#888", background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem", margin: 0 }}>
+          Ingen inställning matchar <strong>“{query}”</strong>. Prova t.ex. <em>mattvätt</em>, <em>rabatt</em>, <em>leverans</em>, <em>karta</em> eller <em>administratörer</em>.
+        </p>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", alignItems: "start" }}>
 
@@ -318,6 +411,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
           {/* Start/stop */}
+          <Filterable query={query} section="driver">
           <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
             <p style={labelStyle}>Chaufförens platser</p>
             <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
@@ -350,8 +444,10 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               />
             </div>
           </section>
+          </Filterable>
 
           {/* Service area controls */}
+          <Filterable query={query} section="area">
           <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
             <p style={labelStyle}>Tjänsteområde</p>
             <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
@@ -382,8 +478,10 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               </div>
             </div>
           </section>
+          </Filterable>
 
           {/* Delivery */}
+          <Filterable query={query} section="delivery">
           <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
             <p style={labelStyle}>Leverans</p>
             <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
@@ -434,8 +532,10 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               </p>
             </div>
           </section>
+          </Filterable>
 
           {/* Discounts */}
+          <Filterable query={query} section="discounts">
           <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
             <p style={labelStyle}>Rabatter</p>
             <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
@@ -482,16 +582,13 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 
             {/* Mattvätt per-size discounts */}
             <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
-              <label style={fieldLabelStyle}>Mattvätt — rabatt per storlek</label>
+              <label style={fieldLabelStyle}>Mattvätt — rabatt per mattyp</label>
               <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
-                Mattvättpriserna är fasta i koden, så deras rabatt ställs in här.
+                Dras av på hela mattans pris, oavsett vilken storlek kunden väljer.
+                Själva priset per m² ställs in under <strong>Mattvätt</strong> nedan.
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "0.6rem" }}>
-                {([
-                  ["matta-liten", "Liten"],
-                  ["matta-stor",  "Stor"],
-                  ["matta-akta",  "Äkta"],
-                ] as const).map(([key, label]) => (
+                {MATTA_TYPES.map(({ id: key, label }) => (
                   <div key={key}>
                     <label style={{ display: "block", fontSize: "0.72rem", color: "#888", marginBottom: "0.25rem" }}>{label}</label>
                     <div style={{ position: "relative" }}>
@@ -511,14 +608,25 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               </div>
             </div>
           </section>
+          </Filterable>
+
+          {/* Mattvätt pricing */}
+          <Filterable query={query} section="mattvatt">
+          <MattvattPricing settings={mattvatt} onChange={setMattvatt} />
+          </Filterable>
 
           {/* Admin accounts */}
-          <AdminAccounts />
+          <Filterable query={query} section="admins">
+            <AdminAccounts />
+          </Filterable>
 
           {/* GDPR / privacy policy inputs */}
-          <GdprSettingsPanel />
+          <Filterable query={query} section="gdpr">
+            <GdprSettingsPanel />
+          </Filterable>
 
           {/* Save button */}
+          {showsSaveButton && (
           <button
             onClick={save}
             disabled={saving}
@@ -537,10 +645,12 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           >
             {saving ? "Sparar…" : saved ? "✓ Sparat" : "Spara inställningar"}
           </button>
+          )}
         </div>
 
         {/* ── Right: map, with the wishlist stacked under it ────────────────── */}
-        <div>
+        <div style={{ display: showsRightColumn ? undefined : "none" }}>
+        <Filterable query={query} section="map">
         <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden" }}>
           <div style={{ padding: "1rem 1.25rem 0.5rem", borderBottom: "1px solid #f0f0f0" }}>
             <p style={labelStyle}>Karta — tjänsteområde</p>
@@ -562,12 +672,131 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
             )}
           </div>
         </section>
+        </Filterable>
 
         {/* TEMPORARY — remove after launch along with the wishlist feature. */}
-        <WishlistPanel />
+        <Filterable query={query} section="wishlist">
+          <WishlistPanel />
+        </Filterable>
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Mattvätt pricing ─────────────────────────────────────────────────────────
+// Mattvätt is sold by the square metre: the customer picks a rug type, then drags
+// a slider between the smallest and largest size set here. create-cart-payment
+// prices the order from these same numbers, so a change here changes what is
+// actually charged.
+
+function MattvattPricing({ settings, onChange }: { settings: MattvattSettings; onChange: (s: MattvattSettings) => void }) {
+  // The size fields are edited as text and committed on blur, so a half-typed
+  // number never collapses the range while the admin is still typing.
+  const [minDraft, setMinDraft] = useState(String(settings.minSqm));
+  const [maxDraft, setMaxDraft] = useState(String(settings.maxSqm));
+  useEffect(() => {
+    setMinDraft(String(settings.minSqm));
+    setMaxDraft(String(settings.maxSqm));
+  }, [settings.minSqm, settings.maxSqm]);
+
+  function commitMin() {
+    const min = Math.max(SQM_STEP, clampSqm(minDraft.replace(",", "."), settings.minSqm));
+    onChange({ ...settings, minSqm: min, maxSqm: Math.max(min + SQM_STEP, settings.maxSqm) });
+  }
+  function commitMax() {
+    const max = clampSqm(maxDraft.replace(",", "."), settings.maxSqm);
+    onChange({ ...settings, maxSqm: Math.max(settings.minSqm + SQM_STEP, max) });
+  }
+
+  // A worked example at a middling size, so the effect of a change is visible
+  // without opening the customer site.
+  const exampleSqm = Math.min(settings.maxSqm, Math.max(settings.minSqm, 5));
+
+  return (
+    <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
+      <p style={labelStyle}>Mattvätt — pris per m²</p>
+      <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
+        Kunden väljer typ av matta och drar sedan ett reglage mellan minsta och största storlek.
+        Priset blir <strong>kr/m² × antal m²</strong>, avrundat till hela kronor.
+      </p>
+
+      {/* Price per m², per rug type */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
+        {MATTA_TYPES.map(t => (
+          <div key={t.id}>
+            <label style={fieldLabelStyle}>{t.label}</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={settings.pricePerSqmKr[t.id]}
+                onChange={e => onChange({
+                  ...settings,
+                  pricePerSqmKr: { ...settings.pricePerSqmKr, [t.id]: clampKrPerSqm(e.target.value.replace(/\D/g, "")) },
+                })}
+                style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem 3.6rem 0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
+              />
+              <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>kr / m²</span>
+            </div>
+            <p style={{ fontSize: "0.7rem", color: "#bbb", margin: "0.3rem 0 0", lineHeight: 1.45 }}>{t.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Slider range */}
+      <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
+        <label style={fieldLabelStyle}>Storlek kunden kan välja</label>
+        <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
+          Reglagets ändpunkter. Kunden kan bara beställa mattor inom detta intervall — steget är {formatSqm(SQM_STEP)} m².
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "0.75rem" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.72rem", color: "#888", marginBottom: "0.25rem" }}>Minsta</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={minDraft}
+                onChange={e => setMinDraft(e.target.value)}
+                onBlur={commitMin}
+                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                style={{ width: "100%", boxSizing: "border-box", padding: "0.45rem 2.4rem 0.45rem 0.55rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", color: "#1a1a1a", outline: "none" }}
+              />
+              <span style={{ position: "absolute", right: "0.55rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>m²</span>
+            </div>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.72rem", color: "#888", marginBottom: "0.25rem" }}>Största</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={maxDraft}
+                onChange={e => setMaxDraft(e.target.value)}
+                onBlur={commitMax}
+                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                style={{ width: "100%", boxSizing: "border-box", padding: "0.45rem 2.4rem 0.45rem 0.55rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", color: "#1a1a1a", outline: "none" }}
+              />
+              <span style={{ position: "absolute", right: "0.55rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>m²</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Worked example */}
+      <div style={{ marginTop: "1rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.7rem 0.85rem" }}>
+        <p style={{ fontSize: "0.72rem", color: "#888", margin: "0 0 0.35rem", fontWeight: 600 }}>
+          En matta på {formatSqm(exampleSqm)} m² kostar
+        </p>
+        {MATTA_TYPES.map(t => (
+          <p key={t.id} style={{ fontSize: "0.78rem", color: "#555", margin: "0.15rem 0 0" }}>
+            {t.label}: <strong>{mattaPriceKr(settings, t.id, exampleSqm)} kr</strong>
+          </p>
+        ))}
+      </div>
+    </section>
   );
 }
 

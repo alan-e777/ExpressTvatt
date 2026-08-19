@@ -11,7 +11,12 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
 import { rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { getProductIcon } from '@/lib/productIcons';
-import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, type DiscountSettings } from '@/lib/discount';
+import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
+import {
+  MATTA_TYPES, MATTVATT_DEFAULTS, SQM_STEP, clampSqmToRange, formatSqm,
+  mattaLineId, mattaLineName, mattaPriceKr, mattaTypeLabel,
+  type MattaTypeId, type MattvattSettings,
+} from '@/lib/mattvatt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,12 +43,13 @@ const CATEGORIES: CatMeta[] = [
   { id: 'tvatt',             label: 'Tvätt',             dbCategory: 'Tvätt',             Icon: IconSteam,    desc: 'Kemtvätt & finare plagg',        subtitle: 'Kemtvätt av kostym, klänning, ytterplagg m.m.' },
 ];
 
-// Fixed mattvätt sizes (server re-validates these prices in create-cart-payment)
-const MATT_OPTIONS: { id: string; name: string; price: number; Icon: React.ComponentType<{ size: number; stroke: number }> }[] = [
-  { id: 'matta-liten', name: 'Matta liten (< 2 m²)', price: 299, Icon: IconSpray },
-  { id: 'matta-stor',  name: 'Matta stor (> 2 m²)',  price: 499, Icon: IconSpray },
-  { id: 'matta-akta',  name: 'Äkta / orientalisk',    price: 699, Icon: IconStar },
-];
+// The two mattvätt types. Both are priced per m² from settings/mattvatt, which
+// the admin edits in Inställningar — the server re-derives the price from the
+// same doc in create-cart-payment.
+const MATTA_TYPE_ICONS: Record<MattaTypeId, React.ComponentType<{ size: number; stroke: number }>> = {
+  'matta-normal': IconSpray,
+  'matta-akta':   IconStar,
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -126,6 +132,11 @@ export default function HomePage() {
   const [userId, setUserId]                     = useState<string | undefined>();
   // Reusable "bra att veta" remarks, keyed by id and referenced per product.
   const [warnings, setWarnings]                 = useState<Record<string, string>>({});
+  // Mattvätt is picked as type + size: the slider only appears once a type is
+  // chosen, and its range comes from the admin's settings.
+  const [mattvatt, setMattvatt]                 = useState<MattvattSettings>(MATTVATT_DEFAULTS);
+  const [mattaType, setMattaType]               = useState<MattaTypeId | null>(null);
+  const [mattaSqm, setMattaSqm]                 = useState<number>(MATTVATT_DEFAULTS.minSqm);
 
   // Fetch the unified product catalogue (all categories live in StrukenTvatt)
   useEffect(() => {
@@ -158,6 +169,14 @@ export default function HomePage() {
       .then(r => r.json() as Promise<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>)
       .then(setDeliverySettings)
       .catch(() => {});
+    fetch('/api/mattvatt-settings')
+      .then(r => r.json() as Promise<MattvattSettings>)
+      .then(settings => {
+        setMattvatt(settings);
+        // Pull the slider into the admin's range as soon as it is known.
+        setMattaSqm(v => clampSqmToRange(v, settings));
+      })
+      .catch(() => {});
   }, []);
 
   // First-time eligibility comes from the server, which decides it with the same
@@ -186,10 +205,14 @@ export default function HomePage() {
     for (const list of Object.values(strukenCatalog)) {
       for (const p of list) map[p.id] = p.discountPercent ?? 0;
     }
-    for (const m of MATT_OPTIONS) map[m.id] = discountSettings.mattvatt[m.id as keyof typeof discountSettings.mattvatt] ?? 0;
     return map;
-  }, [strukenCatalog, discountSettings]);
-  const perItemPct = (id: string) => discountById[id] ?? 0;
+  }, [strukenCatalog]);
+  // Mattvätt lines are (type × size), so their discount is resolved from the id
+  // rather than from a lookup table.
+  const perItemPct = (id: string) =>
+    id.startsWith('matta-')
+      ? mattvattLinePct(discountSettings.mattvatt, id)
+      : (discountById[id] ?? 0);
 
   // Cart helpers
   function addToCart(item: Omit<CartItem, 'quantity'>) {
@@ -231,10 +254,11 @@ export default function HomePage() {
   const rutDiscountKr = rutAvdrag ? rutRefundKr(cartTotal) : 0;
   const grandTotalKr = cartTotal - rutDiscountKr + deliveryFeeKr;
 
-  // Map every selectable product id → its category, for the per-category badges.
+  // Map every catalogue product id → its category, for the per-category badges.
+  // Mattvätt lines are matched on their cart type instead: their ids carry the
+  // chosen size, so they are not known up front.
   const idToCat = useMemo(() => {
     const map: Record<string, CatId> = {};
-    for (const m of MATT_OPTIONS) map[m.id] = 'mattvatt';
     for (const cat of CATEGORIES) {
       if (!cat.dbCategory) continue;
       for (const p of strukenCatalog[cat.dbCategory] ?? []) map[p.id] = cat.id;
@@ -242,14 +266,33 @@ export default function HomePage() {
     return map;
   }, [strukenCatalog]);
 
+  const catOf = (item: CartItem): CatId | undefined =>
+    item.type === 'mattvätt' ? 'mattvatt' : idToCat[item.id];
+
   const countFor = (id: CatId) =>
-    cart.filter(i => idToCat[i.id] === id).reduce((s, i) => s + i.quantity, 0);
+    cart.filter(i => catOf(i) === id).reduce((s, i) => s + i.quantity, 0);
 
   // Close the sheet automatically if the cart empties out
   useEffect(() => { if (cartCount === 0 && sheetOpen) setSheetOpen(false); }, [cartCount, sheetOpen]);
 
   const openMeta = openCat ? CATEGORIES.find(c => c.id === openCat)! : null;
   const openProducts = openMeta?.dbCategory ? (strukenCatalog[openMeta.dbCategory] ?? []) : [];
+
+  // The rug the size slider currently describes — null until a type is picked.
+  // `basePrice` is kr/m² × m², the same figure create-cart-payment recomputes.
+  const mattaLine = (() => {
+    if (!mattaType) return null;
+    const id        = mattaLineId(mattaType, mattaSqm);
+    const basePrice = mattaPriceKr(mattvatt, mattaType, mattaSqm);
+    const netPrice  = discountedUnitPrice(basePrice, perItemPct(id), 0, discountSettings.multipleDiscountsAllowed);
+    return {
+      id,
+      name:  mattaLineName(mattaType, mattaSqm),
+      basePrice,
+      shownPrice: rutAvdrag ? rutNetKr(netPrice) : netPrice,
+      qty: cartQty(id),
+    };
+  })();
 
   // A single product tile (mattvätt + catalogue items share the same shape)
   function ProductTile({ id, name, price, Icon, type, warningTexts = [] }: {
@@ -450,13 +493,96 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Mattvätt — three fixed sizes */}
+          {/* Mattvätt — pick a type, then set the size on the slider */}
           {openMeta.id === 'mattvatt' && (
-            <div className="of-prod-grid">
-              {MATT_OPTIONS.map(m => (
-                <ProductTile key={m.id} id={m.id} name={m.name} price={m.price} Icon={m.Icon} type="mattvätt" />
-              ))}
-            </div>
+            <>
+              <div className="of-matta-types">
+                {MATTA_TYPES.map(t => {
+                  const TypeIcon = MATTA_TYPE_ICONS[t.id];
+                  const selected = mattaType === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`of-matta-type${selected ? ' of-active' : ''}`}
+                      aria-pressed={selected}
+                      onClick={() => setMattaType(t.id)}
+                    >
+                      <span className="of-matta-type-icon"><TypeIcon size={20} stroke={1.5} /></span>
+                      <span className="of-matta-type-text">
+                        <span className="of-matta-type-name">{t.label}</span>
+                        <span className="of-matta-type-desc">{t.desc}</span>
+                      </span>
+                      <span className="of-matta-type-price">
+                        {mattvatt.pricePerSqmKr[t.id]} kr<span className="of-matta-type-per"> / m²</span>
+                      </span>
+                      <span className={`of-matta-type-mark${selected ? ' of-on' : ''}`} aria-hidden="true">
+                        {selected && <IconCheck size={12} stroke={3} />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Size slider — unlocked by the choice above */}
+              {mattaLine && mattaType ? (
+                <div className="of-matta-panel">
+                  <div className="of-matta-panel-top">
+                    <span className="of-matta-panel-label">Mattans storlek</span>
+                    <span className="of-matta-panel-value">{formatSqm(mattaSqm)} m²</span>
+                  </div>
+                  <input
+                    type="range"
+                    className="of-matta-range"
+                    min={mattvatt.minSqm}
+                    max={mattvatt.maxSqm}
+                    step={SQM_STEP}
+                    value={mattaSqm}
+                    aria-label="Mattans storlek i kvadratmeter"
+                    onChange={e => setMattaSqm(clampSqmToRange(e.target.value, mattvatt))}
+                  />
+                  <div className="of-matta-scale">
+                    <span>{formatSqm(mattvatt.minSqm)} m²</span>
+                    <span>{formatSqm(mattvatt.maxSqm)} m²</span>
+                  </div>
+
+                  <div className="of-matta-foot">
+                    <div className="of-matta-sum">
+                      <span className="of-matta-sum-label">
+                        {mattaTypeLabel(mattaType)} · {mattvatt.pricePerSqmKr[mattaType]} kr/m²
+                      </span>
+                      <span className="of-matta-sum-price">
+                        {mattaLine.shownPrice !== mattaLine.basePrice && (
+                          <span className="of-matta-sum-was">{mattaLine.basePrice} kr</span>
+                        )}
+                        {mattaLine.shownPrice} kr
+                      </span>
+                    </div>
+                    {mattaLine.qty === 0 ? (
+                      <button
+                        type="button"
+                        className="of-matta-add"
+                        onClick={() => addToCart({ id: mattaLine.id, name: mattaLine.name, price: mattaLine.basePrice, type: 'mattvätt' })}
+                      >
+                        <IconPlus size={16} stroke={2.5} /> Lägg till
+                      </button>
+                    ) : (
+                      <div className="prod-stepper">
+                        <button className="prod-step-btn" aria-label={`Ta bort ${mattaLine.name}`} onClick={() => removeFromCart(mattaLine.id)}>
+                          <IconMinus size={13} stroke={2.5} />
+                        </button>
+                        <PulseQty value={mattaLine.qty} />
+                        <button className="prod-step-btn" aria-label={`Lägg till ${mattaLine.name}`} onClick={() => addToCart({ id: mattaLine.id, name: mattaLine.name, price: mattaLine.basePrice, type: 'mattvätt' })}>
+                          <IconPlus size={13} stroke={2.5} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="of-matta-hint">Välj typ av matta ovan för att ställa in storleken.</p>
+              )}
+            </>
           )}
 
           {/* Catalogue-backed categories — product grid */}

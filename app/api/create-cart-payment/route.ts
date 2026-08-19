@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db, auth } from '@/lib/firebase-admin';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
-import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, type DiscountSettings } from '@/lib/discount';
+import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
+import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
 import { isFirstTimeCustomer } from '@/lib/first-time';
 
 type CartItem = {
@@ -13,7 +14,9 @@ type CartItem = {
   type:  'mattvätt' | 'struken' | 'service';
 };
 
-// Fixed mattvätt sizes — the canonical prices live here, never trusted from the client.
+// Legacy fixed mattvätt sizes. The website now sends area-based lines
+// (`matta-normal-3.5`, priced from settings/mattvatt), but the iOS app still
+// sells these three fixed sizes — so their canonical prices stay here.
 const MATTVATT_PRICES: Record<string, number> = {
   'matta-liten': 299,
   'matta-stor':  499,
@@ -91,12 +94,20 @@ export async function POST(request: NextRequest) {
   // ── Server-side price validation ────────────────────────────────────────────
 
   // Fetch price catalogs for struken + services + the discount/delivery settings in parallel
-  const [strukenSnap, servicesSnap, discountsSnap, driverSnap] = await Promise.all([
+  const [strukenSnap, servicesSnap, discountsSnap, driverSnap, mattvattSnap] = await Promise.all([
     db.collection('services').doc('struken-tvatt').collection('StrukenTvatt').get(),
     db.collection('services').get(),
     db.collection('settings').doc('discounts').get(),
     db.collection('settings').doc('driver').get(),
+    db.collection('settings').doc('mattvatt').get(),
   ]);
+
+  // Mattvätt: kr per m² + the allowed size range. The client's chosen area is
+  // clamped back into that range here, so a hand-edited cart link cannot buy a
+  // 100 m² rug at the small-rug price.
+  const mattvattSettings: MattvattSettings = normalizeMattvattSettings(
+    mattvattSnap.exists ? (mattvattSnap.data() as Partial<MattvattSettings>) : null,
+  );
 
   const strukenPrices = Object.fromEntries(
     strukenSnap.docs.map(d => [d.id, d.data().price as number])
@@ -144,7 +155,7 @@ export async function POST(request: NextRequest) {
 
   // Per-item discount % for a line, by type/id.
   const itemDiscountPct = (item: CartItem): number => {
-    if (item.type === 'mattvätt') return clampPct(discounts.mattvatt[item.id as keyof typeof discounts.mattvatt] ?? 0);
+    if (item.type === 'mattvätt') return mattvattLinePct(discounts.mattvatt, item.id);
     if (item.type === 'struken')  return strukenDiscount[item.id] ?? 0;
     if (item.type === 'service')  return serviceDiscount[item.id] ?? 0;
     return 0;
@@ -158,11 +169,19 @@ export async function POST(request: NextRequest) {
     if (item.qty < 1) continue;
 
     let priceKr: number | null = null;
+    let lineName = item.name;
 
     if (item.type === 'mattvätt') {
-      // Fixed-size mattvätt (matta-liten / matta-stor / matta-akta).
-      // Fall back to the legacy "Matta X m²" (kvm × 90) for older clients.
-      if (MATTVATT_PRICES[item.id] !== undefined) {
+      // Area-based line (`matta-normal-3.5`) → kr per m² × m², both from settings.
+      // Older clients fall back to the fixed sizes, then to the legacy
+      // "Matta X m²" name (kvm × 90).
+      const matta = parseMattaLineId(item.id);
+      if (matta) {
+        priceKr  = mattaPriceKr(mattvattSettings, matta.type, matta.sqm);
+        // Name it from the parsed line too — the order record and the receipt
+        // should never show an area the price was not calculated from.
+        lineName = mattaLineName(matta.type, matta.sqm);
+      } else if (MATTVATT_PRICES[item.id] !== undefined) {
         priceKr = MATTVATT_PRICES[item.id];
       } else {
         const match = item.name.match(/(\d+(?:\.\d+)?)\s*m²/i);
@@ -185,7 +204,7 @@ export async function POST(request: NextRequest) {
 
     originalOre += priceKr * 100 * item.qty;
     totalOre    += unitKr * 100 * item.qty;
-    validatedItems.push({ ...item, validatedPrice: priceKr, discountPercent: itemPct, discountedPrice: unitKr });
+    validatedItems.push({ ...item, name: lineName, validatedPrice: priceKr, discountPercent: itemPct, discountedPrice: unitKr });
   }
 
   if (totalOre === 0) {

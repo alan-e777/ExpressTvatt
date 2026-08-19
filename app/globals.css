@@ -3130,30 +3130,49 @@ input, textarea, select { font-family: inherit; }
   .wl-frame, .wl-frame::after, .wl-particle { animation: none; }
 }
 
-/* ── Admin Orders: fill the viewport height ──────────────────────────────────
-   The dashboard <main> is a flex column, so without this the orders table only
-   claims its natural height and leaves dead space below it on short lists. The
-   table card takes the remaining height and scrolls inside itself, which keeps
-   the page itself from scrolling — and `auto` means no scrollbar appears at all
-   until the rows actually overflow.                                          */
-.orders-fill {
+/* Dashboard status columns. `minmax(0, 1fr)` lets them shrink to the available
+   width, so the horizontal scrollbar the old 280px minimum always forced no
+   longer appears on desktop. `height: 100%` makes the columns stretch to the
+   height their container was given, which is what fills the page. */
+.dash-cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  height: 100%;
+}
+@media (max-width: 900px) {
+  /* Too narrow for four readable columns — restore a minimum and let the row
+     scroll sideways instead of crushing the cards. */
+  .dash-cols { grid-template-columns: repeat(4, minmax(220px, 1fr)); height: auto; }
+}
+
+/* ── Admin pages: fill the viewport height ───────────────────────────────────
+   The dashboard <main> is a flex column, so a page whose root is a plain block
+   only claims its natural height and leaves dead space beneath it. Mark the page
+   root `admin-fill` and the one element that should absorb the slack
+   `admin-fill-body`; everything else keeps its natural size.
+
+   The body scrolls inside itself rather than scrolling the page, and because it
+   uses `auto`, no scrollbar appears at all until the content actually
+   overflows.                                                                 */
+.admin-fill {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
 }
-/* Header and the bulk-action bar keep their natural size... */
-.orders-fill > * { flex-shrink: 0; }
-/* ...and the table card absorbs whatever height is left. */
-.orders-fill-body {
+/* Headers, stat rows and action bars keep their natural size... */
+.admin-fill > * { flex-shrink: 0; }
+/* ...and this absorbs whatever height is left. */
+.admin-fill-body {
   flex: 1;
   min-height: 0;
 }
-/* On phones the sticky header and narrow viewport make an inner scroll region
-   awkward, so fall back to natural height and let the page scroll as before. */
+/* On phones an inner scroll region reads badly in a narrow viewport, so fall
+   back to natural height and let the page scroll as before. */
 @media (max-width: 767px) {
-  .orders-fill { display: block; }
-  .orders-fill-body { flex: none; min-height: 0; }
+  .admin-fill { display: block; }
+  .admin-fill-body { flex: none; min-height: 0; }
 }
 
 /* ── "Bra att veta" marker on a product tile ─────────────────────────────── */
@@ -3506,6 +3525,71 @@ input, textarea, select { font-family: inherit; }
 }
 .site-shell .of-add-btn:hover { opacity: 0.9; }
 .site-shell .of-add-btn:active { transform: scale(0.94); }
+
+/* ── Mattvätt: type choice, then the size slider it unlocks ─────────────── */
+.site-shell .of-matta-types { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .site-shell .of-matta-types { grid-template-columns: repeat(2, 1fr); } }
+
+.site-shell .of-matta-type {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 16px; background: #fff; cursor: pointer;
+  border: 1px solid rgba(15,23,42,0.08); border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.site-shell .of-matta-type:hover { border-color: rgba(8,63,65,0.18); box-shadow: 0 6px 18px rgba(15,23,42,0.07); }
+.site-shell .of-matta-type.of-active { border-color: #083F41; box-shadow: 0 0 0 1px #083F41; }
+.site-shell .of-matta-type-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #F7F5F0; border: 1px solid rgba(15,23,42,0.06);
+  display: flex; align-items: center; justify-content: center;
+  color: #083F41; flex-shrink: 0;
+}
+.site-shell .of-matta-type-text { flex: 1; min-width: 0; }
+.site-shell .of-matta-type-name { display: block; font-size: 16px; font-weight: 600; color: #0F172A; letter-spacing: -0.01em; }
+.site-shell .of-matta-type-desc { display: block; font-size: 12.5px; color: #64748B; margin-top: 2px; line-height: 1.35; }
+.site-shell .of-matta-type-price { font-size: 15px; font-weight: 700; color: #0F172A; white-space: nowrap; flex-shrink: 0; }
+.site-shell .of-matta-type-per { font-size: 11.5px; font-weight: 500; color: #64748B; }
+.site-shell .of-matta-type-mark {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(15,23,42,0.18); background: #fff;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  transition: background 0.15s, border-color 0.15s;
+}
+.site-shell .of-matta-type-mark.of-on { background: #083F41; border-color: #083F41; }
+
+.site-shell .of-matta-hint { margin: 16px 0 0; font-size: 13px; color: #64748B; text-align: center; }
+
+.site-shell .of-matta-panel {
+  margin-top: 16px; padding: 18px;
+  background: #F7F5F0; border: 1px solid rgba(15,23,42,0.06); border-radius: 16px;
+}
+.site-shell .of-matta-panel-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.site-shell .of-matta-panel-label { font-size: 13px; font-weight: 600; color: #0F172A; }
+.site-shell .of-matta-panel-value { font-size: 20px; font-weight: 700; color: #083F41; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+.site-shell .of-matta-range {
+  width: 100%; margin: 0; accent-color: #083F41; cursor: pointer;
+  background: transparent; height: 26px;
+}
+.site-shell .of-matta-scale { display: flex; justify-content: space-between; font-size: 11.5px; color: #94A3B8; }
+
+.site-shell .of-matta-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(15,23,42,0.08);
+}
+.site-shell .of-matta-sum { min-width: 0; }
+.site-shell .of-matta-sum-label { display: block; font-size: 12px; color: #64748B; }
+.site-shell .of-matta-sum-price { display: block; font-size: 22px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em; margin-top: 2px; }
+.site-shell .of-matta-sum-was { font-size: 13px; font-weight: 400; color: #94A3B8; text-decoration: line-through; margin-right: 7px; }
+.site-shell .of-matta-add {
+  display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0;
+  padding: 11px 20px; border-radius: 9999px; border: none; cursor: pointer;
+  background: #083F41; color: #fff; font-size: 14px; font-weight: 600; font-family: inherit;
+  transition: opacity 0.12s, transform 0.08s;
+}
+.site-shell .of-matta-add:hover { opacity: 0.9; }
+.site-shell .of-matta-add:active { transform: scale(0.97); }
 
 /* Subtle pulse on the quantity when it changes */
 @keyframes of-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); } }
