@@ -13,7 +13,7 @@ export default async function AdminDashboard() {
   const totalRevenue = orders.filter(o => o.status === "completed" || o.status === "delivered").reduce((sum, o) => sum + (o.amount ?? 0), 0);
 
   return (
-    <div>
+    <div className="admin-fill">
       <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.25rem" }}>Dashboard</h1>
       <p style={{ color: "#999", marginBottom: "2rem", fontSize: "0.875rem" }}>Welcome back. Here's what's going on.</p>
 

@@ -33,8 +33,11 @@ export default function DashboardOrdersClient() {
   }, []);
 
   return (
-    <div style={{ marginTop: "3rem", marginBottom: "1.5rem", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(280px, 1fr))", gap: "0.75rem", minWidth: "100%" }}>
+    <div
+      className="admin-fill-body"
+      style={{ marginTop: "3rem", marginBottom: "1.5rem", overflowX: "auto", WebkitOverflowScrolling: "touch" }}
+    >
+      <div className="dash-cols">
         {COLUMNS.map(col => {
           const colOrders = orders.filter(o => o.status === col.status);
           return (

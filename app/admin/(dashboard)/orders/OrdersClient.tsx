@@ -372,9 +372,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
   }
 
   return (
-    <div className="orders-fill">
+    <div className="admin-fill">
       {/* Header */}
-      <div className="orders-fill-head" style={{ marginBottom: "1.25rem" }}>
+      <div style={{ marginBottom: "1.25rem" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
           <div>
             <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.15rem" }}>Orders</h1>
@@ -701,11 +701,11 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       )}
 
       {visible.length === 0 ? (
-        <div className="orders-fill-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "4rem", color: "#aaa", background: "#fff", borderRadius: "10px", border: "1px solid #eee" }}>
+        <div className="admin-fill-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "4rem", color: "#aaa", background: "#fff", borderRadius: "10px", border: "1px solid #eee" }}>
           {orders.length === 0 ? "No orders yet." : "No active orders."}
         </div>
       ) : (
-        <div className="orders-fill-body" style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div className="admin-fill-body" style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
           <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", fontSize: "0.875rem" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid #eee", background: "#fafafa" }}>
