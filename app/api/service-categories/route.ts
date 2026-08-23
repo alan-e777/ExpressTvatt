@@ -22,6 +22,9 @@ export async function GET() {
         desc:     data.desc ?? '',
         subtitle: data.subtitle ?? '',
         order:    typeof data.order === 'number' ? data.order : 0,
+        requiresInput:    !!data.requiresInput,
+        inputLabel:       data.inputLabel ?? '',
+        inputPlaceholder: data.inputPlaceholder ?? '',
       };
     });
     return NextResponse.json(metas.filter(m => m.name));

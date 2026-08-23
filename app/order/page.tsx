@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   IconStar, IconSpray,
@@ -12,7 +12,8 @@ import { auth } from '@/lib/firebase-client';
 import { rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { getProductIcon } from '@/lib/productIcons';
 import {
-  categoryDocId, compareCategories, resolveCategoryMeta, MATTVATT_CATEGORY,
+  cartLineKey, categoryDocId, compareCategories, inputLabelFor, inputPlaceholderFor,
+  requiresCustomerInput, resolveCategoryMeta, MATTVATT_CATEGORY,
   type CategoryMeta,
 } from '@/lib/serviceCategories';
 import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
@@ -26,8 +27,32 @@ import {
 
 /** Slug of a category, used for the open/close state and the section anchor. */
 type CatId         = string;
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[] };
-type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string };
+// `key` identifies the line, `id` identifies the product: one garment ordered
+// twice with different notes ("korta 2 cm", "korta 5 cm") is two lines that
+// still price from the same catalogue entry.
+type CartItem      = { key: string; id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string; note?: string };
+
+/** The tile that opened the note panel, and everything the panel needs to show. */
+type InputTarget = { id: string; name: string; price: number; label: string; placeholder: string };
+/** Pixel geometry of the note panel, measured against the live grid. */
+type PanelRect   = { top: number; left: number; width: number; height: number };
+
+/**
+ * Which cells the note panel covers, given the column the tile sits in. Two to
+ * the right when they both exist, otherwise two to the left; on a two-column
+ * phone it is a single cell on whichever side is free. The tile that opened the
+ * panel is never covered — it stays flush against it, so the customer can see
+ * the item they are describing.
+ */
+function panelPlacement(col: number, cols: number): { start: number; span: number } {
+  const maxSpan = cols <= 2 ? 1 : 2;
+  for (let span = maxSpan; span >= 1; span--) {
+    if (col + span <= cols - 1) return { start: col + 1, span };
+    if (col - span >= 0)        return { start: col - span, span };
+  }
+  return { start: col, span: 1 };  // single-column grid: cover the tile itself
+}
 
 // ── Categories ────────────────────────────────────────────────────────────────
 // Derived, never hard-coded: every distinct `category` on a StrukenTvatt product
@@ -136,6 +161,13 @@ export default function HomePage() {
   const [warnings, setWarnings]                 = useState<Record<string, string>>({});
   // Per-category icon / blurbs / sort order, as edited under admin → Tjänster.
   const [categoryMeta, setCategoryMeta]         = useState<CategoryMeta[]>([]);
+  // The note panel: which tile opened it, what the customer has typed, and where
+  // it sits. `inputRect` is measured from the live grid — see measureInputRect.
+  const [inputTarget, setInputTarget]           = useState<InputTarget | null>(null);
+  const [inputNote, setInputNote]               = useState('');
+  const [inputRect, setInputRect]               = useState<PanelRect | null>(null);
+  const gridRef                                 = useRef<HTMLDivElement | null>(null);
+  const tileRefs                                = useRef<Record<string, HTMLDivElement | null>>({});
   // Mattvätt is picked as type + size: the slider only appears once a type is
   // chosen, and its range comes from the admin's settings.
   const [mattvatt, setMattvatt]                 = useState<MattvattSettings>(MATTVATT_DEFAULTS);
@@ -225,27 +257,35 @@ export default function HomePage() {
       ? mattvattLinePct(discountSettings.mattvatt, id)
       : (discountById[id] ?? 0);
 
-  // Cart helpers
-  function addToCart(item: Omit<CartItem, 'quantity'>) {
+  // Cart helpers — a line is (product + note), so two notes on one garment stay
+  // two lines instead of collapsing into a quantity of two.
+  function addToCart(item: Omit<CartItem, 'quantity' | 'key'>) {
+    const key = cartLineKey(item.id, item.note);
     setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, quantity: 1 }];
+      const existing = prev.find(i => i.key === key);
+      if (existing) return prev.map(i => i.key === key ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { ...item, key, quantity: 1 }];
     });
   }
-  function removeFromCart(id: string) {
+  function removeFromCart(key: string) {
     setCart(prev => {
-      const existing = prev.find(i => i.id === id);
+      const existing = prev.find(i => i.key === key);
       if (!existing) return prev;
-      if (existing.quantity <= 1) return prev.filter(i => i.id !== id);
-      return prev.map(i => i.id === id ? { ...i, quantity: i.quantity - 1 } : i);
+      if (existing.quantity <= 1) return prev.filter(i => i.key !== key);
+      return prev.map(i => i.key === key ? { ...i, quantity: i.quantity - 1 } : i);
     });
   }
-  function cartQty(id: string) { return cart.find(i => i.id === id)?.quantity ?? 0; }
+  /** Quantity of one exact line. For a product with no note, key === id. */
+  function cartQty(key: string) { return cart.find(i => i.key === key)?.quantity ?? 0; }
+  /** Quantity across every note of one product — what a note-required tile shows. */
+  function productQty(id: string) { return cart.filter(i => i.id === id).reduce((s, i) => s + i.quantity, 0); }
 
   function handleCheckout() {
     if (cart.length === 0) return;
-    const items = cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.quantity, type: i.type }));
+    const items = cart.map(i => ({
+      id: i.id, name: i.name, price: i.price, qty: i.quantity, type: i.type,
+      ...(i.note ? { note: i.note } : {}),
+    }));
     const rutParam = rutAvdrag ? '&rut=1' : '';
     router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}${rutParam}`);
   }
@@ -323,28 +363,83 @@ export default function HomePage() {
     };
   })();
 
+  // ── Note panel ──────────────────────────────────────────────────────────────
+  // Placed by measuring the live grid rather than by CSS: the panel has to line
+  // up with cells the tiles occupy, and it must not participate in the grid
+  // itself or auto-placement would shove every tile after it out of position.
+  const measureInputRect = useCallback(() => {
+    const grid = gridRef.current;
+    const tile = inputTarget ? tileRefs.current[inputTarget.id] : null;
+    if (!grid || !tile) { setInputRect(null); return; }
+
+    const g   = grid.getBoundingClientRect();
+    const t   = tile.getBoundingClientRect();
+    const cs  = getComputedStyle(grid);
+    const gap = parseFloat(cs.columnGap) || 0;
+    // The used value resolves to one length per track, so counting them gives
+    // the column count at the current breakpoint (2 / 3 / 4).
+    const cols = cs.gridTemplateColumns.split(' ').filter(Boolean).length;
+    if (!t.width || !cols) { setInputRect(null); return; }
+
+    const col = Math.round((t.left - g.left) / (t.width + gap));
+    const { start, span } = panelPlacement(col, cols);
+    setInputRect({
+      top:    t.top - g.top,
+      left:   start * (t.width + gap),
+      width:  span * t.width + (span - 1) * gap,
+      height: t.height,
+    });
+  }, [inputTarget]);
+
+  useEffect(() => {
+    if (!inputTarget) { setInputRect(null); return; }
+    measureInputRect();
+    window.addEventListener('resize', measureInputRect);
+    return () => window.removeEventListener('resize', measureInputRect);
+  }, [inputTarget, measureInputRect]);
+
+  const closeInput = () => { setInputTarget(null); setInputNote(''); };
+
+  // Leaving the category takes the panel with it.
+  useEffect(() => { setInputTarget(null); setInputNote(''); }, [openCat]);
+
+  function confirmInput() {
+    const note = inputNote.trim();
+    if (!inputTarget || !note) return;
+    addToCart({ id: inputTarget.id, name: inputTarget.name, price: inputTarget.price, type: 'struken', note });
+    closeInput();
+  }
+
   // A single product tile (mattvätt + catalogue items share the same shape)
-  function ProductTile({ id, name, price, Icon, type, warningTexts = [] }: {
+  function ProductTile({ id, name, price, Icon, type, warningTexts = [], needsInput = false, onOpenInput, innerRef }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
     type: CartItem['type'];
     warningTexts?: string[];
+    /** Product whose category asks for a note — the tile opens the panel instead of adding. */
+    needsInput?: boolean;
+    onOpenInput?: () => void;
+    innerRef?: (el: HTMLDivElement | null) => void;
   }) {
-    const qty = cartQty(id);
+    // A note-required product can hold several lines at once, so the tile counts
+    // all of them and never offers a stepper — which one would minus remove?
+    const qty = needsInput ? productQty(id) : cartQty(id);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
+    const activate = () => (needsInput ? onOpenInput?.() : addToCart({ id, name, price, type }));
     // Item-level discount applies to the displayed price; RUT preview (refund) layers on top.
     const itemPrice = discountedUnitPrice(price, perItemPct(id), 0, discountSettings.multipleDiscountsAllowed);
     const shownPrice = rutAvdrag ? rutNetKr(itemPrice) : itemPrice;
     const showStrike = shownPrice !== price;
     return (
       <div
+        ref={innerRef}
         className={`prod-tile${qty > 0 ? ' of-active' : ''}`}
         role="button"
         tabIndex={0}
-        aria-label={`Lägg till ${name}`}
+        aria-label={needsInput ? `${name} — beskriv vad som ska göras` : `Lägg till ${name}`}
         style={{ cursor: 'pointer' }}
-        onClick={() => addToCart({ id, name, price, type })}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart({ id, name, price, type }); } }}
+        onClick={activate}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } }}
       >
         {warningTexts.length > 0 && <WarningBadge texts={warningTexts} label={name} />}
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
@@ -368,7 +463,14 @@ export default function HomePage() {
             )}
             <span className="prod-tile-per">/st</span>
           </div>
-          {qty === 0 ? (
+          {needsInput ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {qty > 0 && <span className="of-tile-qty">{qty}</span>}
+              <button className="of-add-btn" aria-label={`${name} — beskriv vad som ska göras`} onClick={e => { stop(e); activate(); }}>
+                <IconPlus size={18} stroke={2.5} />
+              </button>
+            </div>
+          ) : qty === 0 ? (
             <button className="of-add-btn" aria-label={`Lägg till ${name}`} onClick={e => { stop(e); addToCart({ id, name, price, type }); }}>
               <IconPlus size={18} stroke={2.5} />
             </button>
@@ -631,18 +733,81 @@ export default function HomePage() {
             loadingProducts ? <SkeletonRows count={6} /> : openProducts.length === 0 ? (
               <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga produkter tillgängliga just nu.</p>
             ) : (
-              <div className="of-prod-grid">
-                {openProducts.map(p => (
-                  <ProductTile
-                    key={p.id}
-                    id={p.id}
-                    name={p.name}
-                    price={p.price}
-                    Icon={getProductIcon(p.icon, p.name)}
-                    type="struken"
-                    warningTexts={(p.warningIds ?? []).map(w => warnings[w]).filter(Boolean)}
-                  />
-                ))}
+              <div className="of-prod-grid" ref={gridRef}>
+                {openProducts.map(p => {
+                  const needsInput = requiresCustomerInput(openMeta, p);
+                  return (
+                    <ProductTile
+                      key={p.id}
+                      id={p.id}
+                      name={p.name}
+                      price={p.price}
+                      Icon={getProductIcon(p.icon, p.name)}
+                      type="struken"
+                      warningTexts={(p.warningIds ?? []).map(w => warnings[w]).filter(Boolean)}
+                      needsInput={needsInput}
+                      innerRef={needsInput ? (el => { tileRefs.current[p.id] = el; }) : undefined}
+                      onOpenInput={() => {
+                        setInputNote('');
+                        setInputTarget({
+                          id:          p.id,
+                          name:        p.name,
+                          price:       p.price,
+                          label:       inputLabelFor(openMeta),
+                          placeholder: inputPlaceholderFor(openMeta, p),
+                        });
+                      }}
+                    />
+                  );
+                })}
+
+                {/* The note panel, lifted over the cells beside its tile */}
+                {inputTarget && inputRect && (
+                  <>
+                    <div className="of-input-scrim" onClick={closeInput} />
+                    <div
+                      className="of-input-layer"
+                      // minHeight, not height: on a narrow phone cell the panel's
+                      // own content is taller than one tile, and it may grow down
+                      // over the row below — it is a layer, not a grid item.
+                      style={{ top: inputRect.top, left: inputRect.left, width: inputRect.width, minHeight: inputRect.height }}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label={`${inputTarget.name} — ${inputTarget.label}`}
+                    >
+                      <div className="of-input-head">
+                        <span className="of-input-name">{inputTarget.name}</span>
+                        <button type="button" className="of-input-close" onClick={closeInput} aria-label="Stäng">
+                          <IconX size={15} stroke={1.75} />
+                        </button>
+                      </div>
+                      <label className="of-input-label" htmlFor="of-input-field">{inputTarget.label}</label>
+                      <textarea
+                        id="of-input-field"
+                        className="of-input-field"
+                        autoFocus
+                        value={inputNote}
+                        placeholder={inputTarget.placeholder}
+                        onChange={e => setInputNote(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Escape') closeInput();
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmInput(); }
+                        }}
+                      />
+                      <div className="of-input-foot">
+                        <span className="of-input-price">
+                          {(() => {
+                            const net = discountedUnitPrice(inputTarget.price, perItemPct(inputTarget.id), 0, discountSettings.multipleDiscountsAllowed);
+                            return rutAvdrag ? rutNetKr(net) : net;
+                          })()} kr
+                        </span>
+                        <button type="button" className="of-input-add" disabled={!inputNote.trim()} onClick={confirmInput}>
+                          <IconPlus size={15} stroke={2.5} /> Lägg till
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )
           )}
@@ -676,17 +841,18 @@ export default function HomePage() {
             </div>
             <div className="of-sheet-body">
               {cart.map(item => (
-                <div key={item.id} className="of-sheet-row">
+                <div key={item.key} className="of-sheet-row">
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="of-sheet-row-name">{item.name}</div>
+                    {item.note && <div className="of-sheet-row-note">{item.note}</div>}
                     <div className="of-sheet-row-per">{item.price} kr / st</div>
                   </div>
                   <div className="prod-stepper">
-                    <button className="prod-step-btn" aria-label={`Ta bort ${item.name}`} onClick={() => removeFromCart(item.id)}>
+                    <button className="prod-step-btn" aria-label={`Ta bort ${item.name}`} onClick={() => removeFromCart(item.key)}>
                       <IconMinus size={13} stroke={2.5} />
                     </button>
                     <PulseQty value={item.quantity} />
-                    <button className="prod-step-btn" aria-label={`Lägg till ${item.name}`} onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId })}>
+                    <button className="prod-step-btn" aria-label={`Lägg till ${item.name}`} onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId, note: item.note })}>
                       <IconPlus size={13} stroke={2.5} />
                     </button>
                   </div>

@@ -22,6 +22,8 @@ export default async function Page() {
       discountPercent: data.discountPercent ?? 0,
       icon:            data.icon ?? "",
       warningIds:      data.warningIds ?? [],
+      inputDisabled:    !!data.inputDisabled,
+      inputPlaceholder: data.inputPlaceholder ?? "",
     };
   });
 
@@ -45,6 +47,9 @@ export default async function Page() {
         desc:     data.desc ?? "",
         subtitle: data.subtitle ?? "",
         order:    typeof data.order === "number" ? data.order : 0,
+        requiresInput:    !!data.requiresInput,
+        inputLabel:       data.inputLabel ?? "",
+        inputPlaceholder: data.inputPlaceholder ?? "",
       };
     })
     .filter(m => m.name);

@@ -7,7 +7,10 @@ import * as XLSX from "xlsx";
 import { IconDeviceMobile, IconDeviceDesktop, IconCircleCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { queueStatusEmail } from "@/lib/order-email-bus";
 
-export type BasketItem = { id: string; name: string; price: number; qty: number };
+/** `note` is the customer's instruction for this line ("korta 2 cm"), asked for
+ *  by categories with customer input turned on. Two lines can share an id and
+ *  differ only by note, so the id alone is not a usable key. */
+export type BasketItem = { id: string; name: string; price: number; qty: number; note?: string };
 
 export type Order = {
   id: string;
@@ -87,7 +90,7 @@ function orderNoFor(o: Order): string {
 
 function formatItemsSummary(items: BasketItem[], serviceName: string): string {
   if (!items || items.length === 0) return serviceName;
-  return items.map(item => `${item.name} ×${item.qty}`).join(", ");
+  return items.map(item => `${item.name}${item.note ? ` (${item.note})` : ""} ×${item.qty}`).join(", ");
 }
 
 export default function OrdersClient({ initialOrders }: { initialOrders: Order[] }) {
@@ -896,7 +899,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                     overflow: "hidden",
                                   }}>
                                     {order.items.map((item, idx) => (
-                                      <div key={item.id} style={{
+                                      <div key={`${item.id}::${item.note ?? ""}::${idx}`} style={{
                                         display: "flex",
                                         justifyContent: "space-between",
                                         alignItems: "center",
@@ -917,7 +920,14 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                           }}>
                                             {item.qty}×
                                           </span>
-                                          <span style={{ color: "#1a1a1a" }}>{item.name}</span>
+                                          <span style={{ color: "#1a1a1a" }}>
+                                            {item.name}
+                                            {item.note && (
+                                              <span style={{ display: "block", color: "#1d4ed8", fontSize: "0.75rem", marginTop: "0.1rem", overflowWrap: "anywhere" }}>
+                                                {item.note}
+                                              </span>
+                                            )}
+                                          </span>
                                         </div>
                                         <span style={{ color: "#666", whiteSpace: "nowrap" }}>
                                           {item.price * item.qty} kr

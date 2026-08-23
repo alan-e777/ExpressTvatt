@@ -6,7 +6,7 @@ import { clampPct } from "@/lib/discount";
 export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
 
-  const { name, price, category, discountPercent, icon } = await request.json();
+  const { name, price, category, discountPercent, icon, inputDisabled, inputPlaceholder } = await request.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required." }, { status: 400 });
   // Must be positive: the payment route prices from this catalogue, so a
   // negative value would subtract from the rest of the customer's basket.
@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
     order:           maxOrder + 1,
     discountPercent: clampPct(discountPercent ?? 0),
     icon:            typeof icon === 'string' ? icon : '',
+    inputDisabled:    !!inputDisabled,
+    inputPlaceholder: typeof inputPlaceholder === 'string' ? inputPlaceholder.trim() : '',
   };
 
   try {

@@ -21,7 +21,30 @@ export type CategoryMeta = {
   subtitle: string;
   /** Ascending; ties broken alphabetically. */
   order:    number;
+  /**
+   * Whether picking an item in this category asks the customer for a note
+   * first — a tailoring category needs "korta 2 cm" to be actionable. Single
+   * items can opt out with `inputDisabled` on the product.
+   */
+  requiresInput:    boolean;
+  /** Question shown above the field, e.g. "Vad ska göras?". */
+  inputLabel:       string;
+  /** Default placeholder for the field; a product may override it. */
+  inputPlaceholder: string;
 };
+
+/** The per-product half of the input settings above. */
+export type ProductInputMeta = {
+  /** Opt this one item out of the category's input requirement. */
+  inputDisabled?:   boolean;
+  /** Overrides the category's placeholder for this item only. */
+  inputPlaceholder?: string;
+};
+
+/** Shown when neither the product nor the category names a placeholder. */
+export const DEFAULT_INPUT_PLACEHOLDER = "T.ex. korta 2 cm";
+/** Shown when the category names no label. */
+export const DEFAULT_INPUT_LABEL = "Beskriv vad som ska göras";
 
 /**
  * The one category that is not catalogue-backed: mattvätt is priced per m² from
@@ -54,7 +77,9 @@ export function categoryDocId(name: string): string {
 
 // The presentation the site shipped with, applied when a category has no doc in
 // `service_categories` yet. Keyed by doc id so it survives casing differences.
-const CATEGORY_DEFAULTS: Record<string, Omit<CategoryMeta, 'name'>> = {
+// Only the presentation half — customer input is off everywhere until an admin
+// turns it on, so it has no per-category default.
+const CATEGORY_DEFAULTS: Record<string, Pick<CategoryMeta, 'icon' | 'desc' | 'subtitle' | 'order'>> = {
   hushallstvatt: {
     icon: 'wash', order: 10,
     desc: 'Tvätt per kilo & plagg',
@@ -90,7 +115,33 @@ export function resolveCategoryMeta(name: string, stored?: Partial<CategoryMeta>
     desc:     stored?.desc     ?? fallback?.desc     ?? '',
     subtitle: stored?.subtitle ?? fallback?.subtitle ?? '',
     order:    typeof stored?.order === 'number' ? stored.order : fallback?.order ?? NEW_CATEGORY_ORDER,
+    requiresInput:    stored?.requiresInput ?? false,
+    inputLabel:       stored?.inputLabel ?? '',
+    inputPlaceholder: stored?.inputPlaceholder ?? '',
   };
+}
+
+/**
+ * Does adding this product ask the customer for a note first? The category
+ * turns it on for everything it holds; a single product can opt back out.
+ */
+export function requiresCustomerInput(meta: Pick<CategoryMeta, 'requiresInput'>, product: ProductInputMeta): boolean {
+  return meta.requiresInput && !product.inputDisabled;
+}
+
+/** Placeholder for the note field: product override, else category, else generic. */
+export function inputPlaceholderFor(meta: Pick<CategoryMeta, 'inputPlaceholder'>, product: ProductInputMeta): string {
+  return product.inputPlaceholder?.trim() || meta.inputPlaceholder?.trim() || DEFAULT_INPUT_PLACEHOLDER;
+}
+
+/** Question above the note field. */
+export function inputLabelFor(meta: Pick<CategoryMeta, 'inputLabel'>): string {
+  return meta.inputLabel?.trim() || DEFAULT_INPUT_LABEL;
+}
+
+/** Cart-line identity: two notes on one product are two separate lines. */
+export function cartLineKey(id: string, note?: string): string {
+  return note?.trim() ? `${id}::${note.trim()}` : id;
 }
 
 /** Ascending `order`, then Swedish-alphabetical — the site and admin both use this. */

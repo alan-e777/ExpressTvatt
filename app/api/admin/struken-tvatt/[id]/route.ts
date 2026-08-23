@@ -23,6 +23,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   if ("discountPercent" in body) update.discountPercent = clampPct(body.discountPercent);
   if ("icon" in body && typeof body.icon === "string") update.icon = body.icon;
+  // Per-item overrides of the category's customer-input requirement.
+  if ("inputDisabled" in body)    update.inputDisabled    = !!body.inputDisabled;
+  if ("inputPlaceholder" in body && typeof body.inputPlaceholder === "string") {
+    update.inputPlaceholder = body.inputPlaceholder.trim();
+  }
   // Which reusable warnings apply to this specific garment. Set per item, not
   // per category, so "Hem" can hold items with entirely different remarks.
   if ("warningIds" in body && Array.isArray(body.warningIds)) {

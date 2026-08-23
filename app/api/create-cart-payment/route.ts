@@ -12,6 +12,12 @@ type CartItem = {
   price: number;   // kr (client-provided, server-validated below)
   qty:   number;
   type:  'mattvätt' | 'struken' | 'service';
+  /**
+   * The customer's instruction for this line ("korta 2 cm"), asked for by
+   * categories with `requiresInput`. Free text with no effect on price — it is
+   * carried onto the order so the shop knows what to do with the garment.
+   */
+  note?: string;
 };
 
 // Legacy fixed mattvätt sizes. The website now sends area-based lines
@@ -204,7 +210,14 @@ export async function POST(request: NextRequest) {
 
     originalOre += priceKr * 100 * item.qty;
     totalOre    += unitKr * 100 * item.qty;
-    validatedItems.push({ ...item, name: lineName, validatedPrice: priceKr, discountPercent: itemPct, discountedPrice: unitKr });
+    validatedItems.push({
+      ...item,
+      name: lineName,
+      // Trimmed and length-capped: it is free text from the client and ends up
+      // on the order record the shop reads off.
+      note: typeof item.note === 'string' ? item.note.trim().slice(0, 300) : '',
+      validatedPrice: priceKr, discountPercent: itemPct, discountedPrice: unitKr,
+    });
   }
 
   if (totalOre === 0) {
@@ -236,7 +249,7 @@ export async function POST(request: NextRequest) {
   totalOre -= rutDiscountOre;
 
   const itemsSummary = validatedItems
-    .map(i => `${i.qty}× ${i.name} (${i.discountedPrice} kr)`)
+    .map(i => `${i.qty}× ${i.name}${i.note ? ` [${i.note}]` : ''} (${i.discountedPrice} kr)`)
     .join(', ');
 
   // ── Create Stripe PaymentIntent ─────────────────────────────────────────────

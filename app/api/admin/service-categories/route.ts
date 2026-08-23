@@ -12,7 +12,7 @@ import { categoryDocId, NEW_CATEGORY_ORDER } from "@/lib/serviceCategories";
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
 
-  const { name, icon, desc, subtitle, order } = await request.json();
+  const { name, icon, desc, subtitle, order, requiresInput, inputLabel, inputPlaceholder } = await request.json();
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "Kategorinamn saknas." }, { status: 400 });
   }
@@ -21,6 +21,10 @@ export async function PUT(request: NextRequest) {
   if (typeof icon === "string")     update.icon     = icon;
   if (typeof desc === "string")     update.desc     = desc.trim();
   if (typeof subtitle === "string") update.subtitle = subtitle.trim();
+  // Whether items here ask the customer for a note before they can be added.
+  if (typeof requiresInput === "boolean")  update.requiresInput    = requiresInput;
+  if (typeof inputLabel === "string")      update.inputLabel       = inputLabel.trim();
+  if (typeof inputPlaceholder === "string") update.inputPlaceholder = inputPlaceholder.trim();
   if (order !== undefined) {
     const n = Number(order);
     update.order = Number.isFinite(n) ? Math.round(n) : NEW_CATEGORY_ORDER;

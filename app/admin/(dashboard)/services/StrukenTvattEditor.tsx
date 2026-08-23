@@ -4,7 +4,8 @@ import { useState } from "react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 import WarningsManager, { type ProductWarning } from "./WarningsManager";
 import {
-  compareCategories, resolveCategoryMeta, DEFAULT_CATEGORY_ICON, NEW_CATEGORY_ORDER,
+  compareCategories, resolveCategoryMeta, inputPlaceholderFor, requiresCustomerInput,
+  DEFAULT_CATEGORY_ICON, DEFAULT_INPUT_LABEL, NEW_CATEGORY_ORDER,
   type CategoryMeta,
 } from "@/lib/serviceCategories";
 
@@ -18,6 +19,10 @@ export type StrukenProduct = {
   icon:            string;
   /** Ids of the reusable warnings that apply to this specific garment. */
   warningIds:      string[];
+  /** Opts this item out of its category's customer-input requirement. */
+  inputDisabled:    boolean;
+  /** Overrides the category's placeholder for this item's note field. */
+  inputPlaceholder: string;
 };
 
 const DEFAULT_ICON = PRODUCT_ICONS[0].key;
@@ -167,6 +172,84 @@ function WarningSelectButton({
   );
 }
 
+/**
+ * Per-item control for the category's customer-input requirement: turn it off
+ * for this one garment, and give it its own placeholder. Only rendered when the
+ * category requires input at all, so it stays out of the way everywhere else.
+ */
+function InputSelectButton({
+  disabled,
+  placeholder,
+  effectivePlaceholder,
+  onChange,
+}: {
+  disabled: boolean;
+  placeholder: string;
+  effectivePlaceholder: string;
+  onChange: (patch: { inputDisabled?: boolean; inputPlaceholder?: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(placeholder);
+
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        onClick={() => { setDraft(placeholder); setOpen(o => !o); }}
+        title={disabled ? "Kundinput avstängd för detta plagg" : "Kräver kundinput — klicka för att ändra"}
+        style={{
+          width: 24, height: 24, borderRadius: "50%", cursor: "pointer",
+          border: disabled ? "1px solid #eee" : "1px solid #93c5fd",
+          background: disabled ? "#fafafa" : "#dbeafe",
+          color: disabled ? "#ccc" : "#1d4ed8",
+          fontSize: "0.7rem", fontWeight: 700, lineHeight: 1,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        ✎
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: "absolute", top: "28px", right: 0, zIndex: 41, width: "min(300px, 78vw)",
+            background: "#fff", border: "1px solid #e5e5e5", borderRadius: "8px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "0.7rem",
+            display: "flex", flexDirection: "column", gap: "0.55rem",
+          }}>
+            <label style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={!disabled}
+                onChange={e => onChange({ inputDisabled: !e.target.checked })}
+                style={{ marginTop: "0.15rem", flexShrink: 0, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: "0.76rem", color: "#444", lineHeight: 1.45 }}>
+                Kräv kundinput för detta plagg
+              </span>
+            </label>
+            <div>
+              <Label>Egen platshållare</Label>
+              <input
+                type="text"
+                value={draft}
+                placeholder={effectivePlaceholder}
+                onChange={e => setDraft(e.target.value)}
+                onBlur={() => draft !== placeholder && onChange({ inputPlaceholder: draft })}
+                onKeyDown={e => { if (e.key === "Enter") { onChange({ inputPlaceholder: draft }); setOpen(false); } }}
+                style={{ width: "100%", padding: "0.35rem 0.5rem", border: "1px solid #ddd", borderRadius: "6px", fontSize: "0.78rem", boxSizing: "border-box" }}
+              />
+              <p style={{ fontSize: "0.68rem", color: "#aaa", marginTop: "0.3rem", lineHeight: 1.4 }}>
+                Lämna tomt för att använda kategorins platshållare.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Read-only twin of the circle on the customer's category row, so the admin can
 // see at a glance which icon the site will draw for this category.
 function CategoryIconPreview({ iconKey }: { iconKey: string }) {
@@ -203,6 +286,7 @@ function CategoryCard({
   onUpdateDiscount,
   onUpdateIcon,
   onUpdateName,
+  onUpdateInput,
   onSaveMeta,
   warnings,
   onToggleWarning,
@@ -217,6 +301,7 @@ function CategoryCard({
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
   onUpdateIcon:     (id: string, icon: string) => Promise<void>;
   onUpdateName:     (id: string, name: string) => Promise<void>;
+  onUpdateInput:    (id: string, patch: { inputDisabled?: boolean; inputPlaceholder?: string }) => Promise<void>;
   warnings:         ProductWarning[];
   onToggleWarning:  (id: string, warningId: string, next: boolean) => Promise<void>;
 }) {
@@ -254,10 +339,13 @@ function CategoryCard({
     setSavingMeta(true);
     try {
       await onSaveMeta({
-        icon:     metaForm.icon,
-        desc:     metaForm.desc,
-        subtitle: metaForm.subtitle,
-        order:    metaForm.order,
+        icon:             metaForm.icon,
+        desc:             metaForm.desc,
+        subtitle:         metaForm.subtitle,
+        order:            metaForm.order,
+        requiresInput:    metaForm.requiresInput,
+        inputLabel:       metaForm.inputLabel,
+        inputPlaceholder: metaForm.inputPlaceholder,
       });
       setEditingMeta(false);
     } finally {
@@ -348,6 +436,38 @@ function CategoryCard({
             <Label>Lång beskrivning (när kategorin öppnas)</Label>
             <Input value={metaForm.subtitle} onChange={v => setMetaForm(f => ({ ...f, subtitle: v }))} placeholder="t.ex. Uppläggning, blixtlås och ändringar — hämtning & leverans ingår" />
           </div>
+
+          {/* Customer input — a tailoring category needs "korta 2 cm" to be
+              actionable, so the customer is asked before the item is added. */}
+          <div style={{ borderTop: "1px dashed #e5e5e5", paddingTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+            <label style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={metaForm.requiresInput}
+                onChange={e => setMetaForm(f => ({ ...f, requiresInput: e.target.checked }))}
+                style={{ marginTop: "0.15rem", flexShrink: 0, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: "0.8rem", color: "#444", lineHeight: 1.45 }}>
+                Kräv kundinput innan plagget läggs i kundvagnen
+                <span style={{ display: "block", fontSize: "0.7rem", color: "#aaa", marginTop: "0.15rem" }}>
+                  Stäng av för enskilda plagg med ✎ i listan ovan.
+                </span>
+              </span>
+            </label>
+            {metaForm.requiresInput && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                <div>
+                  <Label>Fråga till kunden</Label>
+                  <Input value={metaForm.inputLabel} onChange={v => setMetaForm(f => ({ ...f, inputLabel: v }))} placeholder={DEFAULT_INPUT_LABEL} />
+                </div>
+                <div>
+                  <Label>Platshållare (standard)</Label>
+                  <Input value={metaForm.inputPlaceholder} onChange={v => setMetaForm(f => ({ ...f, inputPlaceholder: v }))} placeholder="t.ex. korta 2 cm" />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={saveMeta} disabled={savingMeta} style={{ ...btnDark, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>
               {savingMeta ? "…" : "Spara"}
@@ -447,6 +567,16 @@ function CategoryCard({
               >
                 {item.discountPercent > 0 ? `−${item.discountPercent}%` : "0 %"}
               </button>
+            )}
+
+            {/* Per-item customer input — only where the category asks for it */}
+            {meta.requiresInput && (
+              <InputSelectButton
+                disabled={!!item.inputDisabled}
+                placeholder={item.inputPlaceholder ?? ""}
+                effectivePlaceholder={inputPlaceholderFor(meta, item)}
+                onChange={patch => onUpdateInput(item.id, patch)}
+              />
             )}
 
             {/* Per-item warnings */}
@@ -566,7 +696,7 @@ export default function StrukenTvattEditor({
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [] }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "" }]);
   }
 
   /**
@@ -635,6 +765,22 @@ export default function StrukenTvattEditor({
     if (!res.ok) {
       setProducts(prev => prev.map(p => p.id === id ? { ...p, name: previous ?? p.name } : p));
       alert("Kunde inte spara namnet. Försök igen.");
+    }
+  }
+
+  /** Per-item input override — optimistic, rolled back on failure. */
+  async function handleUpdateInput(id: string, patch: { inputDisabled?: boolean; inputPlaceholder?: string }) {
+    const previous = products.find(p => p.id === id);
+    if (!previous) return;
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      setProducts(prev => prev.map(p => p.id === id ? previous : p));
+      alert("Kunde inte spara kundinput-inställningen. Försök igen.");
     }
   }
 
@@ -730,6 +876,7 @@ export default function StrukenTvattEditor({
             onUpdateDiscount={handleUpdateDiscount}
             onUpdateIcon={handleUpdateIcon}
             onUpdateName={handleUpdateName}
+            onUpdateInput={handleUpdateInput}
             warnings={warnings}
             onToggleWarning={handleToggleWarning}
           />
