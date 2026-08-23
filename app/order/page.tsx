@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  IconSteam, IconStar, IconWash, IconSpray, IconSparkles,
+  IconStar, IconSpray,
   IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
   IconTag,
 } from '@tabler/icons-react';
@@ -11,6 +11,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
 import { rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { getProductIcon } from '@/lib/productIcons';
+import {
+  categoryDocId, compareCategories, resolveCategoryMeta, MATTVATT_CATEGORY,
+  type CategoryMeta,
+} from '@/lib/serviceCategories';
 import { DISCOUNT_DEFAULTS, discountedUnitPrice, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import {
   MATTA_TYPES, MATTVATT_DEFAULTS, SQM_STEP, clampSqmToRange, formatSqm,
@@ -20,28 +24,26 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type CatId         = 'hushallstvatt' | 'mattvatt' | 'hem' | 'tvatt';
+/** Slug of a category, used for the open/close state and the section anchor. */
+type CatId         = string;
 type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[] };
 type CartItem      = { id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string };
 
-// ── Categories — mirrors eriksbergstvätten's five categories ────────────────────
-// `dbCategory` is the value stored on each StrukenTvatt product (null = the
-// category is rendered from a fixed local list rather than Firestore).
-type CatMeta = {
-  id: CatId;
-  label: string;
-  dbCategory: string | null;
-  desc: string;
-  subtitle: string;
-  Icon: React.ComponentType<{ size: number; stroke: number }>;
-};
+// ── Categories ────────────────────────────────────────────────────────────────
+// Derived, never hard-coded: every distinct `category` on a StrukenTvatt product
+// is a row here, so a category the admin creates under Tjänster shows up on its
+// own instead of vanishing. `service_categories` supplies icon, blurbs and sort
+// order; `lib/serviceCategories.ts` fills in defaults for anything unset.
+//
+// Mattvätt is the single built-in: it is priced per m² from settings/mattvatt
+// and has no catalogue products, so it is always present.
+const MATTVATT_ID = categoryDocId(MATTVATT_CATEGORY);
 
-const CATEGORIES: CatMeta[] = [
-  { id: 'hushallstvatt',     label: 'Hushållstvätt',     dbCategory: 'Hushållstvätt',     Icon: IconWash,     desc: 'Tvätt per kilo & plagg',         subtitle: 'Tvätt per kilo och styckvis — hämtning & leverans ingår' },
-  { id: 'mattvatt',          label: 'Mattvätt',          dbCategory: null,                Icon: IconSpray,    desc: 'Djuptvätt av mattor',            subtitle: 'Djuptvätt av mattor — hämtning & leverans ingår alltid' },
-  { id: 'hem',               label: 'Hem',               dbCategory: 'Hem',               Icon: IconSparkles, desc: 'Hemtextil & möbeltextil',        subtitle: 'Täcken, kuddar, gardiner, madrasser & möbeltextil' },
-  { id: 'tvatt',             label: 'Tvätt',             dbCategory: 'Tvätt',             Icon: IconSteam,    desc: 'Kemtvätt & finare plagg',        subtitle: 'Kemtvätt av kostym, klänning, ytterplagg m.m.' },
-];
+type CatView = CategoryMeta & {
+  id:         CatId;
+  isMattvatt: boolean;
+  Icon:       React.ComponentType<{ size: number; stroke: number }>;
+};
 
 // The two mattvätt types. Both are priced per m² from settings/mattvatt, which
 // the admin edits in Inställningar — the server re-derives the price from the
@@ -132,6 +134,8 @@ export default function HomePage() {
   const [userId, setUserId]                     = useState<string | undefined>();
   // Reusable "bra att veta" remarks, keyed by id and referenced per product.
   const [warnings, setWarnings]                 = useState<Record<string, string>>({});
+  // Per-category icon / blurbs / sort order, as edited under admin → Tjänster.
+  const [categoryMeta, setCategoryMeta]         = useState<CategoryMeta[]>([]);
   // Mattvätt is picked as type + size: the slider only appears once a type is
   // chosen, and its range comes from the admin's settings.
   const [mattvatt, setMattvatt]                 = useState<MattvattSettings>(MATTVATT_DEFAULTS);
@@ -156,6 +160,13 @@ export default function HomePage() {
     fetch('/api/warnings')
       .then(r => r.json() as Promise<Record<string, string>>)
       .then(setWarnings)
+      .catch(() => {});
+
+    // Presentation only — a category with no doc here still renders, on the
+    // defaults, so the list never depends on this request succeeding.
+    fetch('/api/service-categories')
+      .then(r => r.json() as Promise<CategoryMeta[]>)
+      .then(metas => Array.isArray(metas) && setCategoryMeta(metas))
       .catch(() => {});
   }, []);
 
@@ -254,20 +265,36 @@ export default function HomePage() {
   const rutDiscountKr = rutAvdrag ? rutRefundKr(cartTotal) : 0;
   const grandTotalKr = cartTotal - rutDiscountKr + deliveryFeeKr;
 
+  // The rows the customer sees: one per category present in the catalogue, plus
+  // the built-in mattvätt, ordered the way the admin ordered them.
+  const categories: CatView[] = useMemo(() => {
+    const stored = new Map(categoryMeta.map(m => [m.name, m]));
+    const names  = new Set<string>([...Object.keys(strukenCatalog), MATTVATT_CATEGORY]);
+    return [...names]
+      .map(name => resolveCategoryMeta(name, stored.get(name)))
+      .sort(compareCategories)
+      .map(meta => ({
+        ...meta,
+        id:         categoryDocId(meta.name),
+        isMattvatt: meta.name === MATTVATT_CATEGORY,
+        Icon:       getProductIcon(meta.icon),
+      }));
+  }, [strukenCatalog, categoryMeta]);
+
   // Map every catalogue product id → its category, for the per-category badges.
   // Mattvätt lines are matched on their cart type instead: their ids carry the
   // chosen size, so they are not known up front.
   const idToCat = useMemo(() => {
     const map: Record<string, CatId> = {};
-    for (const cat of CATEGORIES) {
-      if (!cat.dbCategory) continue;
-      for (const p of strukenCatalog[cat.dbCategory] ?? []) map[p.id] = cat.id;
+    for (const cat of categories) {
+      if (cat.isMattvatt) continue;
+      for (const p of strukenCatalog[cat.name] ?? []) map[p.id] = cat.id;
     }
     return map;
-  }, [strukenCatalog]);
+  }, [categories, strukenCatalog]);
 
   const catOf = (item: CartItem): CatId | undefined =>
-    item.type === 'mattvätt' ? 'mattvatt' : idToCat[item.id];
+    item.type === 'mattvätt' ? MATTVATT_ID : idToCat[item.id];
 
   const countFor = (id: CatId) =>
     cart.filter(i => catOf(i) === id).reduce((s, i) => s + i.quantity, 0);
@@ -275,8 +302,10 @@ export default function HomePage() {
   // Close the sheet automatically if the cart empties out
   useEffect(() => { if (cartCount === 0 && sheetOpen) setSheetOpen(false); }, [cartCount, sheetOpen]);
 
-  const openMeta = openCat ? CATEGORIES.find(c => c.id === openCat)! : null;
-  const openProducts = openMeta?.dbCategory ? (strukenCatalog[openMeta.dbCategory] ?? []) : [];
+  // `?? null` matters now that the list is data-driven: a category the admin
+  // just emptied can disappear while its detail view is open.
+  const openMeta = openCat ? (categories.find(c => c.id === openCat) ?? null) : null;
+  const openProducts = openMeta && !openMeta.isMattvatt ? (strukenCatalog[openMeta.name] ?? []) : [];
 
   // The rug the size slider currently describes — null until a type is picked.
   // `basePrice` is kr/m² × m², the same figure create-cart-payment recomputes.
@@ -461,14 +490,26 @@ export default function HomePage() {
       {openCat === null && (
         <div className="service-card" id="services">
           <div className="of-cat-list">
-            {CATEGORIES.map(({ id, label, desc, Icon }) => {
+            {/* The rows come from the catalogue, so there is nothing truthful to
+                draw until it lands — placeholders rather than a partial list. */}
+            {loadingProducts ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="of-cat-row" style={{ cursor: 'default' }} aria-hidden="true">
+                  <span className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }} />
+                  <span className="of-cat-text" style={{ display: 'grid', gap: 6 }}>
+                    <span className="skeleton" style={{ width: '38%', height: 13, borderRadius: 4 }} />
+                    <span className="skeleton" style={{ width: '58%', height: 11, borderRadius: 4 }} />
+                  </span>
+                </div>
+              ))
+            ) : categories.map(({ id, name, desc, Icon }) => {
               const count = countFor(id);
               return (
                 <button key={id} className="of-cat-row" onClick={() => setOpenCat(id)}>
                   <span className="of-cat-icon"><Icon size={20} stroke={1.5} /></span>
                   <span className="of-cat-text">
-                    <span className="of-cat-title">{label}</span>
-                    <span className="of-cat-desc" style={{ display: 'block' }}>{desc}</span>
+                    <span className="of-cat-title">{name}</span>
+                    {desc && <span className="of-cat-desc" style={{ display: 'block' }}>{desc}</span>}
                   </span>
                   {count > 0 && <span className="of-cat-badge">{count}</span>}
                   <span className="of-cat-chev"><IconChevronRight size={18} stroke={1.75} /></span>
@@ -488,13 +529,13 @@ export default function HomePage() {
           <div className="of-detail-head">
             <span className="icon-circle" style={{ width: 36, height: 36 }}><openMeta.Icon size={16} stroke={1.5} /></span>
             <div>
-              <div className="of-detail-title">{openMeta.label}</div>
-              <div className="of-detail-sub">{openMeta.subtitle}</div>
+              <div className="of-detail-title">{openMeta.name}</div>
+              {openMeta.subtitle && <div className="of-detail-sub">{openMeta.subtitle}</div>}
             </div>
           </div>
 
           {/* Mattvätt — pick a type, then set the size on the slider */}
-          {openMeta.id === 'mattvatt' && (
+          {openMeta.isMattvatt && (
             <>
               <div className="of-matta-types">
                 {MATTA_TYPES.map(t => {
@@ -586,7 +627,7 @@ export default function HomePage() {
           )}
 
           {/* Catalogue-backed categories — product grid */}
-          {openMeta.dbCategory && (
+          {!openMeta.isMattvatt && (
             loadingProducts ? <SkeletonRows count={6} /> : openProducts.length === 0 ? (
               <p className="small" style={{ color: 'var(--text-muted)', padding: 'var(--sp-md) 0' }}>Inga produkter tillgängliga just nu.</p>
             ) : (

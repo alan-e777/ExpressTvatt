@@ -2,6 +2,7 @@ import { db } from "@/lib/firebase-admin";
 import ServicesPage from "./ServicesPage";
 import type { StrukenProduct } from "./StrukenTvattEditor";
 import type { ProductWarning } from "./WarningsManager";
+import type { CategoryMeta } from "@/lib/serviceCategories";
 
 // Always re-read Firestore on each request. Without this the route is served
 // from Next's static full-route cache, so adds/deletes don't appear on reload.
@@ -32,7 +33,27 @@ export default async function Page() {
     order: d.data().order ?? 0,
   }));
 
+  // How each category is presented on the order page. Which categories exist is
+  // decided by the products above; this only carries icon/description/order.
+  const categoriesSnap = await db.collection("service_categories").get();
+  const categoryMeta: CategoryMeta[] = categoriesSnap.docs
+    .map(d => {
+      const data = d.data();
+      return {
+        name:     data.name ?? "",
+        icon:     data.icon ?? "",
+        desc:     data.desc ?? "",
+        subtitle: data.subtitle ?? "",
+        order:    typeof data.order === "number" ? data.order : 0,
+      };
+    })
+    .filter(m => m.name);
+
   return (
-    <ServicesPage initialStrukenProducts={strukenProducts} initialWarnings={warnings} />
+    <ServicesPage
+      initialStrukenProducts={strukenProducts}
+      initialWarnings={warnings}
+      initialCategoryMeta={categoryMeta}
+    />
   );
 }

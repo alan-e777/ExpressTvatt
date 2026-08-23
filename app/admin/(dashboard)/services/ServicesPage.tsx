@@ -2,13 +2,16 @@
 
 import StrukenTvattEditor, { type StrukenProduct } from "./StrukenTvattEditor";
 import type { ProductWarning } from "./WarningsManager";
+import type { CategoryMeta } from "@/lib/serviceCategories";
 
 export default function ServicesPage({
   initialStrukenProducts,
   initialWarnings,
+  initialCategoryMeta,
 }: {
   initialStrukenProducts: StrukenProduct[];
   initialWarnings: ProductWarning[];
+  initialCategoryMeta: CategoryMeta[];
 }) {
   return (
     <div>
@@ -23,6 +26,7 @@ export default function ServicesPage({
       <StrukenTvattEditor
         initialProducts={initialStrukenProducts}
         initialWarnings={initialWarnings}
+        initialCategoryMeta={initialCategoryMeta}
       />
     </div>
   );

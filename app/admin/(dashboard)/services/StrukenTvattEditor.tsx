@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 import WarningsManager, { type ProductWarning } from "./WarningsManager";
+import {
+  compareCategories, resolveCategoryMeta, DEFAULT_CATEGORY_ICON, NEW_CATEGORY_ORDER,
+  type CategoryMeta,
+} from "@/lib/serviceCategories";
 
 export type StrukenProduct = {
   id:              string;
@@ -17,6 +21,13 @@ export type StrukenProduct = {
 };
 
 const DEFAULT_ICON = PRODUCT_ICONS[0].key;
+
+// A category needs a first garment to exist at all — the catalogue is what
+// defines the category — so this form creates both in one go.
+const EMPTY_NEW_CAT = {
+  category: "", catIcon: DEFAULT_CATEGORY_ICON, desc: "", subtitle: "",
+  name: "", price: "", discountPercent: "", icon: DEFAULT_ICON,
+};
 
 // Small grid popover for choosing one of the registered product icons.
 function IconPicker({ value, onSelect, onClose }: { value: string; onSelect: (key: string) => void; onClose: () => void }) {
@@ -56,9 +67,14 @@ function IconPicker({ value, onSelect, onClose }: { value: string; onSelect: (ke
 }
 
 // A button showing the current icon; opens the picker on click.
-function IconSelectButton({ value, onChange }: { value: string; onChange: (key: string) => void }) {
+//
+// `name` matters: a product saved before the icon picker existed has no stored
+// key, and getProductIcon then falls back to a name heuristic ("Byxa" → sax).
+// Passing the name here resolves the icon the same way app/order/page.tsx does,
+// so the admin list and the site never show two different icons for one item.
+function IconSelectButton({ value, name = "", onChange }: { value: string; name?: string; onChange: (key: string) => void }) {
   const [open, setOpen] = useState(false);
-  const Icon = getProductIcon(value);
+  const Icon = getProductIcon(value, name);
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
       <button
@@ -151,6 +167,20 @@ function WarningSelectButton({
   );
 }
 
+// Read-only twin of the circle on the customer's category row, so the admin can
+// see at a glance which icon the site will draw for this category.
+function CategoryIconPreview({ iconKey }: { iconKey: string }) {
+  const Icon = getProductIcon(iconKey);
+  return (
+    <span style={{
+      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      width: 34, height: 34, borderRadius: "50%", background: "#f2f0e9", color: "#1a1a1a",
+    }}>
+      <Icon size={18} stroke={1.5} />
+    </span>
+  );
+}
+
 function clampPctInput(v: string): number {
   const n = Math.round(parseFloat(v));
   if (!Number.isFinite(n)) return 0;
@@ -165,6 +195,7 @@ type Category = string;
 
 function CategoryCard({
   category,
+  meta,
   items,
   onAdd,
   onDelete,
@@ -172,10 +203,13 @@ function CategoryCard({
   onUpdateDiscount,
   onUpdateIcon,
   onUpdateName,
+  onSaveMeta,
   warnings,
   onToggleWarning,
 }: {
   category:         Category;
+  meta:             CategoryMeta;
+  onSaveMeta:       (patch: Partial<CategoryMeta>) => Promise<void>;
   items:            StrukenProduct[];
   onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string) => Promise<void>;
   onDelete:         (id: string) => Promise<void>;
@@ -204,6 +238,32 @@ function CategoryCard({
   // Inline name editing — renaming used to mean deleting the item and re-adding it.
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameVal, setEditNameVal] = useState("");
+
+  // How this category is presented on the order page — icon, the two blurbs and
+  // where it sits in the list. Collapsed by default so the card stays a price list.
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [metaForm, setMetaForm]       = useState(meta);
+  const [savingMeta, setSavingMeta]   = useState(false);
+
+  function openMetaForm() {
+    setMetaForm(meta);
+    setEditingMeta(true);
+  }
+
+  async function saveMeta() {
+    setSavingMeta(true);
+    try {
+      await onSaveMeta({
+        icon:     metaForm.icon,
+        desc:     metaForm.desc,
+        subtitle: metaForm.subtitle,
+        order:    metaForm.order,
+      });
+      setEditingMeta(false);
+    } finally {
+      setSavingMeta(false);
+    }
+  }
 
   async function handleNameSave(id: string) {
     const name = editNameVal.trim();
@@ -246,13 +306,56 @@ function CategoryCard({
 
   return (
     <div style={cardStyle}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-        <p style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{category}</p>
-        <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500 }}>
-          {items.length} {items.length === 1 ? "plagg" : "plagg"}
+      {/* Header — mirrors the row the customer sees on /order */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
+        <CategoryIconPreview iconKey={meta.icon} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{category}</p>
+          <p style={{ fontSize: "0.75rem", color: meta.desc ? "#aaa" : "#d4a72c" }}>
+            {meta.desc || "Ingen beskrivning — visas tom på sidan"}
+          </p>
+        </div>
+        <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500, whiteSpace: "nowrap" }}>
+          {items.length} plagg
         </span>
+        <button
+          onClick={() => (editingMeta ? setEditingMeta(false) : openMetaForm())}
+          title="Ändra ikon och beskrivning för kategorin"
+          style={{ background: "none", border: "1px solid #eee", borderRadius: "6px", padding: "0.25rem 0.55rem", fontSize: "0.72rem", color: "#888", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+        >
+          {editingMeta ? "Stäng" : "Utseende"}
+        </button>
       </div>
+
+      {/* Category appearance — icon, both blurbs and its place in the list */}
+      {editingMeta && (
+        <div style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: "8px", padding: "0.75rem", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
+            <div>
+              <Label>Ikon</Label>
+              <IconSelectButton value={metaForm.icon} onChange={key => setMetaForm(f => ({ ...f, icon: key }))} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Label>Kort beskrivning (i listan)</Label>
+              <Input value={metaForm.desc} onChange={v => setMetaForm(f => ({ ...f, desc: v }))} placeholder="t.ex. Lagning & ändring" />
+            </div>
+            <div style={{ width: "90px", flexShrink: 0 }}>
+              <Label>Ordning</Label>
+              <Input type="number" value={String(metaForm.order)} onChange={v => setMetaForm(f => ({ ...f, order: Number(v) || 0 }))} />
+            </div>
+          </div>
+          <div>
+            <Label>Lång beskrivning (när kategorin öppnas)</Label>
+            <Input value={metaForm.subtitle} onChange={v => setMetaForm(f => ({ ...f, subtitle: v }))} placeholder="t.ex. Uppläggning, blixtlås och ändringar — hämtning & leverans ingår" />
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button onClick={saveMeta} disabled={savingMeta} style={{ ...btnDark, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>
+              {savingMeta ? "…" : "Spara"}
+            </button>
+            <button onClick={() => setEditingMeta(false)} style={{ ...btnGhost, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>Avbryt</button>
+          </div>
+        </div>
+      )}
 
       {/* Item list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -274,7 +377,7 @@ function CategoryCard({
             }}
           >
             {/* Icon picker */}
-            <IconSelectButton value={item.icon || ""} onChange={key => onUpdateIcon(item.id, key)} />
+            <IconSelectButton value={item.icon || ""} name={item.name} onChange={key => onUpdateIcon(item.id, key)} />
 
             {/* Name — click to edit inline */}
             {editingName === item.id ? (
@@ -424,19 +527,30 @@ function CategoryCard({
 export default function StrukenTvattEditor({
   initialProducts,
   initialWarnings,
+  initialCategoryMeta,
 }: {
   initialProducts: StrukenProduct[];
   initialWarnings: ProductWarning[];
+  initialCategoryMeta: CategoryMeta[];
 }) {
   const [products, setProducts] = useState<StrukenProduct[]>(initialProducts);
   const [warnings, setWarnings] = useState<ProductWarning[]>(initialWarnings);
+  const [categoryMeta, setCategoryMeta] = useState<CategoryMeta[]>(initialCategoryMeta);
   const [creatingNew, setCreatingNew] = useState(false);
-  const [newCatForm, setNewCatForm] = useState({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON });
+  const [newCatForm, setNewCatForm] = useState({ ...EMPTY_NEW_CAT });
   const [newCatError, setNewCatError] = useState("");
   const [creatingNewLoading, setCreatingNewLoading] = useState(false);
 
-  // Extract unique categories from products, sorted
-  const categories = Array.from(new Set(products.map(p => p.category))).sort();
+  // Presentation for one category: whatever is saved, else the shipped defaults.
+  const metaFor = (cat: Category): CategoryMeta =>
+    resolveCategoryMeta(cat, categoryMeta.find(m => m.name === cat));
+
+  // The categories are whatever the products say they are — exactly what the
+  // order page derives — sorted the same way the site sorts them.
+  const categories = Array.from(new Set(products.map(p => p.category)))
+    .map(metaFor)
+    .sort(compareCategories)
+    .map(m => m.name);
 
   // Group by category
   const byCategory = (cat: Category) =>
@@ -534,6 +648,21 @@ export default function StrukenTvattEditor({
     setProducts(prev => prev.map(p => p.id === id ? { ...p, icon } : p));
   }
 
+  /** Persist a category's appearance and mirror it locally. */
+  async function saveCategoryMeta(category: string, patch: Partial<CategoryMeta>) {
+    const next = { ...metaFor(category), ...patch, name: category };
+    const res = await fetch("/api/admin/service-categories", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    if (!res.ok) { alert("Kunde inte spara kategorins utseende. Försök igen."); return; }
+    setCategoryMeta(prev => {
+      const without = prev.filter(m => m.name !== category);
+      return [...without, next];
+    });
+  }
+
   async function saveNewCategory() {
     if (!newCatForm.category.trim()) { setNewCatError("Ange ett kategorinamn."); return; }
     if (categories.includes(newCatForm.category.trim())) { setNewCatError("Kategorin finns redan."); return; }
@@ -543,10 +672,19 @@ export default function StrukenTvattEditor({
 
     setCreatingNewLoading(true);
     setNewCatError("");
+    const category = newCatForm.category.trim();
     try {
-      await handleAdd(newCatForm.category.trim(), newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent), newCatForm.icon);
+      await handleAdd(category, newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent), newCatForm.icon);
+      // Sort new categories below the existing ones rather than tying with them.
+      const maxOrder = categories.reduce((m, c) => Math.max(m, metaFor(c).order), 0);
+      await saveCategoryMeta(category, {
+        icon:     newCatForm.catIcon,
+        desc:     newCatForm.desc.trim(),
+        subtitle: newCatForm.subtitle.trim(),
+        order:    Math.max(NEW_CATEGORY_ORDER, maxOrder + 10),
+      });
       setCreatingNew(false);
-      setNewCatForm({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON });
+      setNewCatForm({ ...EMPTY_NEW_CAT });
     } catch (e: any) {
       setNewCatError(e.message ?? "Kunde inte skapa. Försök igen.");
     } finally {
@@ -583,6 +721,8 @@ export default function StrukenTvattEditor({
           <CategoryCard
             key={cat}
             category={cat}
+            meta={metaFor(cat)}
+            onSaveMeta={patch => saveCategoryMeta(cat, patch)}
             items={byCategory(cat)}
             onAdd={handleAdd}
             onDelete={handleDelete}
@@ -599,26 +739,50 @@ export default function StrukenTvattEditor({
           <div style={{ ...cardStyle, borderStyle: "dashed", borderColor: "#d1d5db" }}>
             <p style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "1rem", color: "#555" }}>Skapa ny kategori</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <div>
-                <Label>Kategorinamn</Label>
-                <Input value={newCatForm.category} onChange={v => setNewCatForm(f => ({ ...f, category: v }))} placeholder="t.ex. Kostymer" />
-              </div>
-              <div>
-                <Label>Plaggnamn</Label>
-                <Input value={newCatForm.name} onChange={v => setNewCatForm(f => ({ ...f, name: v }))} placeholder="t.ex. Kostym väst" />
-              </div>
-              <div>
-                <Label>Ikon</Label>
-                <IconSelectButton value={newCatForm.icon} onChange={key => setNewCatForm(f => ({ ...f, icon: key }))} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
                 <div>
-                  <Label>Pris (kr)</Label>
-                  <Input type="number" value={newCatForm.price} onChange={v => setNewCatForm(f => ({ ...f, price: v }))} />
+                  <Label>Kategorins ikon</Label>
+                  <IconSelectButton value={newCatForm.catIcon} onChange={key => setNewCatForm(f => ({ ...f, catIcon: key }))} />
                 </div>
-                <div>
-                  <Label>Rabatt (%)</Label>
-                  <Input type="number" value={newCatForm.discountPercent} onChange={v => setNewCatForm(f => ({ ...f, discountPercent: v }))} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Label>Kategorinamn</Label>
+                  <Input value={newCatForm.category} onChange={v => setNewCatForm(f => ({ ...f, category: v }))} placeholder="t.ex. Skrädderi" />
+                </div>
+              </div>
+              <div>
+                <Label>Kort beskrivning (i listan)</Label>
+                <Input value={newCatForm.desc} onChange={v => setNewCatForm(f => ({ ...f, desc: v }))} placeholder="t.ex. Lagning & ändring" />
+              </div>
+              <div>
+                <Label>Lång beskrivning (när kategorin öppnas)</Label>
+                <Input value={newCatForm.subtitle} onChange={v => setNewCatForm(f => ({ ...f, subtitle: v }))} placeholder="t.ex. Uppläggning, blixtlås och ändringar" />
+              </div>
+
+              {/* A category exists only through its garments, so the first one is
+                  created here together with it. */}
+              <div style={{ borderTop: "1px dashed #eee", paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  Första plagget i kategorin
+                </p>
+                <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
+                  <div>
+                    <Label>Plaggets ikon</Label>
+                    <IconSelectButton value={newCatForm.icon} name={newCatForm.name} onChange={key => setNewCatForm(f => ({ ...f, icon: key }))} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Label>Plaggnamn</Label>
+                    <Input value={newCatForm.name} onChange={v => setNewCatForm(f => ({ ...f, name: v }))} placeholder="t.ex. Kortning av byxa" />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div>
+                    <Label>Pris (kr)</Label>
+                    <Input type="number" value={newCatForm.price} onChange={v => setNewCatForm(f => ({ ...f, price: v }))} />
+                  </div>
+                  <div>
+                    <Label>Rabatt (%)</Label>
+                    <Input type="number" value={newCatForm.discountPercent} onChange={v => setNewCatForm(f => ({ ...f, discountPercent: v }))} />
+                  </div>
                 </div>
               </div>
               {newCatError && <p style={errorStyle}>{newCatError}</p>}
@@ -626,7 +790,7 @@ export default function StrukenTvattEditor({
                 <button onClick={saveNewCategory} disabled={creatingNewLoading} style={btnDark}>
                   {creatingNewLoading ? "…" : "Skapa kategori"}
                 </button>
-                <button onClick={() => { setCreatingNew(false); setNewCatForm({ category: "", name: "", price: "", discountPercent: "", icon: DEFAULT_ICON }); setNewCatError(""); }} style={btnGhost}>
+                <button onClick={() => { setCreatingNew(false); setNewCatForm({ ...EMPTY_NEW_CAT }); setNewCatError(""); }} style={btnGhost}>
                   Avbryt
                 </button>
               </div>
