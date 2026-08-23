@@ -155,7 +155,9 @@ export async function sendStatusEmail(opts: {
   status: string;
 }): Promise<SendStatusEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM || "Express Tvätt <onboarding@resend.dev>";
+  // Trimmed: hosting UIs take the value as typed, and a stray trailing space
+  // pasted into the field would otherwise end up inside the From header.
+  const from = process.env.RESEND_FROM?.trim() || "Express Tvätt <onboarding@resend.dev>";
   // Customers reply to transactional mail no matter what the footer says. With a
   // no-reply@ sender those replies bounce or vanish, so point them at a real
   // inbox. Optional — unset simply means no Reply-To header.

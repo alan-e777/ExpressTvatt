@@ -10,6 +10,7 @@ import {
 } from "@/lib/mattvatt";
 import WishlistPanel from "./WishlistPanel";
 import GdprSettingsPanel from "./GdprSettingsPanel";
+import NotificationStatusPanel from "./NotificationStatusPanel";
 
 type Prediction = { description: string; placeId: string };
 
@@ -25,6 +26,7 @@ const SECTION_TERMS = {
   mattvatt:  "mattvätt matta mattor pris priser kvadratmeter kvm m2 m² kr per storlek min max minsta största normal äkta orientalisk slider reglage",
   admins:    "administratörer admin adminkonton konto konton roll roller huvudadmin lösenord behörighet användare",
   gdpr:      "gdpr integritetspolicy personuppgifter dataskydd policy juridik företagsuppgifter organisationsnummer",
+  avsandare: "avsändare avsandare epost e-post mejl sms resend 46elks from svara till domän sandbox testavsändare",
   map:       "karta google maps tjänsteområde radie cirkel centrum",
   wishlist:  "önskelista önskemål wishlist funktioner idéer förslag",
 } as const;
@@ -618,6 +620,11 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           {/* Admin accounts */}
           <Filterable query={query} section="admins">
             <AdminAccounts />
+          </Filterable>
+
+          {/* Which sender this deployment actually uses */}
+          <Filterable query={query} section="avsandare">
+            <NotificationStatusPanel />
           </Filterable>
 
           {/* GDPR / privacy policy inputs */}
