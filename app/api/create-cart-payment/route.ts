@@ -388,11 +388,20 @@ export async function POST(request: NextRequest) {
         status:  'order_received',
       }).catch(err => ({ ok: false, error: String(err) })),
     ]);
-    // Logged rather than returned: a test order exists to be inspected, and if a
-    // channel silently skips (no 46elks key, no recipient) this is where you see
-    // which one and why. Never fails the order — the order itself is the artefact.
+    // Logged *and* stamped on the order. A test order exists to be inspected, and
+    // a channel that silently skips (no 46elks key, no phone, Resend refusing the
+    // recipient) is otherwise invisible — especially on Vercel, where there are no
+    // logs to go back to. Never fails the order; the order itself is the artefact.
     console.log('[create-cart-payment] test order', testOrderNo,
       '— email:', JSON.stringify(emailResult), 'sms:', JSON.stringify(smsResult));
+    await db.collection('orders').doc(orderId).set({
+      confirmationNotice: {
+        at:    new Date(),
+        from:  process.env.RESEND_FROM ?? '',
+        email: { ok: emailResult.ok, to: email?.trim() ?? '', error: (emailResult as { error?: string }).error ?? '', skipped: (emailResult as { skipped?: string }).skipped ?? '' },
+        sms:   { ok: smsResult.ok,   to: phone?.trim() ?? '', error: (smsResult   as { error?: string }).error ?? '', skipped: (smsResult   as { skipped?: string }).skipped ?? '' },
+      },
+    }, { merge: true }).catch(err => console.error('[create-cart-payment] could not record notification outcome', err));
 
     // Deliberately NOT flipping `hasPlacedOrder`: a test must stay repeatable,
     // and burning the account's first-time discount would make it a one-shot.

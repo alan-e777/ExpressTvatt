@@ -22,6 +22,41 @@ import { sendStatusSms } from "@/lib/order-status-sms";
  * email, so the customer never receives duplicates.
  */
 
+/**
+ * Stamps the outcome of the confirmation email/SMS onto the order.
+ *
+ * Both channels are best-effort — a failed send must never fail a Stripe
+ * webhook — but "best-effort" had meant "silently dropped": a refused send left
+ * no trace anywhere the operator looks, so "the customer never got the email"
+ * was only diagnosable from server logs, and not at all on Vercel after the fact.
+ * The order now carries the reason, and the admin order card shows it.
+ */
+async function recordNotificationOutcome(
+  ref: FirebaseFirestore.DocumentReference,
+  args: {
+    email: { ok: boolean; error?: string; skipped?: string };
+    sms:   { ok: boolean; error?: string; skipped?: string };
+    to: string | null;
+    phone: string | null;
+  },
+): Promise<void> {
+  await ref
+    .set(
+      {
+        confirmationNotice: {
+          at: new Date(),
+          // Recorded so a "why did nobody get this" question can be answered
+          // without guessing which environment sent it.
+          from: process.env.RESEND_FROM ?? "",
+          email: { ok: args.email.ok, to: args.to ?? "", error: args.email.error ?? "", skipped: args.email.skipped ?? "" },
+          sms:   { ok: args.sms.ok,   to: args.phone ?? "", error: args.sms.error ?? "",   skipped: args.sms.skipped ?? "" },
+        },
+      },
+      { merge: true },
+    )
+    .catch((err) => console.error("[fulfillment] could not record notification outcome", err));
+}
+
 /** Statuses that mean the order has already moved past payment. Never overwrite. */
 const SETTLED_STATUSES = new Set([
   "paid",
@@ -124,24 +159,18 @@ export async function settlePaidOrder(
     const order = outcome.data ?? {};
     const orderNo = orderNumber(intent.id);
     const name = (order.customerName as string) ?? "";
-    await Promise.all([
-      sendStatusEmail({
-        to: (order.customerEmail as string) ?? intent.receipt_email ?? null,
-        name,
-        orderNo,
-        status: "order_received",
-      }).catch((err) =>
-        console.error("[fulfillment] confirmation email failed for", intent.id, err),
-      ),
-      sendStatusSms({
-        to: (order.customerPhone as string) ?? null,
-        name,
-        orderNo,
-        status: "order_received",
-      }).catch((err) =>
-        console.error("[fulfillment] confirmation sms failed for", intent.id, err),
-      ),
+    // `||`, not `??`: an order placed without an email stores "" rather than
+    // undefined, and `??` would keep the empty string instead of falling back
+    // to the address Stripe has — which is the only one left at that point.
+    const to = (order.customerEmail as string) || intent.receipt_email || null;
+    const [email, sms] = await Promise.all([
+      sendStatusEmail({ to, name, orderNo, status: "order_received" })
+        .catch((err) => ({ ok: false, error: String(err?.message ?? err) })),
+      sendStatusSms({ to: (order.customerPhone as string) || null, name, orderNo, status: "order_received" })
+        .catch((err) => ({ ok: false, error: String(err?.message ?? err) })),
     ]);
+
+    await recordNotificationOutcome(ref, { email, sms, to, phone: (order.customerPhone as string) || null });
   }
 
   // First order flips the customer out of first-time-discount eligibility.

@@ -46,6 +46,11 @@ export default async function OrdersPage() {
       deliveryTime:  data.deliveryTime ?? "",
       customFields:  data.customFields ?? {},
       items:         data.items ?? [],
+      // `at` is a Firestore Timestamp — a class instance, which cannot cross the
+      // Server → Client Component boundary. Flattened like createdAt above.
+      confirmationNotice: data.confirmationNotice
+        ? { ...data.confirmationNotice, at: data.confirmationNotice.at?.toDate?.()?.toISOString() ?? null }
+        : null,
       tags:          data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
       rutAvdrag:     !!data.rutAvdrag,
       rutVerified:   !!data.rutVerified,

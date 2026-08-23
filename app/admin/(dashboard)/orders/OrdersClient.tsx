@@ -12,6 +12,10 @@ import { queueStatusEmail } from "@/lib/order-email-bus";
  *  differ only by note, so the id alone is not a usable key. */
 export type BasketItem = { id: string; name: string; price: number; qty: number; note?: string };
 
+/** Per-channel result of the "order received" notification. */
+export type NoticeChannel = { ok: boolean; to: string; error: string; skipped: string };
+export type ConfirmationNotice = { at: string | null; from: string; email: NoticeChannel; sms: NoticeChannel };
+
 export type Order = {
   id: string;
   paymentIntentId: string;
@@ -35,6 +39,8 @@ export type Order = {
   deliveryTime: string;
   customFields: Record<string, string>;
   items: BasketItem[];
+  /** Outcome of the confirmation email/SMS, stamped when the order settled. */
+  confirmationNotice: ConfirmationNotice | null;
   tags: string[];
   rutAvdrag: boolean;
   rutVerified: boolean;
@@ -195,6 +201,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           deliveryTime:    data.deliveryTime ?? "",
           customFields:    data.customFields ?? {},
           items:           data.items ?? [],
+          confirmationNotice: data.confirmationNotice
+            ? { ...data.confirmationNotice, at: data.confirmationNotice.at?.toDate?.()?.toISOString() ?? null } as ConfirmationNotice
+            : null,
           tags:            data.tags ?? (data.rutAvdrag ? ["RUT"] : []),
           rutAvdrag:       !!data.rutAvdrag,
           rutVerified:     !!data.rutVerified,
@@ -888,6 +897,9 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                                 <p style={{ fontSize: "0.8rem", color: "#bbb" }}>No booking details saved</p>
                               )}
 
+                              {/* Did the customer actually hear about this order? */}
+                              <ConfirmationNoticeRow notice={order.confirmationNotice} />
+
                               {/* Struken Tvätt basket items */}
                               {(order.items ?? []).length > 0 && (
                                 <div style={{ marginTop: "0.5rem" }}>
@@ -1033,6 +1045,49 @@ function StatusSelect({ value, onChange, disabled }: { value: string; onChange: 
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
     </select>
+  );
+}
+
+/**
+ * Whether the "order received" email and SMS actually reached the customer.
+ *
+ * Both sends are best-effort so they never fail a payment — which used to mean a
+ * refused send vanished without trace and the only symptom was a customer who
+ * never heard anything. Silent on success; only speaks up when something did not
+ * get through, and says which channel and why.
+ */
+function ConfirmationNoticeRow({ notice }: { notice: ConfirmationNotice | null }) {
+  if (!notice) return null;
+
+  const problems: string[] = [];
+  const describe = (label: string, ch: NoticeChannel | undefined) => {
+    if (!ch) return;
+    if (ch.ok && !ch.skipped) return;                       // delivered to Resend/46elks
+    if (ch.skipped === "no_recipient") problems.push(`${label}: ingen adress angiven`);
+    else if (ch.skipped === "no_api_key") problems.push(`${label}: tjänsten är inte konfigurerad`);
+    else if (!ch.ok) problems.push(`${label}: ${ch.error || "misslyckades"}`);
+  };
+  describe("E-post", notice.email);
+  describe("SMS", notice.sms);
+  if (problems.length === 0) return null;
+
+  return (
+    <div style={{
+      marginTop: "0.5rem", background: "#fef3c7", border: "1px solid #fbbf24",
+      borderRadius: "8px", padding: "0.55rem 0.75rem", fontSize: "0.78rem", color: "#7c2d12",
+    }}>
+      <p style={{ fontWeight: 700, marginBottom: "0.25rem" }}>
+        Orderbekräftelsen nådde inte kunden
+      </p>
+      {problems.map(p => (
+        <p key={p} style={{ lineHeight: 1.45, overflowWrap: "anywhere" }}>• {p}</p>
+      ))}
+      {notice.from && (
+        <p style={{ marginTop: "0.3rem", color: "#a16207", fontSize: "0.7rem" }}>
+          Avsändare: {notice.from}
+        </p>
+      )}
+    </div>
   );
 }
 
