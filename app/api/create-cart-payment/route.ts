@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { db, auth } from '@/lib/firebase-admin';
 import { isAdminUid } from '@/lib/admin-auth';
 import { orderNumber, sendStatusEmail } from '@/lib/order-status-email';
+import { sendStatusSms } from '@/lib/order-status-sms';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
@@ -368,14 +369,30 @@ export async function POST(request: NextRequest) {
   });
 
   if (isTestOrder) {
-    // Same confirmation the customer would get, so the test exercises the email
-    // too. Best-effort: a failed send must not fail the order.
-    await sendStatusEmail({
-      to:      email?.trim() || null,
-      name:    name ?? '',
-      orderNo: orderNumber(orderId),
-      status:  'order_received',
-    }).catch(err => console.error('[create-cart-payment] test-order email failed', err));
+    // The exact pair a real order sends from settlePaidOrder — email *and* SMS.
+    // A test that skipped a channel would not be testing the thing that matters,
+    // so this deliberately mirrors it rather than being cheaper.
+    // Best-effort: a failed send must not fail the order.
+    const testOrderNo = orderNumber(orderId);
+    const [emailResult, smsResult] = await Promise.all([
+      sendStatusEmail({
+        to:      email?.trim() || null,
+        name:    name ?? '',
+        orderNo: testOrderNo,
+        status:  'order_received',
+      }).catch(err => ({ ok: false, error: String(err) })),
+      sendStatusSms({
+        to:      phone?.trim() || null,
+        name:    name ?? '',
+        orderNo: testOrderNo,
+        status:  'order_received',
+      }).catch(err => ({ ok: false, error: String(err) })),
+    ]);
+    // Logged rather than returned: a test order exists to be inspected, and if a
+    // channel silently skips (no 46elks key, no recipient) this is where you see
+    // which one and why. Never fails the order — the order itself is the artefact.
+    console.log('[create-cart-payment] test order', testOrderNo,
+      '— email:', JSON.stringify(emailResult), 'sms:', JSON.stringify(smsResult));
 
     // Deliberately NOT flipping `hasPlacedOrder`: a test must stay repeatable,
     // and burning the account's first-time discount would make it a one-shot.

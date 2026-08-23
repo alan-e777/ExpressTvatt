@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { db } from "@/lib/firebase-admin";
 import { sendStatusEmail, orderNumber } from "@/lib/order-status-email";
+import { sendStatusSms } from "@/lib/order-status-sms";
 
 /**
  * Single source of truth for "this PaymentIntent succeeded — settle the order".
@@ -112,17 +113,35 @@ export async function settlePaidOrder(
   });
 
   if (outcome.emailed) {
-    // Best-effort: a failed email must never cause the caller to retry and
+    // Both channels, fired together — the same pair the admin's status changes
+    // send from /api/admin/orders/notify-status, so "order received" reaches the
+    // customer the same way every later status does. `confirmationEmailSentAt`
+    // gates both, so exactly one caller notifies even when the webhook, the
+    // browser and the reconcile sweep all arrive at once.
+    //
+    // Best-effort: a failed send must never cause the caller to retry and
     // re-settle, and must never fail a Stripe webhook.
     const order = outcome.data ?? {};
-    await sendStatusEmail({
-      to: (order.customerEmail as string) ?? intent.receipt_email ?? null,
-      name: (order.customerName as string) ?? "",
-      orderNo: orderNumber(intent.id),
-      status: "order_received",
-    }).catch((err) =>
-      console.error("[fulfillment] confirmation email failed for", intent.id, err),
-    );
+    const orderNo = orderNumber(intent.id);
+    const name = (order.customerName as string) ?? "";
+    await Promise.all([
+      sendStatusEmail({
+        to: (order.customerEmail as string) ?? intent.receipt_email ?? null,
+        name,
+        orderNo,
+        status: "order_received",
+      }).catch((err) =>
+        console.error("[fulfillment] confirmation email failed for", intent.id, err),
+      ),
+      sendStatusSms({
+        to: (order.customerPhone as string) ?? null,
+        name,
+        orderNo,
+        status: "order_received",
+      }).catch((err) =>
+        console.error("[fulfillment] confirmation sms failed for", intent.id, err),
+      ),
+    ]);
   }
 
   // First order flips the customer out of first-time-discount eligibility.

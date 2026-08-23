@@ -128,6 +128,36 @@ Register both new event types in the Stripe Dashboard webhook config.
 
 ---
 
+### 🔴 RESEND IS IN SANDBOX — NO CUSTOMER RECEIVES ANY EMAIL
+
+`RESEND_FROM` is `Express Tvätt <onboarding@resend.dev>`, Resend's shared
+sandbox sender. With it, Resend refuses every recipient except the Resend
+account owner's own address, with:
+
+> You can only send testing emails to your own email address
+> (alan.e777@hotmail.com). To send emails to other recipients, please verify a
+> domain at resend.com/domains, and change the `from` address to an email using
+> this domain.
+
+**Risk:** order confirmations and every status-change email silently fail for
+real customers. `sendStatusEmail` is best-effort by design, so nothing errors
+visibly — the order is created, the customer simply never hears anything.
+
+**Fix (needs the domain, so do it with the Stripe cutover):**
+1. resend.com/domains → add the live domain → add the DNS records it gives you.
+2. Wait for it to verify.
+3. Set `RESEND_FROM` to an address on that domain, e.g.
+   `Express Tvätt <no-reply@expresstvatt.se>`, in `.env.local` **and** Vercel.
+4. Place one real order and confirm the confirmation email arrives at an address
+   that is *not* the Resend account owner's.
+
+**SMS is unaffected** — 46elks is live and verified working (credentials accept
+a dry-run send, sender id `Express`, Swedish numbers normalise to E.164). Order
+confirmations send email *and* SMS as of the confirmation-SMS change; a customer
+with a phone number on the order still hears from you even while email is broken.
+
+---
+
 ### 🔴 STRIPE PRODUCTION WEBHOOK — DO THIS THE DAY YOU GET A DOMAIN
 
 > **This cannot be done until you have a live HTTPS URL (e.g. Vercel deployment).
