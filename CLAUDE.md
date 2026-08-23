@@ -37,5 +37,12 @@ See `structure.md` for full file map.
 - `ADMIN_UID` — Firebase UID of the bootstrap/root admin (in `.env.local`)
 
 ## Test accounts
-- **Admin**: zupimcarl@gmail.com / wallahi007
-- **Test user**: testgubbe44@gmail.com / password123
+Credentials are NOT kept in this repo — it is public, and anything committed here
+stays in the git history forever even after it is removed. Ask the owner, or read
+them from a local untracked file.
+
+- **Admin**: the bootstrap `ADMIN_UID` account (see `.env.local`)
+- **Test user**: a normal customer account
+
+To place throwaway orders without a real payment, use a 0 kr test item instead of
+a shared login — see the "test items" hint under Tjänster.
