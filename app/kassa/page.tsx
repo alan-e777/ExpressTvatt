@@ -143,7 +143,9 @@ function CheckoutForm() {
 
   const [items,        setItems]        = useState<CartItem[]>([]);
   const [userId,       setUserId]       = useState<string | undefined>();
-  const [step,         setStep]         = useState<'form' | 'payment'>('form');
+  // 'done' is the test-order path: a 0 kr basket is settled server-side, so
+  // there is no payment step to render at all.
+  const [step,         setStep]         = useState<'form' | 'payment' | 'done'>('form');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId,      setOrderId]      = useState<string | null>(null);
   const [paid,         setPaid]         = useState(false);
@@ -339,9 +341,16 @@ function CheckoutForm() {
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
-      setClientSecret(data.clientSecret);
       setOrderId(data.orderId ?? null);
-      setStep('payment');
+      if (data.testOrder) {
+        // Nothing to charge and nothing to confirm — the order already exists
+        // and is marked paid. Straight to the confirmation card.
+        setPaid(true);
+        setStep('done');
+      } else {
+        setClientSecret(data.clientSecret);
+        setStep('payment');
+      }
       if (userId) {
         setDoc(doc(db, 'customers', userId), {
           addresses: arrayUnion({ address, postalCode, deliveryNote: savedPick?.deliveryNote ?? '' }),
@@ -430,6 +439,14 @@ function CheckoutForm() {
             <IconArrowRight size={16} stroke={2} />
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  if (step === 'done') {
+    return (
+      <div className="form-page of">
+        <SuccessCard orderId={orderId} />
       </div>
     );
   }

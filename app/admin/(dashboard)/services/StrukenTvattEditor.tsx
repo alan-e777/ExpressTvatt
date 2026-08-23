@@ -364,7 +364,9 @@ function CategoryCard({
   async function handleAdd() {
     if (!newName.trim()) { setAddError("Ange ett namn."); return; }
     const price = parseFloat(newPrice);
-    if (!newPrice || isNaN(price) || price <= 0) { setAddError("Ange ett giltigt pris."); return; }
+    // 0 is allowed on purpose — it creates a test item (see the hint below the
+    // price field). Only a negative or unparseable price is rejected.
+    if (!newPrice.trim() || isNaN(price) || price < 0) { setAddError("Ange ett giltigt pris."); return; }
     setAdding(true);
     setAddError("");
     try {
@@ -382,7 +384,7 @@ function CategoryCard({
 
   async function handlePriceSave(id: string) {
     const price = parseFloat(editPriceVal);
-    if (isNaN(price) || price <= 0) { setEditingPrice(null); return; }
+    if (isNaN(price) || price < 0) { setEditingPrice(null); return; }
     await onUpdatePrice(id, price);
     setEditingPrice(null);
   }
@@ -533,11 +535,15 @@ function CategoryCard({
               />
             ) : (
               <button
-                title="Klicka för att ändra pris"
+                title={item.price === 0 ? "Testartikel — 0 kr hoppar över Stripe helt" : "Klicka för att ändra pris"}
                 onClick={() => { setEditingPrice(item.id); setEditPriceVal(String(item.price)); }}
-                style={{ background: "#f5f5f5", border: "none", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.8rem", color: "#555", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                style={{
+                  background: item.price === 0 ? "#7C2D12" : "#f5f5f5", border: "none", borderRadius: "4px",
+                  padding: "0.2rem 0.5rem", fontSize: "0.8rem", color: item.price === 0 ? "#fff" : "#555",
+                  cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                }}
               >
-                {item.price} kr
+                {item.price === 0 ? "TEST · 0 kr" : `${item.price} kr`}
               </button>
             )}
 
@@ -647,6 +653,11 @@ function CategoryCard({
           </button>
         </div>
         {addError && <p style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "0.1rem" }}>{addError}</p>}
+        <p style={{ fontSize: "0.68rem", color: "#bbb", lineHeight: 1.4 }}>
+          Pris 0 kr skapar en <strong>testartikel</strong>: den syns bara för inloggade
+          administratörer och en beställning med enbart sådana går aldrig via Stripe —
+          ordern kan raderas utan återbetalning.
+        </p>
       </div>
     </div>
   );
@@ -814,7 +825,7 @@ export default function StrukenTvattEditor({
     if (categories.includes(newCatForm.category.trim())) { setNewCatError("Kategorin finns redan."); return; }
     if (!newCatForm.name.trim()) { setNewCatError("Ange ett plaggnamn."); return; }
     const price = parseFloat(newCatForm.price);
-    if (!newCatForm.price || isNaN(price) || price <= 0) { setNewCatError("Ange ett giltigt pris."); return; }
+    if (!newCatForm.price.trim() || isNaN(price) || price < 0) { setNewCatError("Ange ett giltigt pris."); return; }
 
     setCreatingNewLoading(true);
     setNewCatError("");

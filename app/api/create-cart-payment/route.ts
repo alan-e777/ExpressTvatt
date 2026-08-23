@@ -1,6 +1,9 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { db, auth } from '@/lib/firebase-admin';
+import { isAdminUid } from '@/lib/admin-auth';
+import { orderNumber, sendStatusEmail } from '@/lib/order-status-email';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
@@ -200,10 +203,10 @@ export async function POST(request: NextRequest) {
       priceKr = servicePrices[item.id] ?? null;
     }
 
-    // Skip anything that isn't a sane positive price. A zero or negative entry
-    // in the catalogue would otherwise subtract from the rest of the basket
-    // rather than simply being ignored.
-    if (priceKr === null || !Number.isFinite(priceKr) || priceKr <= 0) continue;
+    // Drop anything that isn't a sane price. Negative would subtract from the
+    // rest of the basket rather than simply being ignored. 0 is kept on purpose:
+    // it is how a test item is priced (see isTestOrder below).
+    if (priceKr === null || !Number.isFinite(priceKr) || priceKr < 0) continue;
 
     const itemPct = itemDiscountPct(item);
     const unitKr  = discountedUnitPrice(priceKr, itemPct, firstTimePct, discounts.multipleDiscountsAllowed);
@@ -220,7 +223,24 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (totalOre === 0) {
+  // ── Test orders ─────────────────────────────────────────────────────────────
+  // A basket of nothing but 0 kr lines is a test order. Stripe cannot take a
+  // 0 kr payment at all — its SEK minimum is 3 kr — so these never reach Stripe:
+  // the order is written straight to Firestore already settled. That is what
+  // makes an end-to-end test disposable: delete the order, no refund, no fees.
+  const isTestOrder = validatedItems.length > 0 && validatedItems.every(i => i.validatedPrice === 0);
+
+  // 0 kr items are hidden from the public catalogue, but that is only cosmetic —
+  // a hand-edited cart link would otherwise let anyone book real work for free.
+  // The verified ID token is the actual gate.
+  if (isTestOrder && !(verifiedUid && (await isAdminUid(verifiedUid)))) {
+    return NextResponse.json(
+      { error: 'Testartiklar kan bara beställas av en inloggad administratör.' },
+      { status: 403 },
+    );
+  }
+
+  if (totalOre === 0 && !isTestOrder) {
     return NextResponse.json({ error: 'Kunde inte beräkna totalpris.' }, { status: 400 });
   }
 
@@ -232,7 +252,10 @@ export async function POST(request: NextRequest) {
   const freeDeliveryThresholdKr = Math.max(0, Math.round(Number(driverData?.freeDeliveryThresholdKr) || 0));
   const deliveryFeeKr           = Math.max(0, Math.round(Number(driverData?.deliveryFeeKr) || 0));
   const itemsTotalKr            = totalOre / 100;
-  const appliedDeliveryFeeKr    = itemsTotalKr >= freeDeliveryThresholdKr ? 0 : deliveryFeeKr;
+  // A test order pays nothing at all — a delivery fee would push it back over 0
+  // and straight into Stripe, which is exactly what it exists to avoid.
+  const appliedDeliveryFeeKr    = isTestOrder ? 0
+    : itemsTotalKr >= freeDeliveryThresholdKr ? 0 : deliveryFeeKr;
   const deliveryFeeOre          = appliedDeliveryFeeKr * 100;
 
   totalOre    += deliveryFeeOre;
@@ -252,33 +275,46 @@ export async function POST(request: NextRequest) {
     .map(i => `${i.qty}× ${i.name}${i.note ? ` [${i.note}]` : ''} (${i.discountedPrice} kr)`)
     .join(', ');
 
-  // ── Create Stripe PaymentIntent ─────────────────────────────────────────────
+  // ── Create Stripe PaymentIntent (skipped entirely for a test order) ─────────
 
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount:   totalOre,
-    currency: 'sek',
-    // Stripe's own receipt is an independent backstop: the customer gets proof
-    // of payment even if Resend is misconfigured.
-    receipt_email: email?.trim() || undefined,
-    metadata: {
-      serviceId:   'cart',
-      serviceName: 'Express Tvätt-korg',
-      priceOre:    String(totalOre),
-      customerId:  effectiveCustomerId,
-      items:       itemsSummary.slice(0, 500), // Stripe metadata limit
-      rutAvdrag:   rutAvdrag ? 'true' : 'false',
-      rutPersonnummer: rutPersonnummer,
-      firstTimeDiscount: isFirstTime ? String(firstTimePct) : '0',
-      rutDiscount: String(rutDiscountKr),
-      deliveryFee: String(appliedDeliveryFeeKr),
-    },
-  });
+  let orderId: string;
+  let clientSecret: string | null = null;
+
+  if (isTestOrder) {
+    // Its own id namespace, so a test order is recognisable at a glance and can
+    // never collide with a real `pi_…`.
+    orderId = `test_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+  } else {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount:   totalOre,
+      currency: 'sek',
+      // Stripe's own receipt is an independent backstop: the customer gets proof
+      // of payment even if Resend is misconfigured.
+      receipt_email: email?.trim() || undefined,
+      metadata: {
+        serviceId:   'cart',
+        serviceName: 'Express Tvätt-korg',
+        priceOre:    String(totalOre),
+        customerId:  effectiveCustomerId,
+        items:       itemsSummary.slice(0, 500), // Stripe metadata limit
+        rutAvdrag:   rutAvdrag ? 'true' : 'false',
+        rutPersonnummer: rutPersonnummer,
+        firstTimeDiscount: isFirstTime ? String(firstTimePct) : '0',
+        rutDiscount: String(rutDiscountKr),
+        deliveryFee: String(appliedDeliveryFeeKr),
+      },
+    });
+    orderId      = paymentIntent.id;
+    clientSecret = paymentIntent.client_secret;
+  }
 
   // ── Pre-create order in Firestore ───────────────────────────────────────────
 
-  await db.collection('orders').doc(paymentIntent.id).set({
-    id:              paymentIntent.id,
-    paymentIntentId: paymentIntent.id,
+  await db.collection('orders').doc(orderId).set({
+    id:              orderId,
+    // Kept equal to the order id for a test order too, so everything that keys
+    // off it (order numbers, the reconcile sweep's tombstones) still works.
+    paymentIntentId: orderId,
     serviceId:       'cart',
     serviceName:     'Express Tvätt-korg',
     customerId:      effectiveCustomerId,
@@ -317,10 +353,34 @@ export async function POST(request: NextRequest) {
     rutPersonnummer:     rutPersonnummer,
     rutDiscountPercent:  rutAvdrag ? RUT_DISCOUNT_PERCENT : 0,
     rutRefundOre:        rutDiscountOre,
-    tags:                rutAvdrag ? ['RUT'] : [],
+    tags:                [...(rutAvdrag ? ['RUT'] : []), ...(isTestOrder ? ['TEST'] : [])],
     platform:        platform === 'mobile' ? 'mobile' : 'web',
     createdAt:       new Date(),
+    // A test order has nothing to settle — no PaymentIntent will ever succeed
+    // for it — so it is born paid. `settlePaidOrder` is never involved.
+    ...(isTestOrder ? {
+      status:                  'paid',
+      isTestOrder:             true,
+      paidAt:                  new Date(),
+      settledBy:               'test',
+      confirmationEmailSentAt: new Date(),
+    } : {}),
   });
 
-  return NextResponse.json({ clientSecret: paymentIntent.client_secret, orderId: paymentIntent.id });
+  if (isTestOrder) {
+    // Same confirmation the customer would get, so the test exercises the email
+    // too. Best-effort: a failed send must not fail the order.
+    await sendStatusEmail({
+      to:      email?.trim() || null,
+      name:    name ?? '',
+      orderNo: orderNumber(orderId),
+      status:  'order_received',
+    }).catch(err => console.error('[create-cart-payment] test-order email failed', err));
+
+    // Deliberately NOT flipping `hasPlacedOrder`: a test must stay repeatable,
+    // and burning the account's first-time discount would make it a one-shot.
+    return NextResponse.json({ testOrder: true, orderId });
+  }
+
+  return NextResponse.json({ clientSecret, orderId });
 }

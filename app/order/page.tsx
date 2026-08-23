@@ -156,6 +156,9 @@ export default function HomePage() {
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
   const [isFirstTime, setIsFirstTime]           = useState(false);
+  // 0 kr test items are only shown to a signed-in admin — a customer offered a
+  // 0 kr tile would just be refused at checkout. Server-enforced regardless.
+  const [testMode, setTestMode]                 = useState(false);
   const [userId, setUserId]                     = useState<string | undefined>();
   // Reusable "bra att veta" remarks, keyed by id and referenced per product.
   const [warnings, setWarnings]                 = useState<Record<string, string>>({});
@@ -229,14 +232,18 @@ export default function HomePage() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async u => {
       setUserId(u?.uid);
-      if (!u) { setIsFirstTime(false); return; }
+      if (!u) { setIsFirstTime(false); setTestMode(false); return; }
       try {
         const token = await u.getIdToken();
-        const res = await fetch('/api/first-time-eligibility', { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        setIsFirstTime(!!data?.isFirstTime);
+        const [firstRes, testRes] = await Promise.all([
+          fetch('/api/first-time-eligibility', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/test-mode',              { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        setIsFirstTime(!!(await firstRes.json())?.isFirstTime);
+        setTestMode(!!(await testRes.json())?.enabled);
       } catch {
         setIsFirstTime(false);
+        setTestMode(false);
       }
     });
     return unsub;
@@ -305,11 +312,24 @@ export default function HomePage() {
   const rutDiscountKr = rutAvdrag ? rutRefundKr(cartTotal) : 0;
   const grandTotalKr = cartTotal - rutDiscountKr + deliveryFeeKr;
 
+  // 0 kr test items are filtered out at the source rather than at render, so a
+  // category holding nothing but test items does not show a customer an empty
+  // category either.
+  const visibleCatalog = useMemo(() => {
+    if (testMode) return strukenCatalog;
+    const out: Record<string, StrukenProduct[]> = {};
+    for (const [cat, list] of Object.entries(strukenCatalog)) {
+      const kept = list.filter(p => p.price > 0);
+      if (kept.length) out[cat] = kept;
+    }
+    return out;
+  }, [strukenCatalog, testMode]);
+
   // The rows the customer sees: one per category present in the catalogue, plus
   // the built-in mattvätt, ordered the way the admin ordered them.
   const categories: CatView[] = useMemo(() => {
     const stored = new Map(categoryMeta.map(m => [m.name, m]));
-    const names  = new Set<string>([...Object.keys(strukenCatalog), MATTVATT_CATEGORY]);
+    const names  = new Set<string>([...Object.keys(visibleCatalog), MATTVATT_CATEGORY]);
     return [...names]
       .map(name => resolveCategoryMeta(name, stored.get(name)))
       .sort(compareCategories)
@@ -319,7 +339,7 @@ export default function HomePage() {
         isMattvatt: meta.name === MATTVATT_CATEGORY,
         Icon:       getProductIcon(meta.icon),
       }));
-  }, [strukenCatalog, categoryMeta]);
+  }, [visibleCatalog, categoryMeta]);
 
   // Map every catalogue product id → its category, for the per-category badges.
   // Mattvätt lines are matched on their cart type instead: their ids carry the
@@ -328,10 +348,10 @@ export default function HomePage() {
     const map: Record<string, CatId> = {};
     for (const cat of categories) {
       if (cat.isMattvatt) continue;
-      for (const p of strukenCatalog[cat.name] ?? []) map[p.id] = cat.id;
+      for (const p of visibleCatalog[cat.name] ?? []) map[p.id] = cat.id;
     }
     return map;
-  }, [categories, strukenCatalog]);
+  }, [categories, visibleCatalog]);
 
   const catOf = (item: CartItem): CatId | undefined =>
     item.type === 'mattvätt' ? MATTVATT_ID : idToCat[item.id];
@@ -345,7 +365,7 @@ export default function HomePage() {
   // `?? null` matters now that the list is data-driven: a category the admin
   // just emptied can disappear while its detail view is open.
   const openMeta = openCat ? (categories.find(c => c.id === openCat) ?? null) : null;
-  const openProducts = openMeta && !openMeta.isMattvatt ? (strukenCatalog[openMeta.name] ?? []) : [];
+  const openProducts = openMeta && !openMeta.isMattvatt ? (visibleCatalog[openMeta.name] ?? []) : [];
 
   // The rug the size slider currently describes — null until a type is picked.
   // `basePrice` is kr/m² × m², the same figure create-cart-payment recomputes.
@@ -411,13 +431,15 @@ export default function HomePage() {
   }
 
   // A single product tile (mattvätt + catalogue items share the same shape)
-  function ProductTile({ id, name, price, Icon, type, warningTexts = [], needsInput = false, onOpenInput, innerRef }: {
+  function ProductTile({ id, name, price, Icon, type, warningTexts = [], needsInput = false, isTest = false, onOpenInput, innerRef }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
     type: CartItem['type'];
     warningTexts?: string[];
     /** Product whose category asks for a note — the tile opens the panel instead of adding. */
     needsInput?: boolean;
+    /** 0 kr test item — only ever rendered for an admin, and flagged as such. */
+    isTest?: boolean;
     onOpenInput?: () => void;
     innerRef?: (el: HTMLDivElement | null) => void;
   }) {
@@ -442,6 +464,7 @@ export default function HomePage() {
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } }}
       >
         {warningTexts.length > 0 && <WarningBadge texts={warningTexts} label={name} />}
+        {isTest && <span className="of-test-badge">TEST</span>}
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
         <div className="prod-tile-name">{name}</div>
         <div className="prod-tile-foot">
@@ -746,6 +769,7 @@ export default function HomePage() {
                       type="struken"
                       warningTexts={(p.warningIds ?? []).map(w => warnings[w]).filter(Boolean)}
                       needsInput={needsInput}
+                      isTest={p.price === 0}
                       innerRef={needsInput ? (el => { tileRefs.current[p.id] = el; }) : undefined}
                       onOpenInput={() => {
                         setInputNote('');

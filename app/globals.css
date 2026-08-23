@@ -3525,6 +3525,15 @@ input, textarea, select { font-family: inherit; }
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
+/* 0 kr test item. Only an admin ever sees one of these tiles, but it sits in
+   the same grid as real products, so it says plainly what it is. */
+.site-shell .of-test-badge {
+  position: absolute; top: 10px; left: 10px;
+  padding: 2px 7px; border-radius: 9999px;
+  background: #7C2D12; color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+}
+
 /* ── Customer-input layer ─────────────────────────────────────────────────
    Positioned by JS over the cells next to the tile that opened it (two on
    desktop, one on mobile), so it reads as a card lifted above the grid and the

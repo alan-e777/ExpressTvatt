@@ -1036,10 +1036,14 @@ function StatusSelect({ value, onChange, disabled }: { value: string; onChange: 
   );
 }
 
-// Free-form order tags (independent of status). Currently only "RUT", but the
-// styling falls back to a neutral pill for any future tag.
+// Free-form order tags (independent of status). The styling falls back to a
+// neutral pill for any future tag.
 const TAG_STYLE: Record<string, { bg: string; color: string }> = {
-  RUT: { bg: "#fbe6bf", color: "#8a6d1b" },
+  RUT:  { bg: "#fbe6bf", color: "#8a6d1b" },
+  // A 0 kr order that never went through Stripe — safe to delete outright,
+  // there is nothing to refund. Loud on purpose so it is never mistaken for
+  // a real booking in the list.
+  TEST: { bg: "#7C2D12", color: "#fff" },
 };
 function TagPill({ tag }: { tag: string }) {
   const s = TAG_STYLE[tag] ?? { bg: "#e5e7eb", color: "#374151" };

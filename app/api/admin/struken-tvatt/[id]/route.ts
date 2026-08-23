@@ -13,11 +13,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ("name" in body && body.name?.trim()) update.name  = body.name.trim();
   // A negative price is not merely odd — the payment route treats the catalogue
   // as authoritative, so a mistyped "-50" would quietly subtract from the rest
-  // of the customer's basket.
+  // of the customer's basket. 0 is allowed: it marks a test item (see POST).
   if ("price" in body) {
     const price = Number(body.price);
-    if (!Number.isFinite(price) || price <= 0) {
-      return NextResponse.json({ error: "Priset måste vara större än 0." }, { status: 400 });
+    if (!Number.isFinite(price) || price < 0) {
+      return NextResponse.json({ error: "Priset kan inte vara negativt." }, { status: 400 });
     }
     update.price = price;
   }
