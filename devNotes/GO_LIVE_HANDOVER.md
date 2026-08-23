@@ -19,7 +19,7 @@ Order of the day:
 - [ ] Stripe **live** keys: `sk_live_…` (secret) + `pk_live_…` (publishable).
 - [ ] The **production domain** (e.g. `https://expresstvatt.se`) — needed for the Stripe webhook.
 - [ ] Google Maps API key (production) **with restrictions** set: APIs enabled = Places, Geocoding, Maps JavaScript, Static Maps; restricted by HTTP referrer (the domain) for the browser key.
-- [ ] Resend: a **verified sending domain** + `RESEND_API_KEY`, and the `RESEND_FROM` address on that domain.
+- [ ] Resend: a **verified sending domain** (use a subdomain, e.g. `send.expresstvatt.se`) + `RESEND_API_KEY`, the `RESEND_FROM` address on that domain, and `RESEND_REPLY_TO` pointing at a mailbox someone reads. See `BEFORE_DEPLOYMENT.md` → "RESEND IS IN SANDBOX".
 - [ ] The client's **Firebase admin UID** (the Google account that will own the admin panel) — see the ADMIN_UID gotcha below.
 - [ ] 46elks (SMS) credentials if SMS is staying on.
 - [ ] Decide: same Firebase project, or the client's own? (If theirs, much more changes — tell Claude.)

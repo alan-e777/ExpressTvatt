@@ -156,6 +156,10 @@ export async function sendStatusEmail(opts: {
 }): Promise<SendStatusEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM || "Express Tvätt <onboarding@resend.dev>";
+  // Customers reply to transactional mail no matter what the footer says. With a
+  // no-reply@ sender those replies bounce or vanish, so point them at a real
+  // inbox. Optional — unset simply means no Reply-To header.
+  const replyTo = process.env.RESEND_REPLY_TO?.trim();
 
   if (!apiKey) {
     console.warn("[order-status-email] RESEND_API_KEY not set — skipping email.");
@@ -170,6 +174,7 @@ export async function sendStatusEmail(opts: {
     const { error } = await resend.emails.send({
       from,
       to: opts.to,
+      ...(replyTo ? { replyTo } : {}),
       subject: `Din order ${opts.orderNo} – ${statusLabel(opts.status)}`,
       html: buildStatusEmailHtml({ name: opts.name, orderNo: opts.orderNo, status: opts.status }),
     });

@@ -143,13 +143,41 @@ account owner's own address, with:
 real customers. `sendStatusEmail` is best-effort by design, so nothing errors
 visibly — the order is created, the customer simply never hears anything.
 
-**Fix (needs the domain, so do it with the Stripe cutover):**
-1. resend.com/domains → add the live domain → add the DNS records it gives you.
-2. Wait for it to verify.
-3. Set `RESEND_FROM` to an address on that domain, e.g.
-   `Express Tvätt <no-reply@expresstvatt.se>`, in `.env.local` **and** Vercel.
+**Fix (needs the domain, so do it with the Stripe cutover).** Note the order:
+changing `RESEND_FROM` on its own does nothing — Resend rejects any `from` on a
+domain it has not verified, which is the same 403 as the sandbox.
+
+1. resend.com/domains → **Add Domain** → enter `send.expresstvatt.se`.
+
+   A **subdomain, not the root.** Two reasons. Sending reputation is scoped to
+   the sending domain, so a bad patch of deliverability cannot damage the
+   root domain's own mail. And a domain may carry only **one** SPF record — if
+   `expresstvatt.se` already has SPF for normal business mail (Google Workspace
+   etc.), adding Resend to the root means *merging* includes into that single
+   record, whereas a subdomain gets its own and cannot conflict.
+
+2. Add the DKIM/SPF records Resend shows you at the DNS host for
+   `expresstvatt.se`. Wait for the domain to read **Verified**.
+
+3. Set, in Vercel **and** `.env.local`:
+
+   ```
+   RESEND_FROM=Express Tvätt <no-reply@send.expresstvatt.se>
+   RESEND_REPLY_TO=info@expresstvatt.se
+   ```
+
+   `RESEND_REPLY_TO` is optional but wanted here: the mail is sent from
+   `no-reply@`, and customers reply to transactional mail regardless of what the
+   footer says. Point it at a mailbox somebody reads.
+
 4. Place one real order and confirm the confirmation email arrives at an address
-   that is *not* the Resend account owner's.
+   that is **not** the Resend account owner's. The order's own
+   `confirmationNotice` (shown on the admin order card) records the result, so a
+   refusal is visible without digging through logs.
+
+**Keeping `.env.local` on the sandbox sender is deliberate and fine** — it means
+a dev machine can never email a real customer by accident. Just know that local
+testing can only ever deliver to the Resend account owner's own address.
 
 **SMS is unaffected** — 46elks is live and verified working (credentials accept
 a dry-run send, sender id `Express`, Swedish numbers normalise to E.164). Order
