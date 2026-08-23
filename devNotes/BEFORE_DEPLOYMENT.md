@@ -128,42 +128,45 @@ Register both new event types in the Stripe Dashboard webhook config.
 
 ---
 
-### 🟡 RESEND: `.env.local` still sends from the sandbox address
+### 🔴 RESEND_FROM IS NOT SET IN VERCEL — PRODUCTION SENDS NO EMAIL
 
-`expresstvatt.se` **is verified in Resend** (root domain, verified ~2026-06).
-Nothing needs adding at the DNS level.
+`expresstvatt.se` **is verified in Resend** (root domain, since ~2026-06), so
+there is no DNS work. The problem is the env var, and it is in **production**.
 
-What is still wrong is the *env var*: `.env.local` holds
-
-```
-RESEND_FROM=Express Tvätt <onboarding@resend.dev>
-```
-
-which is Resend's shared sandbox sender. Resend answers **403** for every
-recipient except the Resend account owner (`alan.e777@hotmail.com`), so any
-order placed against a local dev server silently fails to notify the customer.
-
-**Vercel holds a different value** and was not inspected — if production already
-uses an address on `expresstvatt.se`, production email works and this is a
-local-only annoyance. Confirm before treating it as a launch item: place one
-real order and read `confirmationNotice.from` on the order (shown on the admin
-order card), which records the exact sender used.
-
-**Set, on whichever environment is still on the sandbox address:**
+Proven, not inferred: a real order placed on https://expresstvatt.se recorded
 
 ```
-RESEND_FROM=Express Tvätt <no-reply@expresstvatt.se>
-RESEND_REPLY_TO=info@expresstvatt.se
+confirmationNotice.from  = "Express Tvätt <onboarding@resend.dev>"
+confirmationNotice.email = { ok: false, to: "zupimcarl@gmail.com",
+                             error: "You can only send testing emails to your
+                                     own email address (alan.e777@hotmail.com)…" }
 ```
 
-`RESEND_REPLY_TO` is optional but wanted here: the mail is sent from `no-reply@`
-and customers reply to transactional mail regardless of what the footer says.
-Point it at a mailbox somebody reads.
+That `from` string is the **fallback baked into `lib/order-status-email.ts`**,
+used when `RESEND_FROM` is empty — so the variable is almost certainly not set
+in Vercel at all. Every customer confirmation and status email on production is
+being refused with a 403.
 
-**Deliberately leaving `.env.local` on the sandbox sender is a defensible
-choice** — it makes it impossible for a dev machine to email a real customer by
-accident. The cost is that local testing can only ever deliver to the Resend
-account owner's own address. Pick one and know which.
+**Fix — in Vercel → Settings → Environment Variables. Key and Value are separate
+fields; do not paste `RESEND_FROM=` into the value, and mind trailing spaces:**
+
+| Key | Value |
+|---|---|
+| `RESEND_FROM` | `Express Tvätt <no-reply@expresstvatt.se>` |
+| `RESEND_REPLY_TO` | a mailbox somebody reads (optional; omit rather than point it at a dead address) |
+
+**Then redeploy.** Changing an environment variable does not affect the running
+deployment — Vercel only picks it up on the next build.
+
+**Then confirm** at Inställningar → **Avsändare** on the production site, which
+reads the value back out of the running deployment. It must not say `resend.dev`.
+
+**SMS is unaffected and already works in production** — the same order sent its
+confirmation SMS successfully (`sms.ok = true`).
+
+`.env.local` was set to the verified sender on 2026-08-23 and is confirmed
+working locally. Note the consequence: a dev machine can now email real
+customers, which the sandbox sender previously made impossible.
 
 ---
 
