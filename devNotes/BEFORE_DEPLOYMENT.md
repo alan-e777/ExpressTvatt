@@ -128,61 +128,42 @@ Register both new event types in the Stripe Dashboard webhook config.
 
 ---
 
-### 🔴 RESEND IS IN SANDBOX — NO CUSTOMER RECEIVES ANY EMAIL
+### 🟡 RESEND: `.env.local` still sends from the sandbox address
 
-`RESEND_FROM` is `Express Tvätt <onboarding@resend.dev>`, Resend's shared
-sandbox sender. With it, Resend refuses every recipient except the Resend
-account owner's own address, with:
+`expresstvatt.se` **is verified in Resend** (root domain, verified ~2026-06).
+Nothing needs adding at the DNS level.
 
-> You can only send testing emails to your own email address
-> (alan.e777@hotmail.com). To send emails to other recipients, please verify a
-> domain at resend.com/domains, and change the `from` address to an email using
-> this domain.
+What is still wrong is the *env var*: `.env.local` holds
 
-**Risk:** order confirmations and every status-change email silently fail for
-real customers. `sendStatusEmail` is best-effort by design, so nothing errors
-visibly — the order is created, the customer simply never hears anything.
+```
+RESEND_FROM=Express Tvätt <onboarding@resend.dev>
+```
 
-**Fix (needs the domain, so do it with the Stripe cutover).** Note the order:
-changing `RESEND_FROM` on its own does nothing — Resend rejects any `from` on a
-domain it has not verified, which is the same 403 as the sandbox.
+which is Resend's shared sandbox sender. Resend answers **403** for every
+recipient except the Resend account owner (`alan.e777@hotmail.com`), so any
+order placed against a local dev server silently fails to notify the customer.
 
-1. resend.com/domains → **Add Domain** → enter `send.expresstvatt.se`.
+**Vercel holds a different value** and was not inspected — if production already
+uses an address on `expresstvatt.se`, production email works and this is a
+local-only annoyance. Confirm before treating it as a launch item: place one
+real order and read `confirmationNotice.from` on the order (shown on the admin
+order card), which records the exact sender used.
 
-   A **subdomain, not the root.** Two reasons. Sending reputation is scoped to
-   the sending domain, so a bad patch of deliverability cannot damage the
-   root domain's own mail. And a domain may carry only **one** SPF record — if
-   `expresstvatt.se` already has SPF for normal business mail (Google Workspace
-   etc.), adding Resend to the root means *merging* includes into that single
-   record, whereas a subdomain gets its own and cannot conflict.
+**Set, on whichever environment is still on the sandbox address:**
 
-2. Add the DKIM/SPF records Resend shows you at the DNS host for
-   `expresstvatt.se`. Wait for the domain to read **Verified**.
+```
+RESEND_FROM=Express Tvätt <no-reply@expresstvatt.se>
+RESEND_REPLY_TO=info@expresstvatt.se
+```
 
-3. Set, in Vercel **and** `.env.local`:
+`RESEND_REPLY_TO` is optional but wanted here: the mail is sent from `no-reply@`
+and customers reply to transactional mail regardless of what the footer says.
+Point it at a mailbox somebody reads.
 
-   ```
-   RESEND_FROM=Express Tvätt <no-reply@send.expresstvatt.se>
-   RESEND_REPLY_TO=info@expresstvatt.se
-   ```
-
-   `RESEND_REPLY_TO` is optional but wanted here: the mail is sent from
-   `no-reply@`, and customers reply to transactional mail regardless of what the
-   footer says. Point it at a mailbox somebody reads.
-
-4. Place one real order and confirm the confirmation email arrives at an address
-   that is **not** the Resend account owner's. The order's own
-   `confirmationNotice` (shown on the admin order card) records the result, so a
-   refusal is visible without digging through logs.
-
-**Keeping `.env.local` on the sandbox sender is deliberate and fine** — it means
-a dev machine can never email a real customer by accident. Just know that local
-testing can only ever deliver to the Resend account owner's own address.
-
-**SMS is unaffected** — 46elks is live and verified working (credentials accept
-a dry-run send, sender id `Express`, Swedish numbers normalise to E.164). Order
-confirmations send email *and* SMS as of the confirmation-SMS change; a customer
-with a phone number on the order still hears from you even while email is broken.
+**Deliberately leaving `.env.local` on the sandbox sender is a defensible
+choice** — it makes it impossible for a dev machine to email a real customer by
+accident. The cost is that local testing can only ever deliver to the Resend
+account owner's own address. Pick one and know which.
 
 ---
 
