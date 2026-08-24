@@ -12,6 +12,13 @@ export type QueuedEmail = {
   customerName: string;
   status: string;
   statusLabel: string;
+  /**
+   * What the order's status was before this change. The status is written to
+   * Firestore immediately and only the email is deferred, so "Ångra" has to put
+   * this value back — cancelling the email alone would leave the order sitting
+   * at a status the admin just said they did not want.
+   */
+  previousStatus: string;
 };
 
 type Listener = (payload: QueuedEmail) => void;

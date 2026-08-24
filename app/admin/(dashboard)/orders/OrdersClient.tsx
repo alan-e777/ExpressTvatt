@@ -309,6 +309,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           customerName: order.customerName,
           status,
           statusLabel: statusLabelFor(status),
+          previousStatus: order.status,
         });
       }
     } catch {
@@ -341,6 +342,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           customerName: o.customerName,
           status: bulkStatus,
           statusLabel: statusLabelFor(bulkStatus),
+          previousStatus: o.status,
         })
       );
       setSelected(new Set());

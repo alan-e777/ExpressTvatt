@@ -7,13 +7,22 @@ import { onStatusEmailQueued, type QueuedEmail } from "@/lib/order-email-bus";
  * Floating admin banner shown after an order's status changes.
  *
  * Flow: the Orders table calls `queueStatusEmail(...)`; this listens, shows a
- * 10-second countdown ("Order Status changed, updating the customer"), then POSTs
- * to /api/admin/orders/notify-status which sends the email via Resend.
+ * 10-second countdown, then POSTs to /api/admin/orders/notify-status which sends
+ * the email and SMS.
+ *
+ * "Ångra" **reverts the status**, it does not merely cancel the notification.
+ * The status is written to Firestore the moment the admin picks it — only the
+ * message is deferred — so cancelling the message alone would leave the order at
+ * a status the admin had just said they did not want, which is the opposite of
+ * what an undo button promises. The orders table picks the revert up through its
+ * own onSnapshot listener.
  *
  * Multiple changes can be in-flight at once (each with its own timer). The banner
  * only renders the most recently queued one; when it resolves, the previous
  * still-pending one re-appears as long as its 10s window hasn't elapsed.
- * Re-changing the same order within the window supersedes the earlier email.
+ * Re-changing the same order within the window supersedes the earlier email, and
+ * undo then rewinds to where the order stood before the whole burst — not to the
+ * intermediate status a superseded change left behind.
  */
 const DELAY_MS = 10_000;
 const DEEP_TEAL = "#063F41";
@@ -24,7 +33,14 @@ type Pending = QueuedEmail & { uid: string; sendAt: number };
 export default function OrderStatusNotifier() {
   const [pending, setPending] = useState<Pending[]>([]);
   const [now, setNow] = useState(() => Date.now());
+  const [undoing, setUndoing] = useState<string | null>(null);
+  const [undoError, setUndoError] = useState<string | null>(null);
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Where each order stood before its current burst of changes began. Keyed by
+  // order id and held until that order has nothing pending, so two changes
+  // inside one window still rewind to the original status rather than to the
+  // intermediate one.
+  const originalStatus = useRef<Map<string, string>>(new Map());
 
   // Stable send fn (always sees latest impl) so setTimeout closures don't go stale.
   const send = useRef<(p: Pending) => void>(() => {});
@@ -39,6 +55,8 @@ export default function OrderStatusNotifier() {
     } catch {
       // Status itself is already persisted elsewhere; the email is best-effort.
     } finally {
+      // The window has closed — there is nothing left to undo.
+      originalStatus.current.delete(p.orderId);
       setPending(prev => prev.filter(x => x.uid !== p.uid));
     }
   };
@@ -58,7 +76,22 @@ export default function OrderStatusNotifier() {
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random()}`;
-      const item: Pending = { ...payload, uid, sendAt: Date.now() + DELAY_MS };
+      // First change in this burst decides where undo rewinds to; later ones
+      // inside the same window keep pointing at that same original status.
+      if (!originalStatus.current.has(payload.orderId)) {
+        originalStatus.current.set(payload.orderId, payload.previousStatus);
+      }
+      const item: Pending = {
+        ...payload,
+        previousStatus: originalStatus.current.get(payload.orderId)!,
+        uid,
+        sendAt: Date.now() + DELAY_MS,
+      };
+
+      // `now` only advances while something is pending, so it is stale by however
+      // long the page sat idle before this change. Without this the ring renders
+      // a nonsense figure for the first 200ms, until the interval corrects it.
+      setNow(Date.now());
 
       setPending(prev => {
         // Supersede any still-pending email for the same order.
@@ -83,9 +116,40 @@ export default function OrderStatusNotifier() {
     return () => map.forEach(t => clearTimeout(t));
   }, []);
 
-  function undo(uid: string) {
+  /**
+   * Put the order back to the status it held before this burst of changes, and
+   * drop the queued notification.
+   *
+   * The timer is cleared *before* the request goes out: reverting is a network
+   * round-trip, and a click at 9.9s would otherwise race the countdown and email
+   * the customer about a status that is being undone.
+   */
+  async function undo(uid: string) {
+    const item = pending.find(x => x.uid === uid);
+    if (!item) return;
+
     clearTimer(uid);
-    setPending(prev => prev.filter(x => x.uid !== uid));
+    setUndoing(uid);
+    setUndoError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${item.orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: item.previousStatus }),
+      });
+      if (!res.ok) throw new Error("revert failed");
+      originalStatus.current.delete(item.orderId);
+      setPending(prev => prev.filter(x => x.uid !== uid));
+    } catch {
+      // The revert did not land, so the order is still at the new status and the
+      // customer should still be told about it. Re-arm for whatever is left of
+      // the window rather than silently swallowing the notification too.
+      const msLeft = Math.max(0, item.sendAt - Date.now());
+      timers.current.set(uid, setTimeout(() => send.current(item), msLeft));
+      setUndoError("Kunde inte återställa statusen. Försök igen.");
+    } finally {
+      setUndoing(null);
+    }
   }
 
   if (pending.length === 0) return null;
@@ -157,7 +221,7 @@ export default function OrderStatusNotifier() {
         {/* Text */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 700, color: DEEP_TEAL, lineHeight: 1.3 }}>
-            Order Status changed, updating the customer
+            Statusen ändrad — kunden meddelas
           </p>
           <p
             style={{
@@ -174,9 +238,11 @@ export default function OrderStatusNotifier() {
           </p>
         </div>
 
-        {/* Undo */}
+        {/* Undo — reverts the status, not just the message */}
         <button
           onClick={() => undo(latest.uid)}
+          disabled={undoing === latest.uid}
+          title={`Återställ till "${latest.previousStatus}" och avbryt meddelandet`}
           style={{
             flexShrink: 0,
             background: "transparent",
@@ -186,12 +252,19 @@ export default function OrderStatusNotifier() {
             padding: "0.3rem 0.6rem",
             fontSize: "0.72rem",
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: undoing === latest.uid ? "default" : "pointer",
+            opacity: undoing === latest.uid ? 0.5 : 1,
           }}
         >
-          Ångra
+          {undoing === latest.uid ? "Ångrar…" : "Ångra"}
         </button>
       </div>
+
+      {undoError && (
+        <p style={{ margin: "0.6rem 0 0 0", fontSize: "0.72rem", color: "#B91C1C", lineHeight: 1.4 }}>
+          {undoError}
+        </p>
+      )}
 
       {queuedBehind > 0 && (
         <p style={{ margin: "0.6rem 0 0 0", fontSize: "0.68rem", color: "#94A3B8", textAlign: "right" }}>
