@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconChevronDown, IconGripVertical, IconPencil, IconX } from "@tabler/icons-react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 import WarningsManager, { type ProductWarning } from "./WarningsManager";
@@ -301,8 +301,8 @@ function CategoryCardHeader({
   /** Body hidden — also forced while a drag is in progress. */
   collapsed:  boolean;
   onToggleCollapse: () => void;
-  /** Arms dragging on the wrapping card; only the grip may start one. */
-  onDragHandleDown: () => void;
+  /** Begins a drag. Only the grip starts one. */
+  onDragHandleDown: (e: React.PointerEvent) => void;
   /**
    * Whether this category can ask the customer for a note. Mattvätt cannot: it
    * is bought through a type picker and a size slider, never by clicking a
@@ -346,7 +346,7 @@ function CategoryCardHeader({
         {/* Drag grip — dragging is armed here so a click anywhere else in the
             card (a price, a name) can never start one by accident. */}
         <span
-          onMouseDown={onDragHandleDown}
+          onPointerDown={onDragHandleDown}
           title="Dra för att ändra ordning"
           style={{ display: "flex", alignItems: "center", color: "#ccc", cursor: "grab", flexShrink: 0, touchAction: "none" }}
         >
@@ -496,7 +496,7 @@ function CategoryCard({
   meta:             CategoryMeta;
   collapsed:        boolean;
   onToggleCollapse: () => void;
-  onDragHandleDown: () => void;
+  onDragHandleDown: (e: React.PointerEvent) => void;
   onSaveMeta:       (patch: Partial<CategoryMeta>) => Promise<void>;
   items:            StrukenProduct[];
   onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string) => Promise<void>;
@@ -784,7 +784,7 @@ function MattvattCard({
   meta:             CategoryMeta;
   collapsed:        boolean;
   onToggleCollapse: () => void;
-  onDragHandleDown: () => void;
+  onDragHandleDown: (e: React.PointerEvent) => void;
   onSaveMeta:     (patch: Partial<CategoryMeta>) => Promise<void>;
   settings:       MattvattSettings;
   onSaveSettings: (next: MattvattSettings) => Promise<void>;
@@ -933,11 +933,17 @@ export default function StrukenTvattEditor({
   const [mattvatt, setMattvatt] = useState<MattvattSettings>(initialMattvatt);
   // Which cards the admin has folded away, by category name.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  // Reordering. `armed` is the category whose grip is held — dragging is only
-  // enabled on that card, so a stray drag on a price field cannot start one.
-  const [armed, setArmed]   = useState<string | null>(null);
+  // Reordering is driven by pointer events rather than HTML5 drag-and-drop.
+  // The native API needs `draggable` set *before* the gesture begins, so arming
+  // it from mousedown loses a race with React's re-render — only whichever card
+  // happened to win it could be dragged. Pointer events have no such ordering
+  // requirement, work under touch, and can actually be tested.
   const [dragCat, setDragCat] = useState<string | null>(null);
   const [overCat, setOverCat] = useState<string | null>(null);
+  // Mirrors, so the window-level move/up handlers never read a stale closure.
+  const dragCatRef = useRef<string | null>(null);
+  const overCatRef = useRef<string | null>(null);
+  const cardRefs   = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const [savingOrder, setSavingOrder] = useState(false);
   // Local override of the sorted order, applied the moment a drop lands so the
   // list does not snap back while the writes are in flight.
@@ -995,16 +1001,63 @@ export default function StrukenTvattEditor({
     }
   }
 
-  function handleDrop(target: string) {
-    const from = dragCat;
-    setDragCat(null);
-    setOverCat(null);
-    setArmed(null);
-    if (!from || from === target) return;
-    const next = categories.filter(c => c !== from);
-    next.splice(next.indexOf(target), 0, from);
-    void persistOrder(next);
+  function beginDrag(cat: string, e: React.PointerEvent) {
+    e.preventDefault();
+    dragCatRef.current = cat;
+    overCatRef.current = cat;
+    setDragCat(cat);
+    setOverCat(cat);
   }
+
+  // Tracks the pointer for the life of one drag. Re-subscribed when the list
+  // changes so the commit below always splices against the current order.
+  useEffect(() => {
+    if (!dragCat) return;
+
+    const onMove = (e: PointerEvent) => {
+      let hit: string | null = null;
+      for (const cat of categories) {
+        const el = cardRefs.current.get(cat);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (e.clientY >= r.top && e.clientY <= r.bottom) { hit = cat; break; }
+      }
+      if (hit) { overCatRef.current = hit; setOverCat(hit); }
+    };
+
+    const onUp = () => {
+      const from = dragCatRef.current;
+      const target = overCatRef.current;
+      dragCatRef.current = null;
+      overCatRef.current = null;
+      setDragCat(null);
+      setOverCat(null);
+      if (!from || !target || from === target) return;
+
+      const fromIndex = categories.indexOf(from);
+      const toIndex   = categories.indexOf(target);
+      const list = categories.filter(c => c !== from);
+      const at = list.indexOf(target);
+      // Dragging downwards lands *after* the card you released over, upwards
+      // lands before it — which is what the insertion line already promises.
+      list.splice(fromIndex < toIndex ? at + 1 : at, 0, from);
+      void persistOrder(list);
+    };
+
+    // Text selection while dragging turns the whole page blue.
+    const priorSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      document.body.style.userSelect = priorSelect;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [dragCat, categories]);
 
   // Group by category
   const byCategory = (cat: Category) =>
@@ -1210,25 +1263,20 @@ export default function StrukenTvattEditor({
           const shared = {
             collapsed: isDragging || collapsed.has(cat),
             onToggleCollapse: () => toggleCollapsed(cat),
-            onDragHandleDown: () => setArmed(cat),
+            onDragHandleDown: (e: React.PointerEvent) => beginDrag(cat, e),
             meta: metaFor(cat),
             onSaveMeta: (patch: Partial<CategoryMeta>) => saveCategoryMeta(cat, patch),
           };
           return (
             <div
               key={cat}
-              draggable={armed === cat}
-              onDragStart={e => { setDragCat(cat); e.dataTransfer.effectAllowed = "move"; }}
-              onDragEnd={() => { setDragCat(null); setOverCat(null); setArmed(null); }}
-              onDragOver={e => { if (dragCat && dragCat !== cat) { e.preventDefault(); setOverCat(cat); } }}
-              onDragLeave={() => setOverCat(o => (o === cat ? null : o))}
-              onDrop={e => { e.preventDefault(); handleDrop(cat); }}
+              ref={el => { cardRefs.current.set(cat, el); }}
               style={{
                 opacity: dragCat === cat ? 0.4 : 1,
                 // A line on the edge the card would land against, rather than
                 // an outline, so the resulting position is unambiguous.
-                borderTop: overCat === cat && dragCat && categories.indexOf(dragCat) > categories.indexOf(cat) ? "2px solid #1a1a1a" : "2px solid transparent",
-                borderBottom: overCat === cat && dragCat && categories.indexOf(dragCat) < categories.indexOf(cat) ? "2px solid #1a1a1a" : "2px solid transparent",
+                borderTop: overCat === cat && dragCat && dragCat !== cat && categories.indexOf(dragCat) > categories.indexOf(cat) ? "2px solid #1a1a1a" : "2px solid transparent",
+                borderBottom: overCat === cat && dragCat && dragCat !== cat && categories.indexOf(dragCat) < categories.indexOf(cat) ? "2px solid #1a1a1a" : "2px solid transparent",
                 transition: "opacity 0.12s ease",
               }}
             >
