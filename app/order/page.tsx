@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  IconStar, IconSpray,
   IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
   IconTag,
 } from '@tabler/icons-react';
@@ -68,14 +67,6 @@ type CatView = CategoryMeta & {
   id:         CatId;
   isMattvatt: boolean;
   Icon:       React.ComponentType<{ size: number; stroke: number }>;
-};
-
-// The two mattvätt types. Both are priced per m² from settings/mattvatt, which
-// the admin edits in Inställningar — the server re-derives the price from the
-// same doc in create-cart-payment.
-const MATTA_TYPE_ICONS: Record<MattaTypeId, React.ComponentType<{ size: number; stroke: number }>> = {
-  'matta-normal': IconSpray,
-  'matta-akta':   IconStar,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -376,7 +367,7 @@ export default function HomePage() {
     const netPrice  = discountedUnitPrice(basePrice, perItemPct(id), 0, discountSettings.multipleDiscountsAllowed);
     return {
       id,
-      name:  mattaLineName(mattaType, mattaSqm),
+      name:  mattaLineName(mattaType, mattaSqm, mattvatt),
       basePrice,
       shownPrice: rutAvdrag ? rutNetKr(netPrice) : netPrice,
       qty: cartQty(id),
@@ -663,8 +654,11 @@ export default function HomePage() {
           {openMeta.isMattvatt && (
             <>
               <div className="of-matta-types">
-                {MATTA_TYPES.map(t => {
-                  const TypeIcon = MATTA_TYPE_ICONS[t.id];
+                {MATTA_TYPES.map(base => {
+                  // Name, blurb and icon are the admin's, edited under Tjänster;
+                  // the built-in entry only supplies the fixed set of ids.
+                  const t = { id: base.id, ...mattvatt.typeMeta[base.id] };
+                  const TypeIcon = getProductIcon(t.icon);
                   const selected = mattaType === t.id;
                   return (
                     <button
@@ -715,7 +709,7 @@ export default function HomePage() {
                   <div className="of-matta-foot">
                     <div className="of-matta-sum">
                       <span className="of-matta-sum-label">
-                        {mattaTypeLabel(mattaType)} · {mattvatt.pricePerSqmKr[mattaType]} kr/m²
+                        {mattaTypeLabel(mattaType, mattvatt)} · {mattvatt.pricePerSqmKr[mattaType]} kr/m²
                       </span>
                       <span className="of-matta-sum-price">
                         {mattaLine.shownPrice !== mattaLine.basePrice && (

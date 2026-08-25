@@ -3,15 +3,18 @@
 import StrukenTvattEditor, { type StrukenProduct } from "./StrukenTvattEditor";
 import type { ProductWarning } from "./WarningsManager";
 import type { CategoryMeta } from "@/lib/serviceCategories";
+import type { MattvattSettings } from "@/lib/mattvatt";
 
 export default function ServicesPage({
   initialStrukenProducts,
   initialWarnings,
   initialCategoryMeta,
+  initialMattvatt,
 }: {
   initialStrukenProducts: StrukenProduct[];
   initialWarnings: ProductWarning[];
   initialCategoryMeta: CategoryMeta[];
+  initialMattvatt: MattvattSettings;
 }) {
   return (
     <div>
@@ -27,6 +30,7 @@ export default function ServicesPage({
         initialProducts={initialStrukenProducts}
         initialWarnings={initialWarnings}
         initialCategoryMeta={initialCategoryMeta}
+        initialMattvatt={initialMattvatt}
       />
     </div>
   );

@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         priceKr  = mattaPriceKr(mattvattSettings, matta.type, matta.sqm);
         // Name it from the parsed line too — the order record and the receipt
         // should never show an area the price was not calculated from.
-        lineName = mattaLineName(matta.type, matta.sqm);
+        lineName = mattaLineName(matta.type, matta.sqm, mattvattSettings);
       } else if (MATTVATT_PRICES[item.id] !== undefined) {
         priceKr = MATTVATT_PRICES[item.id];
       } else {

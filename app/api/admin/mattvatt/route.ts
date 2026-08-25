@@ -17,6 +17,9 @@ export async function POST(req: NextRequest) {
   const body: Partial<MattvattSettings> = await req.json();
   // Normalized before it is stored, so the customer pages and the payment route
   // can never read a min/max that crosses over or a negative price.
-  await DOC().set(normalizeMattvattSettings(body), { merge: true });
-  return NextResponse.json({ ok: true });
+  const settings = normalizeMattvattSettings(body);
+  await DOC().set(settings, { merge: true });
+  // Echoed back so the editor can adopt the normalized values rather than keep
+  // showing whatever was typed — a crossed-over range comes back corrected.
+  return NextResponse.json({ ok: true, settings });
 }

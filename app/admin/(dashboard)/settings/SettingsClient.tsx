@@ -180,7 +180,6 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
     deliveryFeeKr: 0,
   });
   const [discounts, setDiscounts] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
-  const [mattvatt, setMattvatt] = useState<MattvattSettings>(MATTVATT_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -211,10 +210,6 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 
   // Load mattvätt pricing (kr per m² + the size range the slider offers)
   useEffect(() => {
-    fetch("/api/admin/mattvatt")
-      .then(r => r.json())
-      .then((data: Partial<MattvattSettings>) => setMattvatt(normalizeMattvattSettings(data)))
-      .catch(() => {});
   }, []);
 
   // Draw / update circle whenever settings.serviceArea changes and map is ready
@@ -345,11 +340,6 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(discounts),
         }),
-        fetch("/api/admin/mattvatt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(mattvatt),
-        }),
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -370,7 +360,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   // column follow along, so nothing is left stranded next to an empty result.
   const shows = (section: SectionKey) => matchesQuery(query, `${SECTION_TERMS[section]} ${section}`);
   const noMatches       = (Object.keys(SECTION_TERMS) as SectionKey[]).every(k => !shows(k));
-  const showsSaveButton = (["driver", "area", "delivery", "discounts", "mattvatt"] as SectionKey[]).some(shows);
+  const showsSaveButton = (["driver", "area", "delivery", "discounts"] as SectionKey[]).some(shows);
   const showsRightColumn = shows("map") || shows("wishlist");
 
   return (
@@ -612,9 +602,9 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           </section>
           </Filterable>
 
-          {/* Mattvätt pricing */}
+          {/* Mattvätt moved to Tjänster — see the note below */}
           <Filterable query={query} section="mattvatt">
-          <MattvattPricing settings={mattvatt} onChange={setMattvatt} />
+          <MattvattMovedNote />
           </Filterable>
 
           {/* Admin accounts */}
@@ -697,112 +687,21 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 // prices the order from these same numbers, so a change here changes what is
 // actually charged.
 
-function MattvattPricing({ settings, onChange }: { settings: MattvattSettings; onChange: (s: MattvattSettings) => void }) {
-  // The size fields are edited as text and committed on blur, so a half-typed
-  // number never collapses the range while the admin is still typing.
-  const [minDraft, setMinDraft] = useState(String(settings.minSqm));
-  const [maxDraft, setMaxDraft] = useState(String(settings.maxSqm));
-  useEffect(() => {
-    setMinDraft(String(settings.minSqm));
-    setMaxDraft(String(settings.maxSqm));
-  }, [settings.minSqm, settings.maxSqm]);
-
-  function commitMin() {
-    const min = Math.max(SQM_STEP, clampSqm(minDraft.replace(",", "."), settings.minSqm));
-    onChange({ ...settings, minSqm: min, maxSqm: Math.max(min + SQM_STEP, settings.maxSqm) });
-  }
-  function commitMax() {
-    const max = clampSqm(maxDraft.replace(",", "."), settings.maxSqm);
-    onChange({ ...settings, maxSqm: Math.max(settings.minSqm + SQM_STEP, max) });
-  }
-
-  // A worked example at a middling size, so the effect of a change is visible
-  // without opening the customer site.
-  const exampleSqm = Math.min(settings.maxSqm, Math.max(settings.minSqm, 5));
-
+/**
+ * Mattvätt used to be priced here. It now has a proper category card under
+ * Tjänster alongside every other category, so its rug types, prices, size range
+ * and description live in one place instead of two that could disagree.
+ */
+function MattvattMovedNote() {
   return (
     <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
-      <p style={labelStyle}>Mattvätt — pris per m²</p>
-      <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
-        Kunden väljer typ av matta och drar sedan ett reglage mellan minsta och största storlek.
-        Priset blir <strong>kr/m² × antal m²</strong>, avrundat till hela kronor.
+      <p style={labelStyle}>Mattvätt</p>
+      <p style={{ fontSize: "0.8rem", color: "#888", lineHeight: 1.6 }}>
+        Mattvätt hanteras numera under{" "}
+        <a href="/admin/services" style={{ color: "#0E5C5B", fontWeight: 600 }}>Tjänster</a>{" "}
+        tillsammans med övriga kategorier — där ändrar du mattyper, pris per m²,
+        storleksintervall, ikon och beskrivning på samma ställe.
       </p>
-
-      {/* Price per m², per rug type */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
-        {MATTA_TYPES.map(t => (
-          <div key={t.id}>
-            <label style={fieldLabelStyle}>{t.label}</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={settings.pricePerSqmKr[t.id]}
-                onChange={e => onChange({
-                  ...settings,
-                  pricePerSqmKr: { ...settings.pricePerSqmKr, [t.id]: clampKrPerSqm(e.target.value.replace(/\D/g, "")) },
-                })}
-                style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem 3.6rem 0.5rem 0.75rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.875rem", color: "#1a1a1a", outline: "none" }}
-              />
-              <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>kr / m²</span>
-            </div>
-            <p style={{ fontSize: "0.7rem", color: "#bbb", margin: "0.3rem 0 0", lineHeight: 1.45 }}>{t.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Slider range */}
-      <div style={{ paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
-        <label style={fieldLabelStyle}>Storlek kunden kan välja</label>
-        <p style={{ fontSize: "0.72rem", color: "#aaa", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
-          Reglagets ändpunkter. Kunden kan bara beställa mattor inom detta intervall — steget är {formatSqm(SQM_STEP)} m².
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "0.75rem" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "0.72rem", color: "#888", marginBottom: "0.25rem" }}>Minsta</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={minDraft}
-                onChange={e => setMinDraft(e.target.value)}
-                onBlur={commitMin}
-                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                style={{ width: "100%", boxSizing: "border-box", padding: "0.45rem 2.4rem 0.45rem 0.55rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", color: "#1a1a1a", outline: "none" }}
-              />
-              <span style={{ position: "absolute", right: "0.55rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>m²</span>
-            </div>
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "0.72rem", color: "#888", marginBottom: "0.25rem" }}>Största</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={maxDraft}
-                onChange={e => setMaxDraft(e.target.value)}
-                onBlur={commitMax}
-                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                style={{ width: "100%", boxSizing: "border-box", padding: "0.45rem 2.4rem 0.45rem 0.55rem", border: "1px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", color: "#1a1a1a", outline: "none" }}
-              />
-              <span style={{ position: "absolute", right: "0.55rem", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "0.8rem", fontWeight: 600, pointerEvents: "none" }}>m²</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Worked example */}
-      <div style={{ marginTop: "1rem", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "8px", padding: "0.7rem 0.85rem" }}>
-        <p style={{ fontSize: "0.72rem", color: "#888", margin: "0 0 0.35rem", fontWeight: 600 }}>
-          En matta på {formatSqm(exampleSqm)} m² kostar
-        </p>
-        {MATTA_TYPES.map(t => (
-          <p key={t.id} style={{ fontSize: "0.78rem", color: "#555", margin: "0.15rem 0 0" }}>
-            {t.label}: <strong>{mattaPriceKr(settings, t.id, exampleSqm)} kr</strong>
-          </p>
-        ))}
-      </div>
     </section>
   );
 }

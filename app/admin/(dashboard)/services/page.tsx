@@ -3,6 +3,7 @@ import ServicesPage from "./ServicesPage";
 import type { StrukenProduct } from "./StrukenTvattEditor";
 import type { ProductWarning } from "./WarningsManager";
 import type { CategoryMeta } from "@/lib/serviceCategories";
+import { normalizeMattvattSettings, type MattvattSettings } from "@/lib/mattvatt";
 
 // Always re-read Firestore on each request. Without this the route is served
 // from Next's static full-route cache, so adds/deletes don't appear on reload.
@@ -54,11 +55,19 @@ export default async function Page() {
     })
     .filter(m => m.name);
 
+  // Mattvätt has no catalogue products — it is priced per m² — so its "products"
+  // (the rug types) come from its settings doc instead.
+  const mattvattSnap = await db.collection("settings").doc("mattvatt").get();
+  const mattvatt: MattvattSettings = normalizeMattvattSettings(
+    mattvattSnap.exists ? (mattvattSnap.data() as Partial<MattvattSettings>) : null,
+  );
+
   return (
     <ServicesPage
       initialStrukenProducts={strukenProducts}
       initialWarnings={warnings}
       initialCategoryMeta={categoryMeta}
+      initialMattvatt={mattvatt}
     />
   );
 }

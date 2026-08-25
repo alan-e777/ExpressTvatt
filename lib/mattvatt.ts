@@ -14,14 +14,30 @@
 
 export type MattaTypeId = 'matta-normal' | 'matta-akta';
 
-export const MATTA_TYPES: { id: MattaTypeId; label: string; desc: string }[] = [
-  { id: 'matta-normal', label: 'Normal',             desc: 'Syntet-, ull- & bomullsmattor' },
-  { id: 'matta-akta',   label: 'Äkta / Orientalisk', desc: 'Handknutna mattor — skonsam specialtvätt' },
+/** How one rug type presents itself. Editable by the admin under Tjänster. */
+export type MattaTypeMeta = {
+  label: string;
+  desc: string;
+  /** A key from PRODUCT_ICONS, exactly like a catalogue product's icon. */
+  icon: string;
+};
+
+/**
+ * The two rug types. The set itself is fixed in code — the ids are baked into
+ * cart line ids and into the payment route's validation — but everything the
+ * customer *sees* about them is admin-editable and lives in settings/mattvatt.
+ * These are the fallbacks used until an admin edits them.
+ */
+export const MATTA_TYPES: ({ id: MattaTypeId } & MattaTypeMeta)[] = [
+  { id: 'matta-normal', label: 'Normal',             desc: 'Syntet-, ull- & bomullsmattor',              icon: 'spray' },
+  { id: 'matta-akta',   label: 'Äkta / Orientalisk', desc: 'Handknutna mattor — skonsam specialtvätt',   icon: 'star'  },
 ];
 
 export interface MattvattSettings {
   /** Price per m² (kr), per rug type. */
   pricePerSqmKr: Record<MattaTypeId, number>;
+  /** Name, description and icon per rug type — the "products" of this category. */
+  typeMeta: Record<MattaTypeId, MattaTypeMeta>;
   /** Smallest / largest rug the slider allows (m²). */
   minSqm: number;
   maxSqm: number;
@@ -29,6 +45,10 @@ export interface MattvattSettings {
 
 export const MATTVATT_DEFAULTS: MattvattSettings = {
   pricePerSqmKr: { 'matta-normal': 150, 'matta-akta': 350 },
+  typeMeta: {
+    'matta-normal': { label: 'Normal',             desc: 'Syntet-, ull- & bomullsmattor',            icon: 'spray' },
+    'matta-akta':   { label: 'Äkta / Orientalisk', desc: 'Handknutna mattor — skonsam specialtvätt', icon: 'star'  },
+  },
   minSqm: 1,
   maxSqm: 25,
 };
@@ -54,10 +74,26 @@ export function normalizeMattvattSettings(raw: Partial<MattvattSettings> | null 
   const minSqm = clampSqm(raw?.minSqm, MATTVATT_DEFAULTS.minSqm);
   // The max must stay above the min, otherwise the slider has no range to drag.
   const maxSqm = Math.max(minSqm + SQM_STEP, clampSqm(raw?.maxSqm, MATTVATT_DEFAULTS.maxSqm));
+  // Presentation falls back per-field, not per-type: an admin who renamed only
+  // one type must not lose the other's description to a default.
+  const meta = (id: MattaTypeId): MattaTypeMeta => {
+    const stored = raw?.typeMeta?.[id];
+    const fallback = MATTVATT_DEFAULTS.typeMeta[id];
+    return {
+      label: (stored?.label ?? '').trim() || fallback.label,
+      desc:  typeof stored?.desc === 'string' ? stored.desc.trim() : fallback.desc,
+      icon:  (stored?.icon ?? '').trim() || fallback.icon,
+    };
+  };
+
   return {
     pricePerSqmKr: {
       'matta-normal': clampKrPerSqm(raw?.pricePerSqmKr?.['matta-normal'], MATTVATT_DEFAULTS.pricePerSqmKr['matta-normal']),
       'matta-akta':   clampKrPerSqm(raw?.pricePerSqmKr?.['matta-akta'],   MATTVATT_DEFAULTS.pricePerSqmKr['matta-akta']),
+    },
+    typeMeta: {
+      'matta-normal': meta('matta-normal'),
+      'matta-akta':   meta('matta-akta'),
     },
     minSqm,
     maxSqm,
@@ -105,11 +141,18 @@ export function formatSqm(sqm: number): string {
   return String(Math.round(sqm * 10) / 10).replace('.', ',');
 }
 
-export function mattaTypeLabel(type: MattaTypeId): string {
-  return MATTA_TYPES.find(t => t.id === type)?.label ?? 'Matta';
+/**
+ * Display name of a rug type. Pass the settings to get the admin's own wording;
+ * without them it falls back to the built-in label, which is what any caller
+ * that only has an id (an old order, a legacy line) still gets.
+ */
+export function mattaTypeLabel(type: MattaTypeId, settings?: MattvattSettings | null): string {
+  return settings?.typeMeta?.[type]?.label
+    || MATTA_TYPES.find(t => t.id === type)?.label
+    || 'Matta';
 }
 
 /** Line name shown in the cart, the order record and on the receipt. */
-export function mattaLineName(type: MattaTypeId, sqm: number): string {
-  return `Mattvätt ${mattaTypeLabel(type)} — ${formatSqm(sqm)} m²`;
+export function mattaLineName(type: MattaTypeId, sqm: number, settings?: MattvattSettings | null): string {
+  return `Mattvätt ${mattaTypeLabel(type, settings)} — ${formatSqm(sqm)} m²`;
 }

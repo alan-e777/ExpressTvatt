@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 import WarningsManager, { type ProductWarning } from "./WarningsManager";
 import {
   compareCategories, resolveCategoryMeta, inputPlaceholderFor, requiresCustomerInput,
   DEFAULT_CATEGORY_ICON, DEFAULT_INPUT_LABEL, NEW_CATEGORY_ORDER,
-  type CategoryMeta,
+  MATTVATT_CATEGORY, type CategoryMeta,
 } from "@/lib/serviceCategories";
+import {
+  MATTA_TYPES, SQM_STEP, clampKrPerSqm, clampSqm, formatSqm,
+  type MattaTypeId, type MattvattSettings,
+} from "@/lib/mattvatt";
 
 export type StrukenProduct = {
   id:              string;
@@ -274,6 +278,149 @@ function clampPctInput(v: string): number {
 // because it uses fixed local sizes, not the StrukenTvatt catalogue.
 type Category = string;
 
+/**
+ * Title, description, icon, sort order and the customer-input switch for one
+ * category — the half of a category card that has nothing to do with what it
+ * sells. Shared so mattvätt, which has no catalogue products, is configured
+ * exactly like the categories that do.
+ */
+function CategoryCardHeader({
+  meta,
+  count,
+  unit = "plagg",
+  allowInput = true,
+  onSaveMeta,
+}: {
+  meta:       CategoryMeta;
+  count:      number;
+  unit?:      string;
+  /**
+   * Whether this category can ask the customer for a note. Mattvätt cannot: it
+   * is bought through a type picker and a size slider, never by clicking a
+   * product tile, so the order page has nowhere to put the question. Offering
+   * the switch anyway would be a control that silently does nothing.
+   */
+  allowInput?: boolean;
+  onSaveMeta: (patch: Partial<CategoryMeta>) => Promise<void>;
+}) {
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [metaForm, setMetaForm]       = useState(meta);
+  const [savingMeta, setSavingMeta]   = useState(false);
+
+  function openMetaForm() {
+    setMetaForm(meta);
+    setEditingMeta(true);
+  }
+
+  async function saveMeta() {
+    setSavingMeta(true);
+    try {
+      await onSaveMeta({
+        icon:             metaForm.icon,
+        desc:             metaForm.desc,
+        subtitle:         metaForm.subtitle,
+        order:            metaForm.order,
+        requiresInput:    metaForm.requiresInput,
+        inputLabel:       metaForm.inputLabel,
+        inputPlaceholder: metaForm.inputPlaceholder,
+      });
+      setEditingMeta(false);
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Header — mirrors the row the customer sees on /order */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
+        <CategoryIconPreview iconKey={meta.icon} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{meta.name}</p>
+          <p style={{ fontSize: "0.75rem", color: meta.desc ? "#aaa" : "#d4a72c" }}>
+            {meta.desc || "Ingen beskrivning — visas tom på sidan"}
+          </p>
+        </div>
+        <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500, whiteSpace: "nowrap" }}>
+          {count} {unit}
+        </span>
+        <button
+          onClick={() => (editingMeta ? setEditingMeta(false) : openMetaForm())}
+          title="Ändra ikon och beskrivning för kategorin"
+          style={{ background: "none", border: "1px solid #eee", borderRadius: "6px", padding: "0.25rem 0.55rem", fontSize: "0.72rem", color: "#888", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+        >
+          {editingMeta ? "Stäng" : "Utseende"}
+        </button>
+      </div>
+
+      {/* Category appearance — icon, both blurbs and its place in the list */}
+      {editingMeta && (
+        <div style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: "8px", padding: "0.75rem", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
+            <div>
+              <Label>Ikon</Label>
+              <IconSelectButton value={metaForm.icon} onChange={key => setMetaForm(f => ({ ...f, icon: key }))} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Label>Kort beskrivning (i listan)</Label>
+              <Input value={metaForm.desc} onChange={v => setMetaForm(f => ({ ...f, desc: v }))} placeholder="t.ex. Lagning & ändring" />
+            </div>
+            <div style={{ width: "90px", flexShrink: 0 }}>
+              <Label>Ordning</Label>
+              <Input type="number" value={String(metaForm.order)} onChange={v => setMetaForm(f => ({ ...f, order: Number(v) || 0 }))} />
+            </div>
+          </div>
+          <div>
+            <Label>Lång beskrivning (när kategorin öppnas)</Label>
+            <Input value={metaForm.subtitle} onChange={v => setMetaForm(f => ({ ...f, subtitle: v }))} placeholder="t.ex. Uppläggning, blixtlås och ändringar — hämtning & leverans ingår" />
+          </div>
+
+          {/* Customer input — a tailoring category needs "korta 2 cm" to be
+              actionable, so the customer is asked before the item is added. */}
+          {allowInput && (
+          <div style={{ borderTop: "1px dashed #e5e5e5", paddingTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+            <label style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={metaForm.requiresInput}
+                onChange={e => setMetaForm(f => ({ ...f, requiresInput: e.target.checked }))}
+                style={{ marginTop: "0.15rem", flexShrink: 0, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: "0.8rem", color: "#444", lineHeight: 1.45 }}>
+                Kräv kundinput innan plagget läggs i kundvagnen
+                <span style={{ display: "block", fontSize: "0.7rem", color: "#aaa", marginTop: "0.15rem" }}>
+                  Stäng av för enskilda plagg med ✎ i listan ovan.
+                </span>
+              </span>
+            </label>
+            {metaForm.requiresInput && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                <div>
+                  <Label>Fråga till kunden</Label>
+                  <Input value={metaForm.inputLabel} onChange={v => setMetaForm(f => ({ ...f, inputLabel: v }))} placeholder={DEFAULT_INPUT_LABEL} />
+                </div>
+                <div>
+                  <Label>Platshållare (standard)</Label>
+                  <Input value={metaForm.inputPlaceholder} onChange={v => setMetaForm(f => ({ ...f, inputPlaceholder: v }))} placeholder="t.ex. korta 2 cm" />
+                </div>
+              </div>
+            )}
+          </div>
+          )}
+
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button onClick={saveMeta} disabled={savingMeta} style={{ ...btnDark, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>
+              {savingMeta ? "…" : "Spara"}
+            </button>
+            <button onClick={() => setEditingMeta(false)} style={{ ...btnGhost, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>Avbryt</button>
+          </div>
+        </div>
+      )}
+
+    </>
+  );
+}
+
 // ─── Category card ────────────────────────────────────────────────────────────
 
 function CategoryCard({
@@ -324,35 +471,6 @@ function CategoryCard({
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameVal, setEditNameVal] = useState("");
 
-  // How this category is presented on the order page — icon, the two blurbs and
-  // where it sits in the list. Collapsed by default so the card stays a price list.
-  const [editingMeta, setEditingMeta] = useState(false);
-  const [metaForm, setMetaForm]       = useState(meta);
-  const [savingMeta, setSavingMeta]   = useState(false);
-
-  function openMetaForm() {
-    setMetaForm(meta);
-    setEditingMeta(true);
-  }
-
-  async function saveMeta() {
-    setSavingMeta(true);
-    try {
-      await onSaveMeta({
-        icon:             metaForm.icon,
-        desc:             metaForm.desc,
-        subtitle:         metaForm.subtitle,
-        order:            metaForm.order,
-        requiresInput:    metaForm.requiresInput,
-        inputLabel:       metaForm.inputLabel,
-        inputPlaceholder: metaForm.inputPlaceholder,
-      });
-      setEditingMeta(false);
-    } finally {
-      setSavingMeta(false);
-    }
-  }
-
   async function handleNameSave(id: string) {
     const name = editNameVal.trim();
     setEditingName(null);
@@ -396,88 +514,7 @@ function CategoryCard({
 
   return (
     <div style={cardStyle}>
-      {/* Header — mirrors the row the customer sees on /order */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
-        <CategoryIconPreview iconKey={meta.icon} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{category}</p>
-          <p style={{ fontSize: "0.75rem", color: meta.desc ? "#aaa" : "#d4a72c" }}>
-            {meta.desc || "Ingen beskrivning — visas tom på sidan"}
-          </p>
-        </div>
-        <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500, whiteSpace: "nowrap" }}>
-          {items.length} plagg
-        </span>
-        <button
-          onClick={() => (editingMeta ? setEditingMeta(false) : openMetaForm())}
-          title="Ändra ikon och beskrivning för kategorin"
-          style={{ background: "none", border: "1px solid #eee", borderRadius: "6px", padding: "0.25rem 0.55rem", fontSize: "0.72rem", color: "#888", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
-        >
-          {editingMeta ? "Stäng" : "Utseende"}
-        </button>
-      </div>
-
-      {/* Category appearance — icon, both blurbs and its place in the list */}
-      {editingMeta && (
-        <div style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: "8px", padding: "0.75rem", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end" }}>
-            <div>
-              <Label>Ikon</Label>
-              <IconSelectButton value={metaForm.icon} onChange={key => setMetaForm(f => ({ ...f, icon: key }))} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Label>Kort beskrivning (i listan)</Label>
-              <Input value={metaForm.desc} onChange={v => setMetaForm(f => ({ ...f, desc: v }))} placeholder="t.ex. Lagning & ändring" />
-            </div>
-            <div style={{ width: "90px", flexShrink: 0 }}>
-              <Label>Ordning</Label>
-              <Input type="number" value={String(metaForm.order)} onChange={v => setMetaForm(f => ({ ...f, order: Number(v) || 0 }))} />
-            </div>
-          </div>
-          <div>
-            <Label>Lång beskrivning (när kategorin öppnas)</Label>
-            <Input value={metaForm.subtitle} onChange={v => setMetaForm(f => ({ ...f, subtitle: v }))} placeholder="t.ex. Uppläggning, blixtlås och ändringar — hämtning & leverans ingår" />
-          </div>
-
-          {/* Customer input — a tailoring category needs "korta 2 cm" to be
-              actionable, so the customer is asked before the item is added. */}
-          <div style={{ borderTop: "1px dashed #e5e5e5", paddingTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-            <label style={{ display: "flex", gap: "0.45rem", alignItems: "flex-start", cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={metaForm.requiresInput}
-                onChange={e => setMetaForm(f => ({ ...f, requiresInput: e.target.checked }))}
-                style={{ marginTop: "0.15rem", flexShrink: 0, cursor: "pointer" }}
-              />
-              <span style={{ fontSize: "0.8rem", color: "#444", lineHeight: 1.45 }}>
-                Kräv kundinput innan plagget läggs i kundvagnen
-                <span style={{ display: "block", fontSize: "0.7rem", color: "#aaa", marginTop: "0.15rem" }}>
-                  Stäng av för enskilda plagg med ✎ i listan ovan.
-                </span>
-              </span>
-            </label>
-            {metaForm.requiresInput && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-                <div>
-                  <Label>Fråga till kunden</Label>
-                  <Input value={metaForm.inputLabel} onChange={v => setMetaForm(f => ({ ...f, inputLabel: v }))} placeholder={DEFAULT_INPUT_LABEL} />
-                </div>
-                <div>
-                  <Label>Platshållare (standard)</Label>
-                  <Input value={metaForm.inputPlaceholder} onChange={v => setMetaForm(f => ({ ...f, inputPlaceholder: v }))} placeholder="t.ex. korta 2 cm" />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button onClick={saveMeta} disabled={savingMeta} style={{ ...btnDark, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>
-              {savingMeta ? "…" : "Spara"}
-            </button>
-            <button onClick={() => setEditingMeta(false)} style={{ ...btnGhost, padding: "0.35rem 0.85rem", fontSize: "0.8rem" }}>Avbryt</button>
-          </div>
-        </div>
-      )}
+      <CategoryCardHeader meta={meta} count={items.length} unit="plagg" onSaveMeta={onSaveMeta} />
 
       {/* Item list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -663,20 +700,164 @@ function CategoryCard({
   );
 }
 
+/**
+ * Mattvätt's card. It sits in the same list as every other category and shares
+ * the appearance panel, but its "products" are the two rug types rather than
+ * catalogue documents: mattvätt is priced per m², so a type has a kr/m² rate and
+ * the category carries the size range the customer's slider offers.
+ *
+ * The rug types themselves are fixed — their ids are baked into cart line ids
+ * and into the payment route's validation — so this edits what they are called,
+ * how they are described, their icon and their price, not which ones exist.
+ */
+function MattvattCard({
+  meta,
+  onSaveMeta,
+  settings,
+  onSaveSettings,
+}: {
+  meta:           CategoryMeta;
+  onSaveMeta:     (patch: Partial<CategoryMeta>) => Promise<void>;
+  settings:       MattvattSettings;
+  onSaveSettings: (next: MattvattSettings) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<MattvattSettings>(settings);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(0);
+  useEffect(() => { setDraft(settings); }, [settings]);
+
+  // Sizes are edited as text and committed on blur, so a half-typed number never
+  // collapses the range while the admin is still typing.
+  const [minDraft, setMinDraft] = useState(String(settings.minSqm));
+  const [maxDraft, setMaxDraft] = useState(String(settings.maxSqm));
+  useEffect(() => {
+    setMinDraft(String(settings.minSqm));
+    setMaxDraft(String(settings.maxSqm));
+  }, [settings.minSqm, settings.maxSqm]);
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
+
+  function setType(id: MattaTypeId, patch: Partial<MattvattSettings["typeMeta"][MattaTypeId]>) {
+    setDraft(d => ({ ...d, typeMeta: { ...d.typeMeta, [id]: { ...d.typeMeta[id], ...patch } } }));
+  }
+
+  /**
+   * Commit the size drafts and save in one step.
+   *
+   * The range has to be folded into the payload here rather than pushed through
+   * `setDraft` first: this closure captures `draft` as it was rendered, so a
+   * save that read state back would always persist the previous range and drop
+   * whatever the admin just typed.
+   */
+  async function save() {
+    const minSqm = Math.max(SQM_STEP, clampSqm(minDraft.replace(",", "."), draft.minSqm));
+    const maxSqm = Math.max(minSqm + SQM_STEP, clampSqm(maxDraft.replace(",", "."), draft.maxSqm));
+    const next: MattvattSettings = { ...draft, minSqm, maxSqm };
+    setDraft(next);
+    setSaving(true);
+    try {
+      await onSaveSettings(next);
+      setSavedAt(Date.now());
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={cardStyle}>
+      <CategoryCardHeader meta={meta} count={MATTA_TYPES.length} unit="mattyper" allowInput={false} onSaveMeta={onSaveMeta} />
+
+      <p style={{ fontSize: "0.75rem", color: "#aaa", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
+        Mattvätt prissätts per m² — kunden väljer typ och drar ett reglage för storleken.
+        Priset blir <strong>kr/m² × antal m²</strong>, avrundat till hela kronor.
+      </p>
+
+      {/* The rug types — this category's products */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        {MATTA_TYPES.map(t => {
+          const m = draft.typeMeta[t.id];
+          return (
+            <div key={t.id} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", paddingBottom: "0.75rem", borderBottom: "1px solid #f5f5f5" }}>
+              <IconSelectButton value={m.icon} name={m.label} onChange={icon => setType(t.id, { icon })} />
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                <input
+                  value={m.label}
+                  onChange={e => setType(t.id, { label: e.target.value })}
+                  placeholder="Namn på mattypen"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "0.3rem 0.5rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.875rem", color: "#333", outline: "none" }}
+                />
+                <input
+                  value={m.desc}
+                  onChange={e => setType(t.id, { desc: e.target.value })}
+                  placeholder="Kort beskrivning"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "0.3rem 0.5rem", border: "1px solid #f0f0f0", borderRadius: "6px", fontSize: "0.78rem", color: "#666", outline: "none" }}
+                />
+              </div>
+              <div style={{ position: "relative", width: "116px", flexShrink: 0 }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={draft.pricePerSqmKr[t.id]}
+                  onChange={e => setDraft(d => ({
+                    ...d,
+                    pricePerSqmKr: { ...d.pricePerSqmKr, [t.id]: clampKrPerSqm(e.target.value.replace(/\D/g, "")) },
+                  }))}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "0.3rem 3.2rem 0.3rem 0.5rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", textAlign: "right", outline: "none" }}
+                />
+                <span style={{ position: "absolute", right: "0.5rem", top: "50%", transform: "translateY(-50%)", fontSize: "0.7rem", color: "#aaa", pointerEvents: "none" }}>kr / m²</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Size range the slider offers */}
+      <div style={{ paddingTop: "0.75rem", display: "flex", gap: "0.6rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ width: "120px" }}>
+          <Label>Minsta storlek</Label>
+          <Input value={minDraft} onChange={setMinDraft} />
+        </div>
+        <div style={{ width: "120px" }}>
+          <Label>Största storlek</Label>
+          <Input value={maxDraft} onChange={setMaxDraft} />
+        </div>
+        <p style={{ flex: 1, minWidth: "170px", fontSize: "0.7rem", color: "#bbb", lineHeight: 1.45 }}>
+          Reglagets ändpunkter i m². Steget är {formatSqm(SQM_STEP)} m².
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.85rem" }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{ ...btnDark, padding: "0.35rem 0.85rem", fontSize: "0.8rem", opacity: saving ? 0.6 : 1 }}
+        >
+          {saving ? "…" : "Spara mattvätt"}
+        </button>
+        {dirty && !saving && <span style={{ fontSize: "0.72rem", color: "#d4a72c" }}>Osparade ändringar</span>}
+        {!dirty && savedAt > 0 && <span style={{ fontSize: "0.72rem", color: "#16a34a" }}>Sparat</span>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main editor ──────────────────────────────────────────────────────────────
 
 export default function StrukenTvattEditor({
   initialProducts,
   initialWarnings,
   initialCategoryMeta,
+  initialMattvatt,
 }: {
   initialProducts: StrukenProduct[];
   initialWarnings: ProductWarning[];
   initialCategoryMeta: CategoryMeta[];
+  initialMattvatt: MattvattSettings;
 }) {
   const [products, setProducts] = useState<StrukenProduct[]>(initialProducts);
   const [warnings, setWarnings] = useState<ProductWarning[]>(initialWarnings);
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta[]>(initialCategoryMeta);
+  const [mattvatt, setMattvatt] = useState<MattvattSettings>(initialMattvatt);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newCatForm, setNewCatForm] = useState({ ...EMPTY_NEW_CAT });
   const [newCatError, setNewCatError] = useState("");
@@ -688,7 +869,10 @@ export default function StrukenTvattEditor({
 
   // The categories are whatever the products say they are — exactly what the
   // order page derives — sorted the same way the site sorts them.
-  const categories = Array.from(new Set(products.map(p => p.category)))
+  // Mattvätt is added explicitly: it sells no catalogue products, so deriving the
+  // list from products alone would leave it out of the admin while the customer
+  // sees it on /order. Everything else about it is configured like any other.
+  const categories = Array.from(new Set([...products.map(p => p.category), MATTVATT_CATEGORY]))
     .map(metaFor)
     .sort(compareCategories)
     .map(m => m.name);
@@ -820,6 +1004,19 @@ export default function StrukenTvattEditor({
     });
   }
 
+  /** Persist mattvätt's rug types, prices and size range. */
+  async function saveMattvatt(next: MattvattSettings) {
+    const res = await fetch("/api/admin/mattvatt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    if (!res.ok) { alert("Kunde inte spara mattvätt. Försök igen."); return; }
+    // Read back what was stored: the route normalizes, so a crossed-over range
+    // or a stray decimal comes back corrected rather than drifting from the UI.
+    setMattvatt(await res.json().then(j => j.settings ?? next).catch(() => next));
+  }
+
   async function saveNewCategory() {
     if (!newCatForm.category.trim()) { setNewCatError("Ange ett kategorinamn."); return; }
     if (categories.includes(newCatForm.category.trim())) { setNewCatError("Kategorin finns redan."); return; }
@@ -874,7 +1071,15 @@ export default function StrukenTvattEditor({
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {categories.map(cat => (
+        {categories.map(cat => cat === MATTVATT_CATEGORY ? (
+          <MattvattCard
+            key={cat}
+            meta={metaFor(cat)}
+            onSaveMeta={patch => saveCategoryMeta(cat, patch)}
+            settings={mattvatt}
+            onSaveSettings={saveMattvatt}
+          />
+        ) : (
           <CategoryCard
             key={cat}
             category={cat}
