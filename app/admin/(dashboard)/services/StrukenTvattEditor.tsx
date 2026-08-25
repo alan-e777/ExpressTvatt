@@ -324,11 +324,13 @@ function CategoryCardHeader({
   async function saveMeta() {
     setSavingMeta(true);
     try {
+      // `order` is deliberately absent. Position is set by dragging, and
+      // `metaForm` is a snapshot taken when the panel opened — so including it
+      // would let a save here silently undo a reorder made in between.
       await onSaveMeta({
         icon:             metaForm.icon,
         desc:             metaForm.desc,
         subtitle:         metaForm.subtitle,
-        order:            metaForm.order,
         requiresInput:    metaForm.requiresInput,
         inputLabel:       metaForm.inputLabel,
         inputPlaceholder: metaForm.inputPlaceholder,
@@ -415,10 +417,6 @@ function CategoryCardHeader({
             <div style={{ flex: 1, minWidth: 0 }}>
               <Label>Kort beskrivning (i listan)</Label>
               <Input value={metaForm.desc} onChange={v => setMetaForm(f => ({ ...f, desc: v }))} placeholder="t.ex. Lagning & ändring" />
-            </div>
-            <div style={{ width: "90px", flexShrink: 0 }}>
-              <Label>Ordning</Label>
-              <Input type="number" value={String(metaForm.order)} onChange={v => setMetaForm(f => ({ ...f, order: Number(v) || 0 }))} />
             </div>
           </div>
           <div>
