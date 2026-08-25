@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconChevronDown, IconGripVertical, IconPencil, IconX } from "@tabler/icons-react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 import WarningsManager, { type ProductWarning } from "./WarningsManager";
 import {
@@ -289,11 +290,19 @@ function CategoryCardHeader({
   count,
   unit = "plagg",
   allowInput = true,
+  collapsed,
+  onToggleCollapse,
+  onDragHandleDown,
   onSaveMeta,
 }: {
   meta:       CategoryMeta;
   count:      number;
   unit?:      string;
+  /** Body hidden — also forced while a drag is in progress. */
+  collapsed:  boolean;
+  onToggleCollapse: () => void;
+  /** Arms dragging on the wrapping card; only the grip may start one. */
+  onDragHandleDown: () => void;
   /**
    * Whether this category can ask the customer for a note. Mattvätt cannot: it
    * is bought through a type picker and a size slider, never by clicking a
@@ -333,23 +342,65 @@ function CategoryCardHeader({
   return (
     <>
       {/* Header — mirrors the row the customer sees on /order */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
-        <CategoryIconPreview iconKey={meta.icon} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{meta.name}</p>
-          <p style={{ fontSize: "0.75rem", color: meta.desc ? "#aaa" : "#d4a72c" }}>
-            {meta.desc || "Ingen beskrivning — visas tom på sidan"}
-          </p>
-        </div>
-        <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500, whiteSpace: "nowrap" }}>
-          {count} {unit}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: collapsed && !editingMeta ? 0 : "0.75rem" }}>
+        {/* Drag grip — dragging is armed here so a click anywhere else in the
+            card (a price, a name) can never start one by accident. */}
+        <span
+          onMouseDown={onDragHandleDown}
+          title="Dra för att ändra ordning"
+          style={{ display: "flex", alignItems: "center", color: "#ccc", cursor: "grab", flexShrink: 0, touchAction: "none" }}
+        >
+          <IconGripVertical size={16} stroke={1.75} />
         </span>
+
+        <CategoryIconPreview iconKey={meta.icon} />
+
+        {/* Title block doubles as the collapse toggle — the whole row is a big
+            target, which matters once a category holds forty products. */}
+        <button
+          onClick={onToggleCollapse}
+          // Deliberately not flex:1 — growing this would shove the pencil out to
+          // the far right, which is the arrangement it is replacing.
+          style={{ minWidth: 0, flexShrink: 1, display: "flex", alignItems: "center", gap: "0.4rem", background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+        >
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{meta.name}</span>
+            <span style={{ display: "block", fontSize: "0.75rem", color: meta.desc ? "#aaa" : "#d4a72c" }}>
+              {meta.desc || "Ingen beskrivning — visas tom på sidan"}
+            </span>
+          </span>
+        </button>
+
+        {/* Edit sits next to the name rather than adrift at the far right, so it
+            reads as belonging to this category. */}
         <button
           onClick={() => (editingMeta ? setEditingMeta(false) : openMetaForm())}
-          title="Ändra ikon och beskrivning för kategorin"
-          style={{ background: "none", border: "1px solid #eee", borderRadius: "6px", padding: "0.25rem 0.55rem", fontSize: "0.72rem", color: "#888", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+          title={editingMeta ? "Stäng" : "Ändra namn, ikon och beskrivning"}
+          aria-label={editingMeta ? "Stäng utseende" : "Ändra utseende"}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            width: 28, height: 28, borderRadius: "7px", cursor: "pointer",
+            background: editingMeta ? "#1a1a1a" : "transparent",
+            border: editingMeta ? "1px solid #1a1a1a" : "1px solid #eee",
+            color: editingMeta ? "#fff" : "#888",
+          }}
         >
-          {editingMeta ? "Stäng" : "Utseende"}
+          {editingMeta ? <IconX size={14} stroke={2} /> : <IconPencil size={14} stroke={1.9} />}
+        </button>
+
+        <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500, whiteSpace: "nowrap", marginLeft: "auto" }}>
+          {count} {unit}
+        </span>
+
+        <button
+          onClick={onToggleCollapse}
+          title={collapsed ? "Visa innehåll" : "Dölj innehåll"}
+          aria-expanded={!collapsed}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 26, height: 26, borderRadius: "7px", background: "none", border: "none", color: "#bbb", cursor: "pointer" }}
+        >
+          <span style={{ display: "flex", transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform 0.15s ease" }}>
+            <IconChevronDown size={16} stroke={2} />
+          </span>
         </button>
       </div>
 
@@ -426,6 +477,9 @@ function CategoryCardHeader({
 function CategoryCard({
   category,
   meta,
+  collapsed,
+  onToggleCollapse,
+  onDragHandleDown,
   items,
   onAdd,
   onDelete,
@@ -440,6 +494,9 @@ function CategoryCard({
 }: {
   category:         Category;
   meta:             CategoryMeta;
+  collapsed:        boolean;
+  onToggleCollapse: () => void;
+  onDragHandleDown: () => void;
   onSaveMeta:       (patch: Partial<CategoryMeta>) => Promise<void>;
   items:            StrukenProduct[];
   onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string) => Promise<void>;
@@ -514,7 +571,11 @@ function CategoryCard({
 
   return (
     <div style={cardStyle}>
-      <CategoryCardHeader meta={meta} count={items.length} unit="plagg" onSaveMeta={onSaveMeta} />
+      <CategoryCardHeader
+        meta={meta} count={items.length} unit="plagg" onSaveMeta={onSaveMeta}
+        collapsed={collapsed} onToggleCollapse={onToggleCollapse} onDragHandleDown={onDragHandleDown}
+      />
+      {!collapsed && (<>
 
       {/* Item list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -696,6 +757,7 @@ function CategoryCard({
           ordern kan raderas utan återbetalning.
         </p>
       </div>
+      </>)}
     </div>
   );
 }
@@ -712,11 +774,17 @@ function CategoryCard({
  */
 function MattvattCard({
   meta,
+  collapsed,
+  onToggleCollapse,
+  onDragHandleDown,
   onSaveMeta,
   settings,
   onSaveSettings,
 }: {
-  meta:           CategoryMeta;
+  meta:             CategoryMeta;
+  collapsed:        boolean;
+  onToggleCollapse: () => void;
+  onDragHandleDown: () => void;
   onSaveMeta:     (patch: Partial<CategoryMeta>) => Promise<void>;
   settings:       MattvattSettings;
   onSaveSettings: (next: MattvattSettings) => Promise<void>;
@@ -765,7 +833,11 @@ function MattvattCard({
 
   return (
     <div style={cardStyle}>
-      <CategoryCardHeader meta={meta} count={MATTA_TYPES.length} unit="mattyper" allowInput={false} onSaveMeta={onSaveMeta} />
+      <CategoryCardHeader
+        meta={meta} count={MATTA_TYPES.length} unit="mattyper" allowInput={false} onSaveMeta={onSaveMeta}
+        collapsed={collapsed} onToggleCollapse={onToggleCollapse} onDragHandleDown={onDragHandleDown}
+      />
+      {!collapsed && (<>
 
       <p style={{ fontSize: "0.75rem", color: "#aaa", margin: "0 0 0.75rem", lineHeight: 1.5 }}>
         Mattvätt prissätts per m² — kunden väljer typ och drar ett reglage för storleken.
@@ -837,6 +909,7 @@ function MattvattCard({
         {dirty && !saving && <span style={{ fontSize: "0.72rem", color: "#d4a72c" }}>Osparade ändringar</span>}
         {!dirty && savedAt > 0 && <span style={{ fontSize: "0.72rem", color: "#16a34a" }}>Sparat</span>}
       </div>
+      </>)}
     </div>
   );
 }
@@ -858,6 +931,17 @@ export default function StrukenTvattEditor({
   const [warnings, setWarnings] = useState<ProductWarning[]>(initialWarnings);
   const [categoryMeta, setCategoryMeta] = useState<CategoryMeta[]>(initialCategoryMeta);
   const [mattvatt, setMattvatt] = useState<MattvattSettings>(initialMattvatt);
+  // Which cards the admin has folded away, by category name.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Reordering. `armed` is the category whose grip is held — dragging is only
+  // enabled on that card, so a stray drag on a price field cannot start one.
+  const [armed, setArmed]   = useState<string | null>(null);
+  const [dragCat, setDragCat] = useState<string | null>(null);
+  const [overCat, setOverCat] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  // Local override of the sorted order, applied the moment a drop lands so the
+  // list does not snap back while the writes are in flight.
+  const [orderOverride, setOrderOverride] = useState<string[] | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newCatForm, setNewCatForm] = useState({ ...EMPTY_NEW_CAT });
   const [newCatError, setNewCatError] = useState("");
@@ -872,10 +956,55 @@ export default function StrukenTvattEditor({
   // Mattvätt is added explicitly: it sells no catalogue products, so deriving the
   // list from products alone would leave it out of the admin while the customer
   // sees it on /order. Everything else about it is configured like any other.
-  const categories = Array.from(new Set([...products.map(p => p.category), MATTVATT_CATEGORY]))
+  const sortedCategories = Array.from(new Set([...products.map(p => p.category), MATTVATT_CATEGORY]))
     .map(metaFor)
     .sort(compareCategories)
     .map(m => m.name);
+  // While an order write is in flight the override wins, but any category that
+  // appeared or vanished meanwhile is reconciled in rather than dropped.
+  const categories = orderOverride
+    ? [...orderOverride.filter(c => sortedCategories.includes(c)),
+       ...sortedCategories.filter(c => !orderOverride.includes(c))]
+    : sortedCategories;
+
+  const toggleCollapsed = (cat: string) =>
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+
+  /**
+   * Commit a new category order.
+   *
+   * Positions are rewritten as 10, 20, 30… rather than swapping two values:
+   * gaps leave room for a later insert, and a whole-list rewrite cannot leave
+   * two categories tied and sorting alphabetically against the admin's intent.
+   * Only the ones whose position actually moved are written.
+   */
+  async function persistOrder(next: string[]) {
+    setOrderOverride(next);
+    setSavingOrder(true);
+    try {
+      const changed = next
+        .map((cat, i) => ({ cat, order: (i + 1) * 10 }))
+        .filter(({ cat, order }) => metaFor(cat).order !== order);
+      await Promise.all(changed.map(({ cat, order }) => saveCategoryMeta(cat, { order })));
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function handleDrop(target: string) {
+    const from = dragCat;
+    setDragCat(null);
+    setOverCat(null);
+    setArmed(null);
+    if (!from || from === target) return;
+    const next = categories.filter(c => c !== from);
+    next.splice(next.indexOf(target), 0, from);
+    void persistOrder(next);
+  }
 
   // Group by category
   const byCategory = (cat: Category) =>
@@ -1050,7 +1179,9 @@ export default function StrukenTvattEditor({
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
         Klicka på namn, pris eller rabatt (%) för att ändra. Tryck på ! för att koppla en
-        anmärkning till ett plagg, och på ✕ för att ta bort plagget.
+        anmärkning till ett plagg, och på ✕ för att ta bort plagget. Dra i handtaget till
+        vänster om en kategori för att ändra ordningen — den ordningen är den kunden ser.
+        {savingOrder && <span style={{ marginLeft: "0.5rem", color: "#d4a72c", fontWeight: 600 }}>Sparar ordning…</span>}
       </p>
 
       <WarningsManager
@@ -1071,20 +1202,46 @@ export default function StrukenTvattEditor({
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {categories.map(cat => cat === MATTVATT_CATEGORY ? (
-          <MattvattCard
-            key={cat}
-            meta={metaFor(cat)}
-            onSaveMeta={patch => saveCategoryMeta(cat, patch)}
-            settings={mattvatt}
-            onSaveSettings={saveMattvatt}
-          />
-        ) : (
-          <CategoryCard
-            key={cat}
-            category={cat}
-            meta={metaFor(cat)}
-            onSaveMeta={patch => saveCategoryMeta(cat, patch)}
+        {categories.map(cat => {
+          // Every card folds shut for the duration of a drag. A forty-product
+          // category otherwise makes the list metres long, and the drop target
+          // you want is off-screen before you have moved the pointer.
+          const isDragging = dragCat !== null;
+          const shared = {
+            collapsed: isDragging || collapsed.has(cat),
+            onToggleCollapse: () => toggleCollapsed(cat),
+            onDragHandleDown: () => setArmed(cat),
+            meta: metaFor(cat),
+            onSaveMeta: (patch: Partial<CategoryMeta>) => saveCategoryMeta(cat, patch),
+          };
+          return (
+            <div
+              key={cat}
+              draggable={armed === cat}
+              onDragStart={e => { setDragCat(cat); e.dataTransfer.effectAllowed = "move"; }}
+              onDragEnd={() => { setDragCat(null); setOverCat(null); setArmed(null); }}
+              onDragOver={e => { if (dragCat && dragCat !== cat) { e.preventDefault(); setOverCat(cat); } }}
+              onDragLeave={() => setOverCat(o => (o === cat ? null : o))}
+              onDrop={e => { e.preventDefault(); handleDrop(cat); }}
+              style={{
+                opacity: dragCat === cat ? 0.4 : 1,
+                // A line on the edge the card would land against, rather than
+                // an outline, so the resulting position is unambiguous.
+                borderTop: overCat === cat && dragCat && categories.indexOf(dragCat) > categories.indexOf(cat) ? "2px solid #1a1a1a" : "2px solid transparent",
+                borderBottom: overCat === cat && dragCat && categories.indexOf(dragCat) < categories.indexOf(cat) ? "2px solid #1a1a1a" : "2px solid transparent",
+                transition: "opacity 0.12s ease",
+              }}
+            >
+              {cat === MATTVATT_CATEGORY ? (
+                <MattvattCard
+                  {...shared}
+                  settings={mattvatt}
+                  onSaveSettings={saveMattvatt}
+                />
+              ) : (
+                <CategoryCard
+                  {...shared}
+                  category={cat}
             items={byCategory(cat)}
             onAdd={handleAdd}
             onDelete={handleDelete}
@@ -1093,10 +1250,13 @@ export default function StrukenTvattEditor({
             onUpdateIcon={handleUpdateIcon}
             onUpdateName={handleUpdateName}
             onUpdateInput={handleUpdateInput}
-            warnings={warnings}
-            onToggleWarning={handleToggleWarning}
-          />
-        ))}
+                  warnings={warnings}
+                  onToggleWarning={handleToggleWarning}
+                />
+              )}
+            </div>
+          );
+        })}
 
         {creatingNew ? (
           <div style={{ ...cardStyle, borderStyle: "dashed", borderColor: "#d1d5db" }}>
