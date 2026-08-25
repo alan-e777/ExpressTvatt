@@ -30,6 +30,12 @@ const GOLD = "#D4AF37";
 
 type Pending = QueuedEmail & { uid: string; sendAt: number };
 
+/**
+ * What "Ångra" acts on. A bulk status change shares one `batchId` across every
+ * order it touched; a single change is a batch of one, keyed by its own uid.
+ */
+const batchKey = (p: Pending) => p.batchId ?? p.uid;
+
 export default function OrderStatusNotifier() {
   const [pending, setPending] = useState<Pending[]>([]);
   const [now, setNow] = useState(() => Date.now());
@@ -117,49 +123,79 @@ export default function OrderStatusNotifier() {
   }, []);
 
   /**
-   * Put the order back to the status it held before this burst of changes, and
-   * drop the queued notification.
+   * Put every order in this batch back to the status it held before the change,
+   * and drop their queued notifications. A bulk change marked ten orders, so
+   * undoing it has to rewind all ten — not whichever one the banner happens to
+   * be showing.
    *
-   * The timer is cleared *before* the request goes out: reverting is a network
-   * round-trip, and a click at 9.9s would otherwise race the countdown and email
-   * the customer about a status that is being undone.
+   * Timers are cleared *before* the requests go out: reverting is a network
+   * round-trip, and a click at 9.9s would otherwise race the countdown and
+   * notify customers about changes that are being undone.
    */
-  async function undo(uid: string) {
-    const item = pending.find(x => x.uid === uid);
-    if (!item) return;
+  async function undoBatch(key: string) {
+    const items = pending.filter(x => batchKey(x) === key);
+    if (items.length === 0) return;
 
-    clearTimer(uid);
-    setUndoing(uid);
+    items.forEach(x => clearTimer(x.uid));
+    setUndoing(key);
     setUndoError(null);
-    try {
-      const res = await fetch(`/api/admin/orders/${item.orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: item.previousStatus }),
+
+    const results = await Promise.all(
+      items.map(async item => {
+        try {
+          const res = await fetch(`/api/admin/orders/${item.orderId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: item.previousStatus }),
+          });
+          if (!res.ok) throw new Error("revert failed");
+          return { item, ok: true };
+        } catch {
+          return { item, ok: false };
+        }
+      }),
+    );
+
+    // Reverted orders leave the queue; the rest are handled below. Partial
+    // failure is reported rather than smoothed over — some of the selection is
+    // back where it was and some is not, and the admin has to know which.
+    const reverted = results.filter(r => r.ok).map(r => r.item);
+    const failed = results.filter(r => !r.ok).map(r => r.item);
+
+    reverted.forEach(i => originalStatus.current.delete(i.orderId));
+    const revertedUids = new Set(reverted.map(i => i.uid));
+    setPending(prev => prev.filter(x => !revertedUids.has(x.uid)));
+
+    if (failed.length > 0) {
+      // These orders really are still at the new status, so their customers
+      // should still be told — re-arm for whatever is left of the window rather
+      // than silently swallowing the notification too.
+      failed.forEach(item => {
+        const msLeft = Math.max(0, item.sendAt - Date.now());
+        timers.current.set(item.uid, setTimeout(() => send.current(item), msLeft));
       });
-      if (!res.ok) throw new Error("revert failed");
-      originalStatus.current.delete(item.orderId);
-      setPending(prev => prev.filter(x => x.uid !== uid));
-    } catch {
-      // The revert did not land, so the order is still at the new status and the
-      // customer should still be told about it. Re-arm for whatever is left of
-      // the window rather than silently swallowing the notification too.
-      const msLeft = Math.max(0, item.sendAt - Date.now());
-      timers.current.set(uid, setTimeout(() => send.current(item), msLeft));
-      setUndoError("Kunde inte återställa statusen. Försök igen.");
-    } finally {
-      setUndoing(null);
+      setUndoError(
+        failed.length === 1
+          ? "Kunde inte återställa 1 order. Försök igen."
+          : `Kunde inte återställa ${failed.length} ordrar. Försök igen.`,
+      );
     }
+
+    setUndoing(null);
   }
 
   if (pending.length === 0) return null;
 
-  // Show the most recently queued pending email.
+  // Show the most recently queued batch — every order of a bulk change at once,
+  // since that is the unit "Ångra" acts on.
   const latest = pending.reduce((a, b) => (b.sendAt > a.sendAt ? b : a));
+  const key = batchKey(latest);
+  const batch = pending.filter(x => batchKey(x) === key);
   const msLeft = Math.max(0, latest.sendAt - now);
   const secondsLeft = Math.ceil(msLeft / 1000);
   const fraction = Math.max(0, Math.min(1, msLeft / DELAY_MS));
-  const queuedBehind = pending.length - 1;
+  const queuedBehind = pending.length - batch.length;
+  const isUndoing = undoing === key;
 
   // Countdown ring geometry.
   const R = 17;
@@ -233,16 +269,29 @@ export default function OrderStatusNotifier() {
               textOverflow: "ellipsis",
             }}
           >
-            <span style={{ fontFamily: "monospace", color: "#0E5C5B", fontWeight: 600 }}>{latest.orderNo}</span>
-            {latest.customerName ? ` · ${latest.customerName}` : ""} → {latest.statusLabel}
+            {batch.length === 1 ? (
+              <>
+                <span style={{ fontFamily: "monospace", color: "#0E5C5B", fontWeight: 600 }}>{latest.orderNo}</span>
+                {latest.customerName ? ` · ${latest.customerName}` : ""} → {latest.statusLabel}
+              </>
+            ) : (
+              <>
+                <span style={{ color: "#0E5C5B", fontWeight: 600 }}>{batch.length} ordrar</span>
+                {" → "}{latest.statusLabel}
+              </>
+            )}
           </p>
         </div>
 
         {/* Undo — reverts the status, not just the message */}
         <button
-          onClick={() => undo(latest.uid)}
-          disabled={undoing === latest.uid}
-          title={`Återställ till "${latest.previousStatus}" och avbryt meddelandet`}
+          onClick={() => undoBatch(key)}
+          disabled={isUndoing}
+          title={
+            batch.length === 1
+              ? `Återställ till "${latest.previousStatus}" och avbryt meddelandet`
+              : `Återställ alla ${batch.length} ordrar och avbryt meddelandena`
+          }
           style={{
             flexShrink: 0,
             background: "transparent",
@@ -252,11 +301,11 @@ export default function OrderStatusNotifier() {
             padding: "0.3rem 0.6rem",
             fontSize: "0.72rem",
             fontWeight: 600,
-            cursor: undoing === latest.uid ? "default" : "pointer",
-            opacity: undoing === latest.uid ? 0.5 : 1,
+            cursor: isUndoing ? "default" : "pointer",
+            opacity: isUndoing ? 0.5 : 1,
           }}
         >
-          {undoing === latest.uid ? "Ångrar…" : "Ångra"}
+          {isUndoing ? "Ångrar…" : "Ångra"}
         </button>
       </div>
 

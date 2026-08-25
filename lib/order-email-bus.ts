@@ -19,6 +19,12 @@ export type QueuedEmail = {
    * at a status the admin just said they did not want.
    */
   previousStatus: string;
+  /**
+   * Shared by every order changed in one bulk action, so "Ångra" can rewind the
+   * whole batch rather than whichever order happened to be queued last. Absent
+   * for a single-order change, which is its own batch of one.
+   */
+  batchId?: string;
 };
 
 type Listener = (payload: QueuedEmail) => void;

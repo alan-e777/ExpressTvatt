@@ -335,8 +335,15 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
         )
       );
       setOrders(prev => prev.map(o => selected.has(o.id) ? { ...o, status: bulkStatus } : o));
+      // One id across the whole selection, so undoing the banner rewinds every
+      // order this action touched instead of just the last one queued.
+      const batchId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()}`;
       changedOrders.forEach(o =>
         queueStatusEmail({
+          batchId,
           orderId: o.id,
           orderNo: orderNoFor(o),
           customerName: o.customerName,
