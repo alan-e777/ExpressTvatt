@@ -22,6 +22,7 @@ export async function GET() {
         desc:     data.desc ?? '',
         subtitle: data.subtitle ?? '',
         order:    typeof data.order === 'number' ? data.order : 0,
+        hidden:   data.hidden === true,
         requiresInput:    !!data.requiresInput,
         inputLabel:       data.inputLabel ?? '',
         inputPlaceholder: data.inputPlaceholder ?? '',

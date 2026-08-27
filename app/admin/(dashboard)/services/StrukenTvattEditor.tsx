@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconChevronDown, IconGripVertical, IconPencil, IconX } from "@tabler/icons-react";
+import { IconChevronDown, IconEye, IconEyeOff, IconGripVertical, IconPencil, IconTrash, IconX } from "@tabler/icons-react";
 import { PRODUCT_ICONS, getProductIcon } from "@/lib/productIcons";
 import WarningsManager, { type ProductWarning } from "./WarningsManager";
 import {
@@ -13,6 +13,10 @@ import {
   MATTA_TYPES, SQM_STEP, clampKrPerSqm, clampSqm, formatSqm,
   type MattaTypeId, type MattvattSettings,
 } from "@/lib/mattvatt";
+import {
+  DEFAULT_UNIT, PRICE_UNITS, formatAmount, isMeasured, normalizeRange, unitDef,
+  type PriceUnit,
+} from "@/lib/serviceUnits";
 
 export type StrukenProduct = {
   id:              string;
@@ -28,6 +32,11 @@ export type StrukenProduct = {
   inputDisabled:    boolean;
   /** Overrides the category's placeholder for this item's note field. */
   inputPlaceholder: string;
+  /** Per piece, per kilo or per m². For the latter two `price` is a rate. */
+  unit:             PriceUnit;
+  /** Ends of the customer's amount slider. Both 1 for a `st` item. */
+  minUnits:         number;
+  maxUnits:         number;
 };
 
 const DEFAULT_ICON = PRODUCT_ICONS[0].key;
@@ -37,6 +46,7 @@ const DEFAULT_ICON = PRODUCT_ICONS[0].key;
 const EMPTY_NEW_CAT = {
   category: "", catIcon: DEFAULT_CATEGORY_ICON, desc: "", subtitle: "",
   name: "", price: "", discountPercent: "", icon: DEFAULT_ICON,
+  unit: DEFAULT_UNIT as PriceUnit, minUnits: "", maxUnits: "",
 };
 
 // Small grid popover for choosing one of the registered product icons.
@@ -255,6 +265,142 @@ function InputSelectButton({
   );
 }
 
+/**
+ * How one product is priced — a piece price, or a rate per kilo / per m².
+ *
+ * A measured unit replaces the customer's "+" with a slider, so the range that
+ * slider offers is edited here, next to the unit it belongs to: a min/max means
+ * nothing on a `st` item and is hidden for one.
+ */
+function UnitFields({
+  unit, minUnits, maxUnits, onUnit, onMinUnits, onMaxUnits, onCommitRange,
+}: {
+  unit:       PriceUnit;
+  minUnits:   string;
+  maxUnits:   string;
+  onUnit:     (unit: PriceUnit) => void;
+  onMinUnits: (v: string) => void;
+  onMaxUnits: (v: string) => void;
+  /** Called when a range field is left, for the places that save immediately. */
+  onCommitRange?: () => void;
+}) {
+  const def = unitDef(unit);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
+      <div style={{ display: "flex", gap: "0.3rem" }}>
+        {PRICE_UNITS.map(u => {
+          const active = u.id === unit;
+          return (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => onUnit(u.id)}
+              style={{
+                flex: 1, padding: "0.35rem 0.4rem", borderRadius: "6px", cursor: "pointer",
+                fontSize: "0.72rem", fontWeight: 600, fontFamily: "inherit", whiteSpace: "nowrap",
+                background: active ? "#1a1a1a" : "#fafafa",
+                color:      active ? "#fff"    : "#666",
+                border: active ? "1px solid #1a1a1a" : "1px solid #e5e5e5",
+              }}
+            >
+              {u.adminLabel}
+            </button>
+          );
+        })}
+      </div>
+
+      {isMeasured(unit) && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+            <div>
+              <Label>Minsta ({def.label})</Label>
+              <Input value={minUnits} onChange={onMinUnits} onBlur={onCommitRange} placeholder={String(def.defaultMin)} />
+            </div>
+            <div>
+              <Label>Största ({def.label})</Label>
+              <Input value={maxUnits} onChange={onMaxUnits} onBlur={onCommitRange} placeholder={String(def.defaultMax)} />
+            </div>
+          </div>
+          <p style={{ fontSize: "0.68rem", color: "#aaa", lineHeight: 1.45, margin: 0 }}>
+            Kunden drar ett reglage mellan ändpunkterna, i steg om {formatAmount(def.step)} {def.label}.
+            Priset blir <strong>kr/{def.label} × antal {def.label}</strong>, avrundat till hela kronor —
+            precis som mattvätt.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The unit control on an existing product row. A chip showing the unit, opening
+ * the same fields the add form uses. Saves as it is changed, like every other
+ * inline edit in this list.
+ */
+function UnitSelectButton({
+  unit, minUnits, maxUnits, onChange,
+}: {
+  unit:     PriceUnit;
+  minUnits: number;
+  maxUnits: number;
+  onChange: (patch: { unit: PriceUnit; minUnits: number; maxUnits: number }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  // Edited as text and committed on blur, so a half-typed number never collapses
+  // the range while the admin is still typing — the same rule mattvätt follows.
+  const [minDraft, setMinDraft] = useState(String(minUnits));
+  const [maxDraft, setMaxDraft] = useState(String(maxUnits));
+  useEffect(() => { setMinDraft(String(minUnits)); setMaxDraft(String(maxUnits)); }, [minUnits, maxUnits]);
+
+  const measured = isMeasured(unit);
+  const def = unitDef(unit);
+
+  // The range is normalized against the unit it is being saved with, never the
+  // one on screen a moment ago: switching to `st` has to drop the range too.
+  const commit = (nextUnit: PriceUnit) =>
+    onChange({ unit: nextUnit, ...normalizeRange(nextUnit, minDraft, maxDraft) });
+
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        title={measured ? `Prissätts per ${def.label} — klicka för att ändra` : "Styckpris — klicka för att prissätta per kg eller m²"}
+        style={{
+          minWidth: 28, height: 24, padding: "0 0.35rem", borderRadius: "12px", cursor: "pointer",
+          border: measured ? "1px solid #86efac" : "1px solid #eee",
+          background: measured ? "#dcfce7" : "#fafafa",
+          color: measured ? "#15803d" : "#bbb",
+          fontSize: "0.7rem", fontWeight: 700, lineHeight: 1, fontFamily: "inherit",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {def.label}
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: "absolute", top: "28px", right: 0, zIndex: 41, width: "min(320px, 80vw)",
+            background: "#fff", border: "1px solid #e5e5e5", borderRadius: "8px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "0.7rem",
+          }}>
+            <UnitFields
+              unit={unit}
+              minUnits={minDraft}
+              maxUnits={maxDraft}
+              onUnit={commit}
+              onMinUnits={setMinDraft}
+              onMaxUnits={setMaxDraft}
+              onCommitRange={() => commit(unit)}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Read-only twin of the circle on the customer's category row, so the admin can
 // see at a glance which icon the site will draw for this category.
 function CategoryIconPreview({ iconKey }: { iconKey: string }) {
@@ -294,6 +440,7 @@ function CategoryCardHeader({
   onToggleCollapse,
   onDragHandleDown,
   onSaveMeta,
+  onDelete,
 }: {
   meta:       CategoryMeta;
   count:      number;
@@ -311,6 +458,12 @@ function CategoryCardHeader({
    */
   allowInput?: boolean;
   onSaveMeta: (patch: Partial<CategoryMeta>) => Promise<void>;
+  /**
+   * Delete the category and everything in it. Absent for mattvätt, which is
+   * built into the order page rather than defined by a catalogue — it can only
+   * be hidden, which for a customer amounts to the same thing.
+   */
+  onDelete?: () => void;
 }) {
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaForm, setMetaForm]       = useState(meta);
@@ -366,7 +519,14 @@ function CategoryCardHeader({
           style={{ minWidth: 0, flexShrink: 1, display: "flex", alignItems: "center", gap: "0.4rem", background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
         >
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 700, fontSize: "0.95rem", color: "#1a1a1a" }}>{meta.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 700, fontSize: "0.95rem", color: meta.hidden ? "#999" : "#1a1a1a" }}>
+              {meta.name}
+              {meta.hidden && (
+                <span style={{ padding: "0.05rem 0.4rem", borderRadius: "9999px", background: "#f1f5f9", color: "#64748b", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                  Dold
+                </span>
+              )}
+            </span>
             <span style={{ display: "block", fontSize: "0.75rem", color: meta.desc ? "#aaa" : "#d4a72c" }}>
               {meta.desc || "Ingen beskrivning — visas tom på sidan"}
             </span>
@@ -389,6 +549,41 @@ function CategoryCardHeader({
         >
           {editingMeta ? <IconX size={14} stroke={2} /> : <IconPencil size={14} stroke={1.9} />}
         </button>
+
+        {/* Hide — the reversible half of removing a category. The products stay
+            and stay editable; the category simply stops being offered. */}
+        <button
+          onClick={() => onSaveMeta({ hidden: !meta.hidden })}
+          title={meta.hidden ? "Visa kategorin för kunder igen" : "Dölj kategorin för kunder"}
+          aria-label={meta.hidden ? "Visa kategorin" : "Dölj kategorin"}
+          aria-pressed={meta.hidden}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            width: 28, height: 28, borderRadius: "7px", cursor: "pointer",
+            background: meta.hidden ? "#f1f5f9" : "transparent",
+            border: meta.hidden ? "1px solid #cbd5e1" : "1px solid #eee",
+            color: meta.hidden ? "#475569" : "#888",
+          }}
+        >
+          {meta.hidden ? <IconEyeOff size={14} stroke={1.9} /> : <IconEye size={14} stroke={1.9} />}
+        </button>
+
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            title="Ta bort kategorin och allt den innehåller"
+            aria-label="Ta bort kategorin"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              width: 28, height: 28, borderRadius: "7px", cursor: "pointer",
+              background: "transparent", border: "1px solid #eee", color: "#c0c0c0",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.borderColor = "#fecaca"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#c0c0c0"; e.currentTarget.style.borderColor = "#eee"; }}
+          >
+            <IconTrash size={14} stroke={1.9} />
+          </button>
+        )}
 
         <span style={{ fontSize: "0.75rem", color: "#aaa", fontWeight: 500, whiteSpace: "nowrap", marginLeft: "auto" }}>
           {count} {unit}
@@ -486,7 +681,9 @@ function CategoryCard({
   onUpdateIcon,
   onUpdateName,
   onUpdateInput,
+  onUpdatePricing,
   onSaveMeta,
+  onDeleteCategory,
   warnings,
   onToggleWarning,
 }: {
@@ -497,13 +694,16 @@ function CategoryCard({
   onDragHandleDown: (e: React.PointerEvent) => void;
   onSaveMeta:       (patch: Partial<CategoryMeta>) => Promise<void>;
   items:            StrukenProduct[];
-  onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string) => Promise<void>;
+  onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string, pricing: { unit: PriceUnit; minUnits: number; maxUnits: number }) => Promise<void>;
   onDelete:         (id: string) => Promise<void>;
   onUpdatePrice:    (id: string, price: number) => Promise<void>;
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
   onUpdateIcon:     (id: string, icon: string) => Promise<void>;
   onUpdateName:     (id: string, name: string) => Promise<void>;
   onUpdateInput:    (id: string, patch: { inputDisabled?: boolean; inputPlaceholder?: string }) => Promise<void>;
+  onUpdatePricing:  (id: string, pricing: { unit: PriceUnit; minUnits: number; maxUnits: number }) => Promise<void>;
+  /** Removes the whole category — this card and every product on it. */
+  onDeleteCategory: () => void;
   warnings:         ProductWarning[];
   onToggleWarning:  (id: string, warningId: string, next: boolean) => Promise<void>;
 }) {
@@ -513,6 +713,11 @@ function CategoryCard({
   const [newIcon,     setNewIcon]     = useState(DEFAULT_ICON);
   const [adding,      setAdding]      = useState(false);
   const [addError,    setAddError]    = useState("");
+  // Pricing unit for the item being added. A measured one turns `newPrice` into
+  // a rate and asks for the range the customer's slider will offer.
+  const [newUnit,     setNewUnit]     = useState<PriceUnit>(DEFAULT_UNIT);
+  const [newMin,      setNewMin]      = useState("");
+  const [newMax,      setNewMax]      = useState("");
 
   // Inline price editing
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
@@ -543,11 +748,16 @@ function CategoryCard({
     setAdding(true);
     setAddError("");
     try {
-      await onAdd(category, newName.trim(), price, clampPctInput(newDiscount), newIcon);
+      await onAdd(category, newName.trim(), price, clampPctInput(newDiscount), newIcon, {
+        unit: newUnit, ...normalizeRange(newUnit, newMin, newMax),
+      });
       setNewName("");
       setNewPrice("");
       setNewDiscount("");
       setNewIcon(DEFAULT_ICON);
+      setNewUnit(DEFAULT_UNIT);
+      setNewMin("");
+      setNewMax("");
     } catch {
       setAddError("Kunde inte lägga till. Försök igen.");
     } finally {
@@ -570,7 +780,7 @@ function CategoryCard({
   return (
     <div style={cardStyle}>
       <CategoryCardHeader
-        meta={meta} count={items.length} unit="plagg" onSaveMeta={onSaveMeta}
+        meta={meta} count={items.length} unit="plagg" onSaveMeta={onSaveMeta} onDelete={onDeleteCategory}
         collapsed={collapsed} onToggleCollapse={onToggleCollapse} onDragHandleDown={onDragHandleDown}
       />
       {!collapsed && (<>
@@ -631,7 +841,9 @@ function CategoryCard({
               />
             ) : (
               <button
-                title={item.price === 0 ? "Testartikel — 0 kr hoppar över Stripe helt" : "Klicka för att ändra pris"}
+                title={item.price === 0
+                  ? "Testartikel — 0 kr hoppar över Stripe helt"
+                  : isMeasured(item.unit) ? `Pris per ${unitDef(item.unit).label} — klicka för att ändra` : "Klicka för att ändra pris"}
                 onClick={() => { setEditingPrice(item.id); setEditPriceVal(String(item.price)); }}
                 style={{
                   background: item.price === 0 ? "#7C2D12" : "#f5f5f5", border: "none", borderRadius: "4px",
@@ -639,7 +851,9 @@ function CategoryCard({
                   cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
                 }}
               >
-                {item.price === 0 ? "TEST · 0 kr" : `${item.price} kr`}
+                {item.price === 0
+                  ? "TEST · 0 kr"
+                  : isMeasured(item.unit) ? `${item.price} kr/${unitDef(item.unit).label}` : `${item.price} kr`}
               </button>
             )}
 
@@ -670,6 +884,14 @@ function CategoryCard({
                 {item.discountPercent > 0 ? `−${item.discountPercent}%` : "0 %"}
               </button>
             )}
+
+            {/* Pricing unit — styckpris, per kg or per m² (with its slider range) */}
+            <UnitSelectButton
+              unit={item.unit}
+              minUnits={item.minUnits}
+              maxUnits={item.maxUnits}
+              onChange={pricing => onUpdatePricing(item.id, pricing)}
+            />
 
             {/* Per-item customer input — only where the category asks for it */}
             {meta.requiresInput && (
@@ -720,13 +942,15 @@ function CategoryCard({
           <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1 }}>
             <input
               type="number"
-              placeholder="Pris"
+              placeholder={isMeasured(newUnit) ? `Pris per ${unitDef(newUnit).label}` : "Pris"}
               value={newPrice}
               onChange={e => { setNewPrice(e.target.value); setAddError(""); }}
               onKeyDown={e => e.key === "Enter" && handleAdd()}
-              style={{ width: "100%", padding: "0.4rem 2rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
+              style={{ width: "100%", padding: "0.4rem 2.9rem 0.4rem 0.6rem", border: "1px solid #e5e5e5", borderRadius: "6px", fontSize: "0.8rem", outline: "none" }}
             />
-            <span style={{ position: "absolute", right: "0.5rem", fontSize: "0.75rem", color: "#aaa", pointerEvents: "none" }}>kr</span>
+            <span style={{ position: "absolute", right: "0.5rem", fontSize: "0.75rem", color: "#aaa", pointerEvents: "none" }}>
+              kr{isMeasured(newUnit) ? ` / ${unitDef(newUnit).label}` : ""}
+            </span>
           </div>
           <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1 }}>
             <input
@@ -748,6 +972,15 @@ function CategoryCard({
             {adding ? "…" : "+ Lägg till"}
           </button>
         </div>
+        {/* Row 3: how it is priced — styckpris, per kg or per m² */}
+        <UnitFields
+          unit={newUnit}
+          minUnits={newMin}
+          maxUnits={newMax}
+          onUnit={u => { setNewUnit(u); setAddError(""); }}
+          onMinUnits={setNewMin}
+          onMaxUnits={setNewMax}
+        />
         {addError && <p style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "0.1rem" }}>{addError}</p>}
         <p style={{ fontSize: "0.68rem", color: "#bbb", lineHeight: 1.4 }}>
           Pris 0 kr skapar en <strong>testartikel</strong>: den syns bara för inloggade
@@ -1061,17 +1294,20 @@ export default function StrukenTvattEditor({
   const byCategory = (cat: Category) =>
     products.filter(p => p.category === cat).sort((a, b) => a.order - b.order);
 
-  async function handleAdd(category: string, name: string, price: number, discountPercent: number, icon: string) {
+  async function handleAdd(
+    category: string, name: string, price: number, discountPercent: number, icon: string,
+    pricing: { unit: PriceUnit; minUnits: number; maxUnits: number } = { unit: DEFAULT_UNIT, minUnits: 1, maxUnits: 1 },
+  ) {
     const res = await fetch("/api/admin/struken-tvatt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price, category, discountPercent, icon }),
+      body: JSON.stringify({ name, price, category, discountPercent, icon, ...pricing }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "" }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "", ...pricing }]);
   }
 
   /**
@@ -1159,6 +1395,26 @@ export default function StrukenTvattEditor({
     }
   }
 
+  /**
+   * Pricing unit and slider range — optimistic, rolled back on failure. The
+   * three fields are always written together: the range is only meaningful next
+   * to its unit, and the route normalizes them as a set for the same reason.
+   */
+  async function handleUpdatePricing(id: string, pricing: { unit: PriceUnit; minUnits: number; maxUnits: number }) {
+    const previous = products.find(p => p.id === id);
+    if (!previous) return;
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...pricing } : p));
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pricing),
+    });
+    if (!res.ok) {
+      setProducts(prev => prev.map(p => p.id === id ? previous : p));
+      alert("Kunde inte spara prissättningen. Försök igen.");
+    }
+  }
+
   async function handleUpdateIcon(id: string, icon: string) {
     const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
       method: "PATCH",
@@ -1182,6 +1438,36 @@ export default function StrukenTvattEditor({
       const without = prev.filter(m => m.name !== category);
       return [...without, next];
     });
+  }
+
+  /**
+   * Remove a category and everything in it.
+   *
+   * The confirmation names the product count because that is the part that is
+   * easy to forget: a category *is* its products, so removing it deletes them —
+   * there is no separate "empty category" left behind, and no undo. Hiding is
+   * offered first in the prompt for exactly that reason.
+   */
+  async function handleDeleteCategory(category: string) {
+    const count = products.filter(p => p.category === category).length;
+    const warning = count > 0
+      ? `Ta bort kategorin "${category}" och dess ${count} plagg?\n\nDetta går inte att ångra. Vill du bara ta bort den från sidan kan du dölja den i stället (ögat).`
+      : `Ta bort kategorin "${category}"?\n\nDetta går inte att ångra.`;
+    if (!confirm(warning)) return;
+
+    const res = await fetch(`/api/admin/service-categories?name=${encodeURIComponent(category)}`, { method: "DELETE" });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(json.error ?? "Kunde inte ta bort kategorin. Försök igen.");
+      return;
+    }
+    // Both halves mirrored locally: the products are what make the category
+    // exist in this list, and the meta is what would otherwise resurrect its
+    // old icon and position if the admin recreated the same name.
+    setProducts(prev => prev.filter(p => p.category !== category));
+    setCategoryMeta(prev => prev.filter(m => m.name !== category));
+    setCollapsed(prev => { const next = new Set(prev); next.delete(category); return next; });
+    setOrderOverride(prev => prev?.filter(c => c !== category) ?? null);
   }
 
   /** Persist mattvätt's rug types, prices and size range. */
@@ -1208,7 +1494,9 @@ export default function StrukenTvattEditor({
     setNewCatError("");
     const category = newCatForm.category.trim();
     try {
-      await handleAdd(category, newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent), newCatForm.icon);
+      await handleAdd(category, newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent), newCatForm.icon, {
+        unit: newCatForm.unit, ...normalizeRange(newCatForm.unit, newCatForm.minUnits, newCatForm.maxUnits),
+      });
       // Sort new categories below the existing ones rather than tying with them.
       const maxOrder = categories.reduce((m, c) => Math.max(m, metaFor(c).order), 0);
       await saveCategoryMeta(category, {
@@ -1229,9 +1517,12 @@ export default function StrukenTvattEditor({
   return (
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
-        Klicka på namn, pris eller rabatt (%) för att ändra. Tryck på ! för att koppla en
+        Klicka på namn, pris eller rabatt (%) för att ändra. Tryck på <strong>st</strong> för
+        att prissätta per kilo eller per m² i stället för per styck, på ! för att koppla en
         anmärkning till ett plagg, och på ✕ för att ta bort plagget. Dra i handtaget till
         vänster om en kategori för att ändra ordningen — den ordningen är den kunden ser.
+        Ögat döljer en hel kategori för kunderna utan att radera något; papperskorgen tar
+        bort den och alla dess plagg.
         {savingOrder && <span style={{ marginLeft: "0.5rem", color: "#d4a72c", fontWeight: 600 }}>Sparar ordning…</span>}
       </p>
 
@@ -1288,14 +1579,16 @@ export default function StrukenTvattEditor({
                 <CategoryCard
                   {...shared}
                   category={cat}
-            items={byCategory(cat)}
-            onAdd={handleAdd}
-            onDelete={handleDelete}
-            onUpdatePrice={handleUpdatePrice}
-            onUpdateDiscount={handleUpdateDiscount}
-            onUpdateIcon={handleUpdateIcon}
-            onUpdateName={handleUpdateName}
-            onUpdateInput={handleUpdateInput}
+                  items={byCategory(cat)}
+                  onAdd={handleAdd}
+                  onDelete={handleDelete}
+                  onUpdatePrice={handleUpdatePrice}
+                  onUpdateDiscount={handleUpdateDiscount}
+                  onUpdateIcon={handleUpdateIcon}
+                  onUpdateName={handleUpdateName}
+                  onUpdateInput={handleUpdateInput}
+                  onUpdatePricing={handleUpdatePricing}
+                  onDeleteCategory={() => handleDeleteCategory(cat)}
                   warnings={warnings}
                   onToggleWarning={handleToggleWarning}
                 />
@@ -1345,7 +1638,7 @@ export default function StrukenTvattEditor({
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                   <div>
-                    <Label>Pris (kr)</Label>
+                    <Label>{isMeasured(newCatForm.unit) ? `Pris (kr / ${unitDef(newCatForm.unit).label})` : "Pris (kr)"}</Label>
                     <Input type="number" value={newCatForm.price} onChange={v => setNewCatForm(f => ({ ...f, price: v }))} />
                   </div>
                   <div>
@@ -1353,6 +1646,14 @@ export default function StrukenTvattEditor({
                     <Input type="number" value={newCatForm.discountPercent} onChange={v => setNewCatForm(f => ({ ...f, discountPercent: v }))} />
                   </div>
                 </div>
+                <UnitFields
+                  unit={newCatForm.unit}
+                  minUnits={newCatForm.minUnits}
+                  maxUnits={newCatForm.maxUnits}
+                  onUnit={u => setNewCatForm(f => ({ ...f, unit: u }))}
+                  onMinUnits={v => setNewCatForm(f => ({ ...f, minUnits: v }))}
+                  onMaxUnits={v => setNewCatForm(f => ({ ...f, maxUnits: v }))}
+                />
               </div>
               {newCatError && <p style={errorStyle}>{newCatError}</p>}
               <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -1384,12 +1685,13 @@ function Label({ children }: { children: React.ReactNode }) {
   return <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#666", marginBottom: "0.3rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{children}</label>;
 }
 
-function Input({ value, onChange, type = "text", placeholder }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+function Input({ value, onChange, onBlur, type = "text", placeholder }: { value: string; onChange: (v: string) => void; onBlur?: () => void; type?: string; placeholder?: string }) {
   return (
     <input
       type={type}
       value={value}
       onChange={e => onChange(e.target.value)}
+      onBlur={onBlur}
       placeholder={placeholder}
       style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid #ddd", borderRadius: "6px", fontSize: "0.875rem", boxSizing: "border-box" }}
     />

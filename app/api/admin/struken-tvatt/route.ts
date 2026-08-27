@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import { isAdmin } from "@/lib/admin-auth";
 import { clampPct } from "@/lib/discount";
+import { normalizePricing } from "@/lib/serviceUnits";
 
 export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
 
-  const { name, price, category, discountPercent, icon, inputDisabled, inputPlaceholder } = await request.json();
+  const { name, price, category, discountPercent, icon, inputDisabled, inputPlaceholder, unit, minUnits, maxUnits } = await request.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required." }, { status: 400 });
   // Never negative: the payment route prices from this catalogue, so a negative
   // value would subtract from the rest of the customer's basket. Exactly 0 is
@@ -25,6 +26,12 @@ export async function POST(request: NextRequest) {
   // ID: slug from category + name
   const slug = `${category.toLowerCase()}-${name.trim().toLowerCase().replace(/[^a-z0-9åäöÅÄÖ]+/gi, "-").replace(/(^-|-$)/g, "")}-${Date.now()}`;
 
+  // How this item is priced: per piece, per kilo or per m². For a measured unit
+  // `price` is a *rate* and the range below is what the customer's slider
+  // offers; normalizePricing pins a `st` item back to a single unit so a stale
+  // range can never reach the price calculation.
+  const pricing = normalizePricing({ unit, minUnits, maxUnits });
+
   const doc = {
     id:              slug,
     name:            name.trim(),
@@ -35,6 +42,7 @@ export async function POST(request: NextRequest) {
     icon:            typeof icon === 'string' ? icon : '',
     inputDisabled:    !!inputDisabled,
     inputPlaceholder: typeof inputPlaceholder === 'string' ? inputPlaceholder.trim() : '',
+    ...pricing,
   };
 
   try {

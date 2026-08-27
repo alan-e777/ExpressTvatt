@@ -18,12 +18,15 @@ import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSet
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// `note` is the customer's own input on a line ("korta 2 cm"). Two lines can
-// share an id and differ only by note, so neither is a usable React key alone.
-type CartItem = { id: string; name: string; price: number; qty: number; type: string; note?: string };
+// `note` is the customer's own input on a line ("korta 2 cm"); `amount` is the
+// measured size of a per-kg / per-m² line, already folded into `price` and
+// carried on to the payment route, which re-derives the price from it. Two lines
+// can share an id and differ only by one of these, so neither is a usable React
+// key alone.
+type CartItem = { id: string; name: string; price: number; qty: number; type: string; note?: string; amount?: number };
 
-/** Stable per-line key: id alone collides when one garment carries two notes. */
-const lineKey = (item: CartItem) => `${item.id}::${item.note ?? ''}`;
+/** Stable per-line key: id alone collides across notes and across amounts. */
+const lineKey = (item: CartItem) => `${item.id}@${item.amount ?? ''}::${item.note ?? ''}`;
 type SavedAddress = { address: string; postalCode: string; deliveryNote?: string };
 
 function formatPrice(kr: number) { return `${kr} kr`; }
@@ -785,7 +788,9 @@ function CheckoutForm() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="of-sheet-row-name">{item.qty}× {item.name}</div>
                     {item.note && <div className="of-sheet-row-note">{item.note}</div>}
-                    <div className="of-sheet-row-per">{item.price} kr / st</div>
+                    {/* A measured line already covers its own amount (it is in
+                        the name), so "/ st" would misdescribe it. */}
+                    <div className="of-sheet-row-per">{item.price} kr{item.amount === undefined ? ' / st' : ''}</div>
                   </div>
                   <span className="of-sheet-line">{item.price * item.qty} kr</span>
                 </div>

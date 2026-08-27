@@ -3575,12 +3575,22 @@ input, textarea, select { font-family: inherit; }
 }
 .site-shell .of-input-add:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* Amount row — a per-kg / per-m² product is bought by size, so the panel opens
+   on a slider and the price below follows it. Reuses .of-matta-range /
+   .of-matta-scale, which are the same control mattvätt already draws. */
+.site-shell .of-input-amount { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.site-shell .of-input-amount-value {
+  font-size: 17px; font-weight: 700; color: #083F41;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap;
+}
+
 /* Narrow cells (2-column phones) — the panel is one tile wide, so the footer
    stacks rather than squeezing the price and the button onto one line. */
 @media (max-width: 639px) {
   .site-shell .of-input-layer { padding: 12px; gap: 6px; }
   .site-shell .of-input-name { font-size: 13px; }
   .site-shell .of-input-field { padding: 8px 10px; font-size: 13px; min-height: 60px; }
+  .site-shell .of-input-amount-value { font-size: 15px; }
   .site-shell .of-input-foot { flex-direction: column; align-items: stretch; }
   .site-shell .of-input-add { justify-content: center; padding: 8px 10px; font-size: 13px; }
 }

@@ -21,19 +21,41 @@ import {
   mattaLineId, mattaLineName, mattaPriceKr, mattaTypeLabel,
   type MattaTypeId, type MattvattSettings,
 } from '@/lib/mattvatt';
+import {
+  clampAmountToRange, formatAmount, isMeasured, measuredLineName, measuredPriceKr,
+  normalizePricing, unitDef, type ProductPricing,
+} from '@/lib/serviceUnits';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** Slug of a category, used for the open/close state and the section anchor. */
 type CatId         = string;
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string };
+// `unit`/`minUnits`/`maxUnits` say how the item is priced: per piece (the plain
+// case), or per kilo / per m², where `price` is a rate and the customer picks an
+// amount on a slider — the same shape mattvätt has always had, per product.
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string; unit?: string; minUnits?: number; maxUnits?: number };
 // `key` identifies the line, `id` identifies the product: one garment ordered
 // twice with different notes ("korta 2 cm", "korta 5 cm") is two lines that
 // still price from the same catalogue entry.
-type CartItem      = { key: string; id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string; note?: string };
+// `amount` is the measured quantity of a per-kg / per-m² line (3.5 kg), already
+// folded into `price`. It is sent to the payment route, which re-derives the
+// price from the catalogue rather than trusting either figure.
+type CartItem      = { key: string; id: string; name: string; price: number; quantity: number; type: 'mattvätt' | 'struken' | 'service'; serviceId?: string; note?: string; amount?: number };
 
-/** The tile that opened the note panel, and everything the panel needs to show. */
-type InputTarget = { id: string; name: string; price: number; label: string; placeholder: string };
+/**
+ * The tile that opened the panel, and everything the panel needs to show. One
+ * panel serves both jobs: a measured item sets its amount on a slider, an item
+ * in a note-requiring category types its instruction, and an item that is both
+ * does the two in the same card before it is added.
+ */
+type InputTarget = {
+  id: string; name: string; price: number;
+  label: string; placeholder: string;
+  /** The category asks for a note before this item can go in the basket. */
+  needsNote: boolean;
+  /** Per piece / kg / m², and the range the slider offers. */
+  pricing: ProductPricing;
+};
 /** Pixel geometry of the note panel, measured against the live grid. */
 type PanelRect   = { top: number; left: number; width: number; height: number };
 
@@ -159,6 +181,9 @@ export default function HomePage() {
   // it sits. `inputRect` is measured from the live grid — see measureInputRect.
   const [inputTarget, setInputTarget]           = useState<InputTarget | null>(null);
   const [inputNote, setInputNote]               = useState('');
+  // Amount on the panel's slider, in the product's own unit. Only meaningful
+  // while a measured product's panel is open.
+  const [inputAmount, setInputAmount]           = useState(1);
   const [inputRect, setInputRect]               = useState<PanelRect | null>(null);
   const gridRef                                 = useRef<HTMLDivElement | null>(null);
   const tileRefs                                = useRef<Record<string, HTMLDivElement | null>>({});
@@ -258,7 +283,7 @@ export default function HomePage() {
   // Cart helpers — a line is (product + note), so two notes on one garment stay
   // two lines instead of collapsing into a quantity of two.
   function addToCart(item: Omit<CartItem, 'quantity' | 'key'>) {
-    const key = cartLineKey(item.id, item.note);
+    const key = cartLineKey(item.id, item.note, item.amount);
     setCart(prev => {
       const existing = prev.find(i => i.key === key);
       if (existing) return prev.map(i => i.key === key ? { ...i, quantity: i.quantity + 1 } : i);
@@ -283,6 +308,9 @@ export default function HomePage() {
     const items = cart.map(i => ({
       id: i.id, name: i.name, price: i.price, qty: i.quantity, type: i.type,
       ...(i.note ? { note: i.note } : {}),
+      // The server prices a measured line as rate × amount, so the amount has
+      // to travel with it — the price above is only what was displayed.
+      ...(i.amount !== undefined ? { amount: i.amount } : {}),
     }));
     const rutParam = rutAvdrag ? '&rut=1' : '';
     router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}${rutParam}`);
@@ -323,6 +351,10 @@ export default function HomePage() {
     const names  = new Set<string>([...Object.keys(visibleCatalog), MATTVATT_CATEGORY]);
     return [...names]
       .map(name => resolveCategoryMeta(name, stored.get(name)))
+      // A category the admin has hidden is off the site entirely. The catalogue
+      // route already drops its products, so this is what takes mattvätt — the
+      // one category injected rather than derived — off the list as well.
+      .filter(meta => !meta.hidden)
       .sort(compareCategories)
       .map(meta => ({
         ...meta,
@@ -414,31 +446,57 @@ export default function HomePage() {
   // Leaving the category takes the panel with it.
   useEffect(() => { setInputTarget(null); setInputNote(''); }, [openCat]);
 
+  /** Base price of what the panel currently describes: a rate × amount, or a piece price. */
+  const panelBasePrice = (t: InputTarget, amount: number) =>
+    isMeasured(t.pricing.unit) ? measuredPriceKr(t.price, amount) : t.price;
+
   function confirmInput() {
-    const note = inputNote.trim();
-    if (!inputTarget || !note) return;
-    addToCart({ id: inputTarget.id, name: inputTarget.name, price: inputTarget.price, type: 'struken', note });
+    if (!inputTarget) return;
+    const note     = inputNote.trim();
+    const measured = isMeasured(inputTarget.pricing.unit);
+    if (inputTarget.needsNote && !note) return;
+
+    const amount = measured ? clampAmountToRange(inputAmount, inputTarget.pricing) : undefined;
+    addToCart({
+      id:    inputTarget.id,
+      // A measured line names the amount it was priced from, so the basket, the
+      // order record and the receipt all show the figure that was charged.
+      name:  amount !== undefined ? measuredLineName(inputTarget.name, amount, inputTarget.pricing.unit) : inputTarget.name,
+      price: panelBasePrice(inputTarget, amount ?? 1),
+      type:  'struken',
+      ...(note ? { note } : {}),
+      ...(amount !== undefined ? { amount } : {}),
+    });
     closeInput();
   }
 
   // A single product tile (mattvätt + catalogue items share the same shape)
-  function ProductTile({ id, name, price, Icon, type, warningTexts = [], needsInput = false, isTest = false, onOpenInput, innerRef }: {
+  function ProductTile({ id, name, price, Icon, type, unit = 'st', warningTexts = [], needsPanel = false, panelLabel = '', isTest = false, onOpenInput, innerRef }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
     type: CartItem['type'];
+    /** Pricing unit — a measured one turns the price into a rate ("150 kr /kg"). */
+    unit?: string;
     warningTexts?: string[];
-    /** Product whose category asks for a note — the tile opens the panel instead of adding. */
-    needsInput?: boolean;
+    /**
+     * The tile opens the panel instead of adding straight to the basket: the
+     * customer still has to say something first — an amount for a measured
+     * product, a note where the category asks for one, or both.
+     */
+    needsPanel?: boolean;
+    /** What the panel will ask for, used for the tile's accessible name. */
+    panelLabel?: string;
     /** 0 kr test item — only ever rendered for an admin, and flagged as such. */
     isTest?: boolean;
     onOpenInput?: () => void;
     innerRef?: (el: HTMLDivElement | null) => void;
   }) {
-    // A note-required product can hold several lines at once, so the tile counts
-    // all of them and never offers a stepper — which one would minus remove?
-    const qty = needsInput ? productQty(id) : cartQty(id);
+    // A panel-backed product can hold several lines at once — two notes, two
+    // sizes — so the tile counts all of them and never offers a stepper: which
+    // one would minus remove?
+    const qty = needsPanel ? productQty(id) : cartQty(id);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
-    const activate = () => (needsInput ? onOpenInput?.() : addToCart({ id, name, price, type }));
+    const activate = () => (needsPanel ? onOpenInput?.() : addToCart({ id, name, price, type }));
     // Item-level discount applies to the displayed price; RUT preview (refund) layers on top.
     const itemPrice = discountedUnitPrice(price, perItemPct(id), 0, discountSettings.multipleDiscountsAllowed);
     const shownPrice = rutAvdrag ? rutNetKr(itemPrice) : itemPrice;
@@ -449,7 +507,7 @@ export default function HomePage() {
         className={`prod-tile${qty > 0 ? ' of-active' : ''}`}
         role="button"
         tabIndex={0}
-        aria-label={needsInput ? `${name} — beskriv vad som ska göras` : `Lägg till ${name}`}
+        aria-label={needsPanel ? `${name} — ${panelLabel}` : `Lägg till ${name}`}
         style={{ cursor: 'pointer' }}
         onClick={activate}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } }}
@@ -475,12 +533,12 @@ export default function HomePage() {
             ) : (
               <>{price} kr</>
             )}
-            <span className="prod-tile-per">/st</span>
+            <span className="prod-tile-per">/{unitDef(unit).label}</span>
           </div>
-          {needsInput ? (
+          {needsPanel ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {qty > 0 && <span className="of-tile-qty">{qty}</span>}
-              <button className="of-add-btn" aria-label={`${name} — beskriv vad som ska göras`} onClick={e => { stop(e); activate(); }}>
+              <button className="of-add-btn" aria-label={`${name} — ${panelLabel}`} onClick={e => { stop(e); activate(); }}>
                 <IconPlus size={18} stroke={2.5} />
               </button>
             </div>
@@ -752,7 +810,16 @@ export default function HomePage() {
             ) : (
               <div className="of-prod-grid" ref={gridRef}>
                 {openProducts.map(p => {
-                  const needsInput = requiresCustomerInput(openMeta, p);
+                  const needsNote = requiresCustomerInput(openMeta, p);
+                  const pricing   = normalizePricing(p);
+                  const measured  = isMeasured(pricing.unit);
+                  // Either question sends the tile through the panel, and an item
+                  // that asks both puts them in the same card.
+                  const needsPanel = needsNote || measured;
+                  const def = unitDef(pricing.unit);
+                  const panelLabel = measured && needsNote ? `välj ${def.sliderLabel.toLowerCase()} och beskriv vad som ska göras`
+                    : measured ? `välj ${def.sliderLabel.toLowerCase()}`
+                    : 'beskriv vad som ska göras';
                   return (
                     <ProductTile
                       key={p.id}
@@ -761,18 +828,23 @@ export default function HomePage() {
                       price={p.price}
                       Icon={getProductIcon(p.icon, p.name)}
                       type="struken"
+                      unit={pricing.unit}
                       warningTexts={(p.warningIds ?? []).map(w => warnings[w]).filter(Boolean)}
-                      needsInput={needsInput}
+                      needsPanel={needsPanel}
+                      panelLabel={panelLabel}
                       isTest={p.price === 0}
-                      innerRef={needsInput ? (el => { tileRefs.current[p.id] = el; }) : undefined}
+                      innerRef={needsPanel ? (el => { tileRefs.current[p.id] = el; }) : undefined}
                       onOpenInput={() => {
                         setInputNote('');
+                        setInputAmount(pricing.minUnits);
                         setInputTarget({
                           id:          p.id,
                           name:        p.name,
                           price:       p.price,
                           label:       inputLabelFor(openMeta),
                           placeholder: inputPlaceholderFor(openMeta, p),
+                          needsNote,
+                          pricing,
                         });
                       }}
                     />
@@ -791,7 +863,7 @@ export default function HomePage() {
                       style={{ top: inputRect.top, left: inputRect.left, width: inputRect.width, minHeight: inputRect.height }}
                       role="dialog"
                       aria-modal="true"
-                      aria-label={`${inputTarget.name} — ${inputTarget.label}`}
+                      aria-label={`${inputTarget.name} — ${inputTarget.needsNote ? inputTarget.label : unitDef(inputTarget.pricing.unit).sliderLabel}`}
                     >
                       <div className="of-input-head">
                         <span className="of-input-name">{inputTarget.name}</span>
@@ -799,27 +871,60 @@ export default function HomePage() {
                           <IconX size={15} stroke={1.75} />
                         </button>
                       </div>
-                      <label className="of-input-label" htmlFor="of-input-field">{inputTarget.label}</label>
-                      <textarea
-                        id="of-input-field"
-                        className="of-input-field"
-                        autoFocus
-                        value={inputNote}
-                        placeholder={inputTarget.placeholder}
-                        onChange={e => setInputNote(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Escape') closeInput();
-                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmInput(); }
-                        }}
-                      />
+                      {/* Amount — a per-kg / per-m² item is bought by size, the
+                          same way a rug is, so the slider comes first and the
+                          price under it follows it live. */}
+                      {isMeasured(inputTarget.pricing.unit) && (
+                        <>
+                          <div className="of-input-amount">
+                            <span className="of-input-label">{unitDef(inputTarget.pricing.unit).sliderLabel}</span>
+                            <span className="of-input-amount-value">
+                              {formatAmount(inputAmount)} {unitDef(inputTarget.pricing.unit).label}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            className="of-matta-range"
+                            min={inputTarget.pricing.minUnits}
+                            max={inputTarget.pricing.maxUnits}
+                            step={unitDef(inputTarget.pricing.unit).step}
+                            value={inputAmount}
+                            aria-label={`${inputTarget.name} — ${unitDef(inputTarget.pricing.unit).sliderLabel.toLowerCase()} i ${unitDef(inputTarget.pricing.unit).label}`}
+                            onChange={e => setInputAmount(clampAmountToRange(e.target.value, inputTarget.pricing))}
+                          />
+                          <div className="of-matta-scale">
+                            <span>{formatAmount(inputTarget.pricing.minUnits)} {unitDef(inputTarget.pricing.unit).label}</span>
+                            <span>{formatAmount(inputTarget.pricing.maxUnits)} {unitDef(inputTarget.pricing.unit).label}</span>
+                          </div>
+                        </>
+                      )}
+
+                      {inputTarget.needsNote && (
+                        <>
+                          <label className="of-input-label" htmlFor="of-input-field">{inputTarget.label}</label>
+                          <textarea
+                            id="of-input-field"
+                            className="of-input-field"
+                            autoFocus
+                            value={inputNote}
+                            placeholder={inputTarget.placeholder}
+                            onChange={e => setInputNote(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Escape') closeInput();
+                              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmInput(); }
+                            }}
+                          />
+                        </>
+                      )}
                       <div className="of-input-foot">
                         <span className="of-input-price">
                           {(() => {
-                            const net = discountedUnitPrice(inputTarget.price, perItemPct(inputTarget.id), 0, discountSettings.multipleDiscountsAllowed);
+                            const base = panelBasePrice(inputTarget, inputAmount);
+                            const net = discountedUnitPrice(base, perItemPct(inputTarget.id), 0, discountSettings.multipleDiscountsAllowed);
                             return rutAvdrag ? rutNetKr(net) : net;
                           })()} kr
                         </span>
-                        <button type="button" className="of-input-add" disabled={!inputNote.trim()} onClick={confirmInput}>
+                        <button type="button" className="of-input-add" disabled={inputTarget.needsNote && !inputNote.trim()} onClick={confirmInput}>
                           <IconPlus size={15} stroke={2.5} /> Lägg till
                         </button>
                       </div>
@@ -863,14 +968,16 @@ export default function HomePage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="of-sheet-row-name">{item.name}</div>
                     {item.note && <div className="of-sheet-row-note">{item.note}</div>}
-                    <div className="of-sheet-row-per">{item.price} kr / st</div>
+                    {/* A measured line is already priced for its own amount —
+                        "3,5 kg" is in the name — so "/ st" would be a lie. */}
+                    <div className="of-sheet-row-per">{item.price} kr{item.amount === undefined ? ' / st' : ''}</div>
                   </div>
                   <div className="prod-stepper">
                     <button className="prod-step-btn" aria-label={`Ta bort ${item.name}`} onClick={() => removeFromCart(item.key)}>
                       <IconMinus size={13} stroke={2.5} />
                     </button>
                     <PulseQty value={item.quantity} />
-                    <button className="prod-step-btn" aria-label={`Lägg till ${item.name}`} onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId, note: item.note })}>
+                    <button className="prod-step-btn" aria-label={`Lägg till ${item.name}`} onClick={() => addToCart({ id: item.id, name: item.name, price: item.price, type: item.type, serviceId: item.serviceId, note: item.note, amount: item.amount })}>
                       <IconPlus size={13} stroke={2.5} />
                     </button>
                   </div>

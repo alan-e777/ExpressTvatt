@@ -9,6 +9,8 @@ import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERC
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
 import { isFirstTimeCustomer } from '@/lib/first-time';
+import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
+import { clampAmountToRange, isMeasured, measuredLineName, measuredPriceKr, normalizePricing } from '@/lib/serviceUnits';
 
 type CartItem = {
   id:    string;
@@ -22,6 +24,12 @@ type CartItem = {
    * carried onto the order so the shop knows what to do with the garment.
    */
   note?: string;
+  /**
+   * How much of a per-kg / per-m² product this line is for. Like `price`, it is
+   * client-supplied and not trusted: it is snapped to the product's own step and
+   * clamped into the admin's range before anything is priced from it.
+   */
+  amount?: number;
 };
 
 // Legacy fixed mattvätt sizes. The website now sends area-based lines
@@ -104,13 +112,21 @@ export async function POST(request: NextRequest) {
   // ── Server-side price validation ────────────────────────────────────────────
 
   // Fetch price catalogs for struken + services + the discount/delivery settings in parallel
-  const [strukenSnap, servicesSnap, discountsSnap, driverSnap, mattvattSnap] = await Promise.all([
+  const [strukenSnap, servicesSnap, discountsSnap, driverSnap, mattvattSnap, categoriesSnap] = await Promise.all([
     db.collection('services').doc('struken-tvatt').collection('StrukenTvatt').get(),
     db.collection('services').get(),
     db.collection('settings').doc('discounts').get(),
     db.collection('settings').doc('driver').get(),
     db.collection('settings').doc('mattvatt').get(),
+    db.collection('service_categories').get(),
   ]);
+
+  // Categories the admin has hidden. Hiding takes a service off the site, so it
+  // has to take it out of the basket too — otherwise an old cart link, or a tab
+  // left open since before it was hidden, could still book the work.
+  const hiddenCategories = new Set(
+    categoriesSnap.docs.filter(d => d.data().hidden === true).map(d => d.data().name as string),
+  );
 
   // Mattvätt: kr per m² + the allowed size range. The client's chosen area is
   // clamped back into that range here, so a hand-edited cart link cannot buy a
@@ -119,8 +135,18 @@ export async function POST(request: NextRequest) {
     mattvattSnap.exists ? (mattvattSnap.data() as Partial<MattvattSettings>) : null,
   );
 
-  const strukenPrices = Object.fromEntries(
-    strukenSnap.docs.map(d => [d.id, d.data().price as number])
+  // Full docs, not just prices: a measured product prices as rate × amount, and
+  // its unit, range and name all come from the catalogue rather than the client.
+  const strukenById = Object.fromEntries(
+    strukenSnap.docs.map(d => {
+      const data = d.data();
+      return [d.id, {
+        price:    data.price as number,
+        name:     (data.name as string) ?? '',
+        category: (data.category as string) ?? '',
+        pricing:  normalizePricing(data),
+      }];
+    })
   );
   const servicePrices = Object.fromEntries(
     servicesSnap.docs.map(d => [d.id, Math.round(d.data().price_ore / 100) as number])
@@ -171,6 +197,17 @@ export async function POST(request: NextRequest) {
     return 0;
   };
 
+  // Lines whose category has been hidden since the basket was filled. Collected
+  // rather than skipped: quietly dropping them would charge less than the
+  // customer was shown and deliver less than they ordered, so the whole booking
+  // is refused with something they can act on instead.
+  const unavailable: string[] = [];
+  // Measured lines from a client that does not understand units — today that is
+  // the iOS app, which renders every product as a piece price and sends no
+  // amount. Pricing those at the minimum would charge more than the app showed,
+  // so they are refused rather than guessed at.
+  const unsupported: string[] = [];
+
   let totalOre = 0;
   let originalOre = 0;
   const validatedItems: (CartItem & { validatedPrice: number; discountPercent: number; discountedPrice: number })[] = [];
@@ -180,8 +217,12 @@ export async function POST(request: NextRequest) {
 
     let priceKr: number | null = null;
     let lineName = item.name;
+    // Set only for a measured line, and only to the value the price was actually
+    // calculated from — never to what the client sent.
+    let measuredAmount: number | undefined;
 
     if (item.type === 'mattvätt') {
+      if (hiddenCategories.has(MATTVATT_CATEGORY)) { unavailable.push(item.name); continue; }
       // Area-based line (`matta-normal-3.5`) → kr per m² × m², both from settings.
       // Older clients fall back to the fixed sizes, then to the legacy
       // "Matta X m²" name (kvm × 90).
@@ -199,7 +240,23 @@ export async function POST(request: NextRequest) {
         priceKr     = kvm ? Math.round(kvm) * 90 : null;
       }
     } else if (item.type === 'struken') {
-      priceKr = strukenPrices[item.id] ?? null;
+      const product = strukenById[item.id];
+      if (product && hiddenCategories.has(product.category)) { unavailable.push(product.name || item.name); continue; }
+      if (product && isMeasured(product.pricing.unit)) {
+        if (item.amount === undefined || item.amount === null) {
+          unsupported.push(product.name || item.name);
+          continue;
+        }
+        // rate × amount, both re-derived here: the amount is snapped to the
+        // product's step and clamped into the admin's range, so a hand-edited
+        // cart cannot buy 100 kg at the price shown for 5.
+        const amount = clampAmountToRange(item.amount, product.pricing);
+        priceKr        = measuredPriceKr(product.price, amount);
+        lineName       = measuredLineName(product.name, amount, product.pricing.unit);
+        measuredAmount = amount;
+      } else {
+        priceKr = product?.price ?? null;
+      }
     } else if (item.type === 'service') {
       priceKr = servicePrices[item.id] ?? null;
     }
@@ -214,14 +271,33 @@ export async function POST(request: NextRequest) {
 
     originalOre += priceKr * 100 * item.qty;
     totalOre    += unitKr * 100 * item.qty;
+    // The client's own `amount` is dropped rather than merged: only the figure
+    // the price was calculated from belongs on the order, and a stray one on a
+    // non-measured line would be an undefined field Firestore refuses to write.
+    const { amount: _clientAmount, ...lineFields } = item;
     validatedItems.push({
-      ...item,
+      ...lineFields,
       name: lineName,
+      ...(measuredAmount !== undefined ? { amount: measuredAmount } : {}),
       // Trimmed and length-capped: it is free text from the client and ends up
       // on the order record the shop reads off.
       note: typeof item.note === 'string' ? item.note.trim().slice(0, 300) : '',
       validatedPrice: priceKr, discountPercent: itemPct, discountedPrice: unitKr,
     });
+  }
+
+  if (unsupported.length > 0) {
+    return NextResponse.json(
+      { error: `${unsupported.join(', ')} kan inte beställas härifrån — priset sätts efter vikt eller yta. Beställ på webbplatsen i stället.` },
+      { status: 400 },
+    );
+  }
+
+  if (unavailable.length > 0) {
+    return NextResponse.json(
+      { error: `${unavailable.join(', ')} är inte längre tillgänglig${unavailable.length > 1 ? 'a' : ''}. Ta bort den från varukorgen och försök igen.` },
+      { status: 400 },
+    );
   }
 
   // ── Test orders ─────────────────────────────────────────────────────────────

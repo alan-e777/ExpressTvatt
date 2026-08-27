@@ -9,6 +9,8 @@
 // the list, the subtitle in the opened detail header and the sort order — which
 // the admin edits under Tjänster and which lives in `service_categories`.
 
+import { amountKey } from './serviceUnits';
+
 /** Editable presentation for one category. `name` matches the products' `category`. */
 export type CategoryMeta = {
   /** Exact `category` value stored on the products — the identity here too. */
@@ -21,6 +23,14 @@ export type CategoryMeta = {
   subtitle: string;
   /** Ascending; ties broken alphabetically. */
   order:    number;
+  /**
+   * Taken off the customer-facing site without deleting anything. The catalogue
+   * keeps every product, the admin keeps editing them, and the category simply
+   * stops being offered — which is what a seasonal service needs between
+   * seasons. Enforced server-side too: /api/create-cart-payment refuses lines
+   * from a hidden category, so an old cart link cannot still buy one.
+   */
+  hidden:   boolean;
   /**
    * Whether picking an item in this category asks the customer for a note
    * first — a tailoring category needs "korta 2 cm" to be actionable. Single
@@ -115,6 +125,7 @@ export function resolveCategoryMeta(name: string, stored?: Partial<CategoryMeta>
     desc:     stored?.desc     ?? fallback?.desc     ?? '',
     subtitle: stored?.subtitle ?? fallback?.subtitle ?? '',
     order:    typeof stored?.order === 'number' ? stored.order : fallback?.order ?? NEW_CATEGORY_ORDER,
+    hidden:   stored?.hidden ?? false,
     requiresInput:    stored?.requiresInput ?? false,
     inputLabel:       stored?.inputLabel ?? '',
     inputPlaceholder: stored?.inputPlaceholder ?? '',
@@ -139,9 +150,16 @@ export function inputLabelFor(meta: Pick<CategoryMeta, 'inputLabel'>): string {
   return meta.inputLabel?.trim() || DEFAULT_INPUT_LABEL;
 }
 
-/** Cart-line identity: two notes on one product are two separate lines. */
-export function cartLineKey(id: string, note?: string): string {
-  return note?.trim() ? `${id}::${note.trim()}` : id;
+/**
+ * Cart-line identity: two notes on one product are two separate lines, and so
+ * are two amounts of a measured (per kg / per m²) product — 3 kg and 5 kg are
+ * different prices, so they cannot collapse into a quantity of two.
+ */
+export function cartLineKey(id: string, note?: string, amount?: number): string {
+  const parts = [id];
+  if (amount !== undefined) parts.push(`@${amountKey(amount)}`);
+  if (note?.trim())         parts.push(`::${note.trim()}`);
+  return parts.join('');
 }
 
 /** Ascending `order`, then Swedish-alphabetical — the site and admin both use this. */
