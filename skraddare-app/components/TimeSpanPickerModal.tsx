@@ -3,28 +3,26 @@ import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { IconCheck } from '@tabler/icons-react-native';
 import { colors } from '../theme/colors';
 import { radius, spacing } from '../theme/spacing';
+import { formatSpan, slotToSpan, type TimeSlot } from '../lib/timeslots';
 
-// Pickup/delivery time spans — identical to the website TimePicker
-// (components/TimePicker.tsx). The span string ('08-12' …) is what gets stored
-// on the order, so the admin calendar/driver views read the same values.
-export const TIME_SPANS = ['08-12', '12-16', '16-20'] as const;
-export type TimeSpan = typeof TIME_SPANS[number];
-
-export const SPAN_LABEL: Record<TimeSpan, string> = {
-  '08-12': '08:00–12:00',
-  '12-16': '12:00–16:00',
-  '16-20': '16:00–20:00',
-};
+// Pickup/delivery time windows — identical to the website TimePicker
+// (components/TimePicker.tsx). The windows are admin-editable and fetched from
+// /api/timeslots by the checkout screen, which passes them in here. The span
+// string ('08-12' …) is what gets stored on the order, so the admin
+// calendar/driver views read the same values.
 
 type Props = {
-  visible:          boolean;
-  value:            string;
-  onConfirm:        (span: string) => void;
-  onClose:          () => void;
-  disabledOptions?: string[];
+  visible:    boolean;
+  value:      string;
+  /** Windows to offer. Null while they are still loading. */
+  slots:      TimeSlot[] | null;
+  onConfirm:  (span: string) => void;
+  onClose:    () => void;
+  /** Grey out windows that close at or before this hour (already passed today). */
+  minEndHour?: number;
 };
 
-export default function TimeSpanPickerModal({ visible, value, onConfirm, onClose, disabledOptions = [] }: Props) {
+export default function TimeSpanPickerModal({ visible, value, slots, onConfirm, onClose, minEndHour }: Props) {
   const [selected, setSelected] = useState('');
 
   useEffect(() => { if (visible) setSelected(value || ''); }, [visible]);
@@ -46,9 +44,12 @@ export default function TimeSpanPickerModal({ visible, value, onConfirm, onClose
         </View>
 
         <View style={s.list}>
-          {TIME_SPANS.map(span => {
+          {slots === null ? (
+            <Text style={s.loading}>Laddar tider…</Text>
+          ) : slots.map(slot => {
+            const span       = slotToSpan(slot);
             const isSel      = span === selected;
-            const isDisabled = disabledOptions.includes(span);
+            const isDisabled = minEndHour !== undefined && slot.end <= minEndHour;
             return (
               <TouchableOpacity
                 key={span}
@@ -57,7 +58,7 @@ export default function TimeSpanPickerModal({ visible, value, onConfirm, onClose
                 activeOpacity={isDisabled ? 1 : 0.7}
                 disabled={isDisabled}
               >
-                <Text style={[s.slotText, isDisabled && s.slotTextDisabled, isSel && s.slotTextSel]}>{SPAN_LABEL[span]}</Text>
+                <Text style={[s.slotText, isDisabled && s.slotTextDisabled, isSel && s.slotTextSel]}>{formatSpan(span)}</Text>
                 {isSel && <IconCheck size={16} color={colors.forestDark} strokeWidth={2.5} />}
               </TouchableOpacity>
             );
@@ -94,4 +95,8 @@ const s = StyleSheet.create({
   slotText:         { fontFamily: 'Inter_400', fontSize: 16, color: colors.textDark },
   slotTextSel:      { fontFamily: 'Inter_600', color: colors.forestDark },
   slotTextDisabled: { color: colors.textMuted, opacity: 0.4 },
+  loading: {
+    fontFamily: 'Inter_400', fontSize: 15, color: colors.textMuted,
+    textAlign: 'center', paddingVertical: 24,
+  },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput,
   TouchableOpacity, StyleSheet, Alert, Modal, Pressable, KeyboardAvoidingView, Platform, Animated,
@@ -20,7 +20,8 @@ import { colors } from '../theme/colors';
 import { radius, spacing } from '../theme/spacing';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DatePickerModal from '../components/DatePickerModal';
-import TimeSpanPickerModal, { SPAN_LABEL, type TimeSpan } from '../components/TimeSpanPickerModal';
+import TimeSpanPickerModal from '../components/TimeSpanPickerModal';
+import { fetchTimeSlots, formatSpan, TIMESLOT_DEFAULTS, type TimeSlotSettings } from '../lib/timeslots';
 import TopBar from '../components/TopBar';
 import ScreenBackground from '../components/ScreenBackground';
 import { useCollapsibleHeader } from '../lib/useCollapsibleHeader';
@@ -66,6 +67,7 @@ export default function CheckoutScreen({ navigation }: Props) {
   const [strukenDiscounts, setStrukenDiscounts] = useState<Record<string, number>>({});
   const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
   const [hasPlacedOrder,   setHasPlacedOrder]   = useState<boolean | null>(null);
+  const [timeSlots,        setTimeSlots]        = useState<TimeSlotSettings | null>(null);
 
   const userId = auth.currentUser?.uid;
 
@@ -73,6 +75,8 @@ export default function CheckoutScreen({ navigation }: Props) {
   useEffect(() => {
     fetch(`${API_URL}/api/discount-settings`).then(r => r.json()).then(setDiscountSettings).catch(() => {});
     fetch(`${API_URL}/api/delivery-settings`).then(r => r.json()).then(setDeliverySettings).catch(() => {});
+    // Bookable pickup/delivery windows — admin-editable, see lib/timeslots.ts.
+    fetchTimeSlots().then(setTimeSlots).catch(() => {});
     fetch(`${API_URL}/api/struken-tvatt`)
       .then(r => r.json() as Promise<{ id: string; discountPercent?: number }[]>)
       .then(products => {
@@ -131,13 +135,14 @@ export default function CheckoutScreen({ navigation }: Props) {
 
   // ── Pickup / delivery scheduling (mirror website kassa) ────────────────────────
   const now = new Date();
-  const minPickupDate = now.getHours() < 20 ? toYMD(now) : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
-  // Disable pickup spans that have already ended today.
-  const disabledPickupSpans = useMemo<string[]>(() => (
-    pickupDate === toYMD(now)
-      ? (['08-12', '12-16', '16-20'] as const).filter(s => now.getHours() >= Number(s.split('-')[1]))
-      : []
-  ), [pickupDate]);
+  // Pickup can still be booked today as long as one window has not closed yet.
+  const pickupSlots    = (timeSlots ?? TIMESLOT_DEFAULTS).pickup;
+  const lastPickupHour = pickupSlots.length ? pickupSlots[pickupSlots.length - 1].end : 0;
+  const minPickupDate  = now.getHours() < lastPickupHour
+    ? toYMD(now)
+    : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  // On today's date, windows that have already closed are greyed out in the picker.
+  const pickupMinEndHour = pickupDate === toYMD(now) ? now.getHours() : undefined;
   // Delivery must be at least 3 calendar days after pickup.
   const earliestDeliveryDate = pickupDate ? addDaysYMD(pickupDate, 3) : addDaysYMD(minPickupDate, 3);
 
@@ -284,7 +289,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               </TouchableOpacity>
               <Text style={styles.fieldLabel}><IconClock size={11} color={colors.textMuted} strokeWidth={1.5} />  Tid</Text>
               <TouchableOpacity style={[styles.input, styles.pickerBtn, { marginBottom: 0 }]} onPress={() => setTimePickerFor('pickup')} activeOpacity={0.7}>
-                <Text style={pickupTime ? styles.pickerValue : styles.pickerPlaceholder}>{pickupTime ? (SPAN_LABEL[pickupTime as TimeSpan] ?? pickupTime) : 'Välj tid'}</Text>
+                <Text style={pickupTime ? styles.pickerValue : styles.pickerPlaceholder}>{pickupTime ? formatSpan(pickupTime) : 'Välj tid'}</Text>
                 <IconClock size={16} color={colors.forestMid} strokeWidth={1.5} />
               </TouchableOpacity>
             </View>
@@ -302,7 +307,7 @@ export default function CheckoutScreen({ navigation }: Props) {
               </TouchableOpacity>
               <Text style={styles.fieldLabel}><IconClock size={11} color={colors.textMuted} strokeWidth={1.5} />  Tid</Text>
               <TouchableOpacity style={[styles.input, styles.pickerBtn, { marginBottom: 0 }]} onPress={() => setTimePickerFor('delivery')} activeOpacity={0.7}>
-                <Text style={deliveryTime ? styles.pickerValue : styles.pickerPlaceholder}>{deliveryTime ? (SPAN_LABEL[deliveryTime as TimeSpan] ?? deliveryTime) : 'Välj tid'}</Text>
+                <Text style={deliveryTime ? styles.pickerValue : styles.pickerPlaceholder}>{deliveryTime ? formatSpan(deliveryTime) : 'Välj tid'}</Text>
                 <IconClock size={16} color={colors.forestMid} strokeWidth={1.5} />
               </TouchableOpacity>
               <Text style={styles.dtHint}>Minst 3 dagar efter upphämtning.</Text>
@@ -428,7 +433,8 @@ export default function CheckoutScreen({ navigation }: Props) {
       <TimeSpanPickerModal
         visible={timePickerFor !== null}
         value={timePickerFor === 'delivery' ? deliveryTime : pickupTime}
-        disabledOptions={timePickerFor === 'pickup' ? disabledPickupSpans : []}
+        slots={timeSlots ? (timePickerFor === 'delivery' ? timeSlots.delivery : timeSlots.pickup) : null}
+        minEndHour={timePickerFor === 'pickup' ? pickupMinEndHour : undefined}
         onConfirm={t => (timePickerFor === 'delivery' ? setDeliveryTime(t) : setPickupTime(t))}
         onClose={() => setTimePickerFor(null)}
       />

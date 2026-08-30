@@ -2,7 +2,11 @@
 See `devNotes/BEFORE_DEPLOYMENT.md` for known security and data issues that must be resolved before going live. Includes exact code fixes for each item.
 
 ## Default target
-Unless the user says "mobile", "app", "iOS", or "Expo", always assume changes are for the **website** (`app/` — Next.js). Never touch `skraddare-app/` unless explicitly asked.
+Unless the user says "mobile", "app", "iOS", or "Expo", always assume changes are for the **website** (`app/` — Next.js). Never touch `skraddare-app/` unless explicitly asked. The app is not live yet, which is why web-only changes are fine — but they leave debt, see below.
+
+## migration.md — the web ↔ app ledger
+`migration.md` records every place the website and the iOS app now behave differently, so the owner can work through it before the app launches.
+**Whenever a change lands on one side only, add an entry to `migration.md` in the same turn — before committing — and mention it in the summary.** That includes: a web feature the app does not have, a server route the app cannot call, a shared file duplicated instead of imported, and any app-compat shim left in a server route (the entry then says what to delete once the app catches up). When a change closes a gap, move that entry to *Recently closed* with the date.
 
 ## Stack
 - `skraddare-app/` — Expo customer app (React Native)
@@ -32,7 +36,7 @@ Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (
 - Orders still store the span string (`"08-12"`), so orders/driver/calendar were untouched.
 - Rules: gaps are fine (08–12 + 14–16 leaves 12–14 unbookable), overlaps are rejected, an empty list is rejected (it would make booking impossible), max 12 windows. Enforced in the panel *and* re-checked in `POST /api/admin/timeslots`; a corrupt doc falls back to the defaults on read so checkout can never end up with nothing to book.
 - Routes: `GET/POST /api/admin/timeslots` (admin) · `GET /api/timeslots` (public, for the pickers — `settings` is not client-readable per `firestore.rules`).
-- **Known gap:** `skraddare-app` still hard-codes the three original windows (`TimeSpanPickerModal.tsx`, `CheckoutScreen.tsx`), so the iOS app ignores admin changes until it is pointed at `/api/timeslots` too. For that reason `create-cart-payment` does *not* reject an off-list time — adding that check would break the app's bookings.
+- The iOS app reads the same list: `skraddare-app/lib/timeslots.ts` (hand-copied mirror — keep the two in sync) feeds `TimeSpanPickerModal`/`CheckoutScreen`. Because both clients agree, `create-cart-payment` rejects a pickup or delivery time that is not on the admin's list; an empty time or a failed settings read skips the check rather than blocking checkout.
 
 ## Admin dashboard (`app/admin/`)
 Protected by `middleware.ts` + cookie-based session (`admin-session`).

@@ -9,6 +9,7 @@ import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERC
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
 import { isFirstTimeCustomer } from '@/lib/first-time';
+import { normalizeTimeSlotSettings, slotsToSpans } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { clampAmountToRange, isMeasured, measuredLineName, measuredPriceKr, normalizePricing } from '@/lib/serviceUnits';
 
@@ -97,6 +98,22 @@ export async function POST(request: NextRequest) {
   const blockedDates: string[] = (availSnap.exists ? availSnap.data()?.blockedDates : []) ?? [];
   if (blockedDates.includes(date) || (deliveryDate && blockedDates.includes(deliveryDate))) {
     return NextResponse.json({ error: 'Ett av de valda datumen är inte längre tillgängligt. Välj ett annat datum.' }, { status: 400 });
+  }
+
+  // ── Availability: reject a time window the admin no longer offers ───────────
+  // Both clients read the same windows from /api/timeslots, so a mismatch means
+  // they changed while the basket sat open (or the request was hand-made).
+  // A failed read skips the check rather than blocking checkout, and an empty
+  // time is left alone — only a value that is present and wrong is rejected.
+  const slotSnap = await db.collection('settings').doc('timeslots').get().catch(() => null);
+  if (slotSnap) {
+    const timeSlots = normalizeTimeSlotSettings(slotSnap.exists ? slotSnap.data() : null);
+    if (time && !slotsToSpans(timeSlots.pickup).includes(time)) {
+      return NextResponse.json({ error: 'Den valda tiden för upphämtning erbjuds inte längre. Välj en annan tid.' }, { status: 400 });
+    }
+    if (deliveryTime && !slotsToSpans(timeSlots.delivery).includes(deliveryTime)) {
+      return NextResponse.json({ error: 'Den valda tiden för avlämning erbjuds inte längre. Välj en annan tid.' }, { status: 400 });
+    }
   }
 
   // ── Schedule validation: delivery must be ≥ 3 calendar days after pickup ─────

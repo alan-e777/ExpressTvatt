@@ -267,9 +267,8 @@ export default function TimeSlotsPanel() {
           </div>
 
           <p style={{ fontSize: "0.7rem", color: "#bbb", margin: "0.75rem 0 0", lineHeight: 1.5 }}>
-            Ändringarna gäller först när du sparar, och slår igenom direkt i kassan.
-            Redan lagda ordrar behåller den tid kunden valde. iOS-appen visar tills vidare
-            de ursprungliga tiderna (08–12, 12–16, 16–20).
+            Ändringarna gäller först när du sparar, och slår igenom direkt i både kassan och appen.
+            Redan lagda ordrar behåller den tid kunden valde.
           </p>
         </>
       )}

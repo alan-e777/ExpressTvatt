@@ -11,6 +11,7 @@ import { HomeStackParamList } from '../navigation/RootNavigator';
 import { auth } from '../lib/firebase';
 import { useCart } from '../lib/cart';
 import { RUT_DISCOUNT_PERCENT } from '../lib/rut';
+import { formatSpan } from '../lib/timeslots';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { radius, spacing } from '../theme/spacing';
@@ -161,11 +162,11 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
           </View>
           <View style={styles.row}>
             <Text style={typography.small}>Upphämtning</Text>
-            <Text style={typography.small}>{date} · {spanLabel(time)}</Text>
+            <Text style={typography.small}>{date} · {formatSpan(time)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={typography.small}>Avlämning</Text>
-            <Text style={typography.small}>{deliveryDate} · {spanLabel(deliveryTime)}</Text>
+            <Text style={typography.small}>{deliveryDate} · {formatSpan(deliveryTime)}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -216,12 +217,6 @@ export default function CartPaymentScreen({ navigation, route }: Props) {
       </ScrollView>
     </View>
   );
-}
-
-// '08-12' → '08:00–12:00' for the summary; pass through anything unexpected.
-function spanLabel(span: string): string {
-  const map: Record<string, string> = { '08-12': '08:00–12:00', '12-16': '12:00–16:00', '16-20': '16:00–20:00' };
-  return map[span] ?? span;
 }
 
 const styles = StyleSheet.create({
