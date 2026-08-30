@@ -2,29 +2,38 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { IconClock } from '@tabler/icons-react';
+import {
+  fetchTimeSlots, formatSpan, slotToSpan,
+  type TimeSlot, type TimeSlotKind,
+} from '@/lib/timeslots';
 
-export const TIME_SPANS = ['08-12', '12-16', '16-20'] as const;
-export type TimeSpan = typeof TIME_SPANS[number];
-
-export const SPAN_LABEL: Record<TimeSpan, string> = {
-  '08-12': '08:00–12:00',
-  '12-16': '12:00–16:00',
-  '16-20': '16:00–20:00',
-};
+// The windows themselves are admin-editable (Inställningar → Tider) and are
+// fetched from /api/timeslots — see lib/timeslots.ts. Pickup and delivery have
+// separate lists, hence the `kind` prop.
 
 export default function TimePicker({
   value,
   onChange,
   placeholder = 'Välj tid',
-  disabledOptions = [],
+  kind = 'pickup',
+  minEndHour,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  disabledOptions?: string[];
+  kind?: TimeSlotKind;
+  /** Grey out windows that close at or before this hour (i.e. already passed today). */
+  minEndHour?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [slots, setSlots] = useState<TimeSlot[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTimeSlots().then(s => { if (!cancelled) setSlots(s[kind]); });
+    return () => { cancelled = true; };
+  }, [kind]);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -34,9 +43,7 @@ export default function TimePicker({
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  const displayLabel = value
-    ? (SPAN_LABEL[value as TimeSpan] ?? value)
-    : placeholder;
+  const displayLabel = value ? formatSpan(value) : placeholder;
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -68,8 +75,16 @@ export default function TimePicker({
           width: '100%',
           minWidth: '180px',
         }}>
-          {TIME_SPANS.map(span => {
-            const disabled = disabledOptions.includes(span);
+          {slots === null ? (
+            <p style={{
+              margin: 0, padding: '10px 12px', textAlign: 'center',
+              fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: 'var(--text-muted)',
+            }}>
+              Laddar tider…
+            </p>
+          ) : slots.map(slot => {
+            const span = slotToSpan(slot);
+            const disabled = minEndHour !== undefined && slot.end <= minEndHour;
             const selected = value === span;
             return (
               <button
@@ -102,7 +117,7 @@ export default function TimePicker({
                   if (!selected && !disabled) (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
                 }}
               >
-                {SPAN_LABEL[span]}
+                {formatSpan(span)}
               </button>
             );
           })}

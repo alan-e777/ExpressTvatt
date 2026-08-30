@@ -15,6 +15,7 @@ import TimePicker from '@/components/TimePicker';
 import Confetti from '@/components/Confetti';
 import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
+import { fetchTimeSlots, TIMESLOT_DEFAULTS, type TimeSlotSettings } from '@/lib/timeslots';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -172,6 +173,7 @@ function CheckoutForm() {
   const [formError,        setFormError]        = useState('');
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
+  const [timeSlots,        setTimeSlots]        = useState<TimeSlotSettings | null>(null);
   const [profileCard,      setProfileCard]      = useState<{ name: string; email: string; phone: string } | null>(null);
   const [editingContact,   setEditingContact]   = useState(false);
   const [sheetOpen,        setSheetOpen]        = useState(false);
@@ -213,6 +215,8 @@ function CheckoutForm() {
       .then(r => r.json() as Promise<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>)
       .then(setDeliverySettings)
       .catch(() => {});
+    // Bookable pickup/delivery windows — admin-editable, see lib/timeslots.ts.
+    fetchTimeSlots().then(setTimeSlots).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -272,14 +276,16 @@ function CheckoutForm() {
   const rutDiscountKr = rutAvdrag ? rutRefundKr(totalKr) : 0;
   const grandTotalKr = totalKr - rutDiscountKr + deliveryFeeKr;
 
-  // Pickup can be booked today if any time span is still open (last span ends 20:00).
+  // Pickup can still be booked today as long as one window has not closed yet.
   const now = new Date();
-  const minPickupDate = now.getHours() < 20 ? toYMD(now) : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const pickupSlots = (timeSlots ?? TIMESLOT_DEFAULTS).pickup;
+  const lastPickupHour = pickupSlots.length ? pickupSlots[pickupSlots.length - 1].end : 0;
+  const minPickupDate = now.getHours() < lastPickupHour
+    ? toYMD(now)
+    : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
 
-  // Disable pickup spans that have already ended today.
-  const disabledPickupSpans: string[] = pickupDate === toYMD(now)
-    ? ['08-12', '12-16', '16-20'].filter(s => now.getHours() >= Number(s.split('-')[1]))
-    : [];
+  // On today's date, windows that have already closed are greyed out in the picker.
+  const pickupMinEndHour = pickupDate === toYMD(now) ? now.getHours() : undefined;
 
   // Delivery must be at least 3 calendar days after pickup.
   const earliestDeliveryDate = pickupDate ? addDaysYMD(pickupDate, 3) : addDaysYMD(minPickupDate, 3);
@@ -646,7 +652,7 @@ function CheckoutForm() {
               <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
               Tid
             </label>
-            <TimePicker value={pickupTime} onChange={setPickupTime} placeholder="Välj tid" disabledOptions={disabledPickupSpans} />
+            <TimePicker value={pickupTime} onChange={setPickupTime} placeholder="Välj tid" kind="pickup" minEndHour={pickupMinEndHour} />
           </div>
         </div>
 
@@ -662,7 +668,7 @@ function CheckoutForm() {
               <IconClock size={11} stroke={1.5} style={{ display: 'inline', marginRight: 4 }} />
               Tid
             </label>
-            <TimePicker value={deliveryTime} onChange={setDeliveryTime} placeholder="Välj tid" />
+            <TimePicker value={deliveryTime} onChange={setDeliveryTime} placeholder="Välj tid" kind="delivery" />
           </div>
           <p className="micro" style={{ color: 'var(--text-muted)', margin: 'var(--sp-sm) 0 0' }}>
             Minst 3 dagar efter upphämtning.

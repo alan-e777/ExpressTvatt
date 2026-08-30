@@ -11,6 +11,7 @@ import {
 import WishlistPanel from "./WishlistPanel";
 import GdprSettingsPanel from "./GdprSettingsPanel";
 import NotificationStatusPanel from "./NotificationStatusPanel";
+import TimeSlotsPanel from "./TimeSlotsPanel";
 
 type Prediction = { description: string; placeId: string };
 
@@ -22,6 +23,7 @@ const SECTION_TERMS = {
   driver:    "chaufför chaufförens platser startplats slutplats adress adresser rutt ruttplanering start slut",
   area:      "tjänsteområde område radie km cirkel centrum karta google maps adresser räckvidd",
   delivery:  "leverans leveransavgift frakt gratis fri tröskel gränsvärde hemleverans upphämtning avgift kr",
+  timeslots: "tider tid tidsfönster tidsfonster tidsintervall klockslag schema öppettider oppettider upphämtning upphamtning avlämning avlamning hämtning leveranstid bokningstid timmar fönster",
   discounts: "rabatt rabatter förstagångsrabatt procent kampanj ny kund mattvätt matta flera",
   mattvatt:  "mattvätt matta mattor pris priser kvadratmeter kvm m2 m² kr per storlek min max minsta största normal äkta orientalisk slider reglage",
   admins:    "administratörer admin adminkonton konto konton roll roller huvudadmin lösenord behörighet användare",
@@ -368,7 +370,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
       {/* Header */}
       <div style={{ marginBottom: "1.25rem" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.2rem" }}>Inställningar</h1>
-        <p style={{ color: "#999", fontSize: "0.875rem" }}>Priser, leverans, tjänsteområde och administratörer</p>
+        <p style={{ color: "#999", fontSize: "0.875rem" }}>Priser, leverans, tider, tjänsteområde och administratörer</p>
       </div>
 
       {/* Search — filters the sections below */}
@@ -393,7 +395,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
 
       {noMatches && (
         <p style={{ fontSize: "0.85rem", color: "#888", background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem", margin: 0 }}>
-          Ingen inställning matchar <strong>“{query}”</strong>. Prova t.ex. <em>mattvätt</em>, <em>rabatt</em>, <em>leverans</em>, <em>karta</em> eller <em>administratörer</em>.
+          Ingen inställning matchar <strong>“{query}”</strong>. Prova t.ex. <em>mattvätt</em>, <em>rabatt</em>, <em>tider</em>, <em>leverans</em>, <em>karta</em> eller <em>administratörer</em>.
         </p>
       )}
 
@@ -524,6 +526,11 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               </p>
             </div>
           </section>
+          </Filterable>
+
+          {/* Bookable pickup/delivery windows */}
+          <Filterable query={query} section="timeslots">
+            <TimeSlotsPanel />
           </Filterable>
 
           {/* Discounts */}

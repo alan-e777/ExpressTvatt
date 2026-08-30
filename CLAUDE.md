@@ -22,7 +22,17 @@ Read `style.md` before creating or editing any screen or component.
 
 ## Custom components (web)
 - `components/DatePicker.tsx` + `components/TimePicker.tsx` — custom dropdowns, must stay visually in sync. Never replace with native `<input type="date/time">`.
+- `TimePicker` no longer hard-codes the windows: it takes `kind="pickup" | "delivery"` and fetches the admin-configured list from `/api/timeslots` (module-level cache shared with the cart, same trick `DatePicker` uses for blocked dates). `minEndHour` greys out windows that have already closed today.
 - Kassa (`app/kassa/page.tsx`) fetches `customers/{uid}` on auth to show a profile card and pre-fill contact fields. `notes` textarea is the single source of truth — no separate careOf field.
+
+## Booking time windows
+Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (`app/admin/(dashboard)/settings/TimeSlotsPanel.tsx`). Pickup and delivery keep **separate** lists; each card has a mirror button that copies its list over the other one.
+- `lib/timeslots.ts` is the single source of truth — types, defaults (`08-12`/`12-16`/`16-20`), `"HH-HH"` ⇄ `{start,end}` conversion, the strict `validateSlots()` used on save and the lenient `normalizeSlots()` used on read.
+- Firestore `settings/timeslots` → `{ pickup: [{start,end}], delivery: [{start,end}] }`, whole hours 0–24.
+- Orders still store the span string (`"08-12"`), so orders/driver/calendar were untouched.
+- Rules: gaps are fine (08–12 + 14–16 leaves 12–14 unbookable), overlaps are rejected, an empty list is rejected (it would make booking impossible), max 12 windows. Enforced in the panel *and* re-checked in `POST /api/admin/timeslots`; a corrupt doc falls back to the defaults on read so checkout can never end up with nothing to book.
+- Routes: `GET/POST /api/admin/timeslots` (admin) · `GET /api/timeslots` (public, for the pickers — `settings` is not client-readable per `firestore.rules`).
+- **Known gap:** `skraddare-app` still hard-codes the three original windows (`TimeSpanPickerModal.tsx`, `CheckoutScreen.tsx`), so the iOS app ignores admin changes until it is pointed at `/api/timeslots` too. For that reason `create-cart-payment` does *not* reject an off-list time — adding that check would break the app's bookings.
 
 ## Admin dashboard (`app/admin/`)
 Protected by `middleware.ts` + cookie-based session (`admin-session`).
