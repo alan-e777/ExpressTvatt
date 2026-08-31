@@ -199,6 +199,115 @@ will show zero completed orders even though customers were charged.
 
 ---
 
+### 🔴 GOOGLE MAPS BILLING IS NOT ENABLED — SET IT UP ON THE OWNER'S ACCOUNT
+
+> **Status 2026-08-31: every Google Maps API the site uses is returning
+> `REQUEST_DENIED`.** The key in `.env.local` is valid and the APIs exist — the
+> Cloud project it belongs to simply has no billing account attached. Google
+> requires a card on file for Maps Platform even inside the free tier.
+
+Proven, not inferred — asked Google directly with the key from `.env.local`:
+
+```
+GET /maps/api/geocode/json?address=Stockholm
+  status:        REQUEST_DENIED
+  error_message: You must enable Billing on the Google Cloud Project
+
+GET /maps/api/place/autocomplete/json?input=Drottninggatan
+  status:        REQUEST_DENIED
+```
+
+In the browser this shows as the "For development purposes only" watermark plus
+a *"Google Maps lästes inte in korrekt på sidan"* dialog — the map still draws
+tiles, which is why it looks cosmetic. It is not.
+
+**One key powers all of this, so all of it is down together:**
+
+| Broken | File |
+|---|---|
+| Address autocomplete at checkout | `app/api/places/autocomplete/route.ts`, `.../details/route.ts` |
+| Address → coordinates | `lib/geocode.ts` |
+| Driver route optimisation | `app/api/admin/driver/optimize/route.ts` |
+| Dashboard map images | `app/api/admin/maps/run/route.ts` |
+| Service-area circle (Inställningar) | `app/admin/(dashboard)/settings/SettingsClient.tsx` |
+
+**Only the key in `.env.local` was tested.** If Vercel holds a different
+`GOOGLE_MAPS_API_KEY`, production may be fine and only local dev is broken —
+check Vercel before treating this as a live outage.
+
+#### Do NOT transfer the developer's existing project
+
+Transferring a Cloud project (IAM owner grant + re-linking billing) only pays
+for itself when there is history worth keeping — months of usage, approved
+quota increases, an established billing relationship. This project has none of
+that, because billing was never switched on. A fresh project in the owner's
+account is fewer steps and leaves the owner genuinely owning it from day one.
+
+If either account is Google **Workspace** rather than a personal Gmail, the
+project sits inside an Organization node and cannot be moved to a personal
+account at all — another reason to start fresh.
+
+#### The 4 steps — signed in to the OWNER'S Google account
+
+1. **[console.cloud.google.com](https://console.cloud.google.com) → New Project.**
+   Name it `Express Tvätt`. Make sure the account picker top-right is the owner's
+   Gmail, not the developer's, before creating anything.
+2. **Billing → Link a billing account** → add the owner's card.
+   *This is the step that is actually failing today.*
+3. **APIs & Services → Enabled APIs → + Enable APIs**, and enable **all five**:
+   Maps JavaScript · Places · Geocoding · **Directions** · Maps Static.
+   (Directions is easy to miss — the driver route optimiser needs it.)
+4. **APIs & Services → Credentials → Create credentials → API key.**
+   Create **two** keys, not one — see the split below.
+
+#### Then, back in the repo
+
+Put the key in `.env.local` **and** in Vercel → Settings → Environment Variables,
+then **redeploy** (Vercel only picks up env changes on the next build).
+
+**No code changes are needed for a straight key swap** — all seven consumers read
+`process.env.GOOGLE_MAPS_API_KEY`, and nothing anywhere references a project or
+an account.
+
+Verify with:
+
+```bash
+curl -s "https://maps.googleapis.com/maps/api/geocode/json?address=Stockholm&key=$(grep '^GOOGLE_MAPS_API_KEY=' .env.local | cut -d= -f2-)" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status'))"
+```
+
+`OK` means fixed. `REQUEST_DENIED` means step 2 did not take.
+
+#### Two traps
+
+- **A billing account is not the same thing as a linked project.** Adding a card
+  creates a *billing account*; the project must then be *linked to it*. People
+  add the card, see "billing active", and the project still returns
+  `REQUEST_DENIED` because nothing was linked.
+- **You cannot put an HTTP-referrer restriction on the single key you have now.**
+  `GOOGLE_MAPS_API_KEY` is used server-side *and* handed to the browser at
+  `app/admin/(dashboard)/settings/page.tsx`. Referrer restrictions only apply to
+  browser requests, so restricting the one key silently kills all five server
+  routes above. Create two keys instead:
+
+  | Key | Restriction | APIs |
+  |---|---|---|
+  | Browser | HTTP referrer = the production domain | Maps JavaScript only |
+  | Server | IP restriction, or none but kept secret | Places, Geocoding, Directions, Maps Static |
+
+  This needs a small code change (a new env var for the browser key + one line in
+  `settings/page.tsx`). Do it at the same time — doing it once on the owner's
+  account beats setting up one key now and redoing it at cutover.
+
+#### Set a budget alert before enabling billing, not after
+
+Today a failed call costs nothing. The moment billing works, item **8** below
+(Static Maps polling) becomes real money. Note that item 8 still quotes Google's
+retired **$200/month** credit — that flat credit was replaced with per-API free
+monthly call allowances in 2025, so check the current numbers in the console
+rather than budgeting against $200.
+
+---
+
 ## 🟡 Important — fix within first week of launch
 
 ---

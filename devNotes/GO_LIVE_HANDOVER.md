@@ -18,7 +18,7 @@ Order of the day:
 **Have these ready from the client before you start:**
 - [ ] Stripe **live** keys: `sk_live_…` (secret) + `pk_live_…` (publishable).
 - [ ] The **production domain** (e.g. `https://expresstvatt.se`) — needed for the Stripe webhook.
-- [ ] Google Maps API key (production) **with restrictions** set: APIs enabled = Places, Geocoding, Maps JavaScript, Static Maps; restricted by HTTP referrer (the domain) for the browser key.
+- [ ] Google Maps: **you set this up yourself while signed in to the owner's Google account** — it is not a key the client hands you. Follow the exact 4 steps in `BEFORE_DEPLOYMENT.md` → "🔴 GOOGLE MAPS BILLING IS NOT ENABLED". Five APIs, not four (Directions is needed by the driver route optimiser), and **two** keys — a referrer-restricted browser key and a separate server key. Billing is not enabled on the current dev project, so this is a live blocker, not a formality.
 - [ ] Resend: `expresstvatt.se` is **already verified** — so this is only about env vars. `RESEND_FROM=Express Tvätt <no-reply@expresstvatt.se>` (never the `onboarding@resend.dev` sandbox sender, which 403s for everyone but the account owner) plus `RESEND_REPLY_TO` pointing at a mailbox someone reads. See `BEFORE_DEPLOYMENT.md` → "RESEND".
 - [ ] The client's **Firebase admin UID** (the Google account that will own the admin panel) — see the ADMIN_UID gotcha below.
 - [ ] 46elks (SMS) credentials if SMS is staying on.
@@ -84,7 +84,8 @@ Order of the day:
 **Final go-live gate — all must be true before handing over access:**
 - [ ] Code fixes from PART B are committed, pushed, and deployed (Klarna/return_url, first-time discount, threshold inversion, copy, legacy pages, webhook logs).
 - [ ] One real live order: paid → visible in admin → confirmation email received → refunded → shows refunded.
-- [ ] Google Maps key restricted to the domain; Resend domain verified; emails deliver to real customers.
+- [ ] Google Maps: billing **linked** on the owner's project (not merely a card added), all five APIs enabled, browser key restricted to the domain, server key separate. Verify with the `curl` one-liner in `BEFORE_DEPLOYMENT.md` — it must print `OK`.
+- [ ] Resend domain verified; emails deliver to real customers.
 - [ ] Forged `admin-session` cookie → 401 (auth-bypass fix live).
 - [ ] Stripe is in **live** mode (`sk_live`/`pk_live`), test keys removed from production.
 
