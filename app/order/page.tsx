@@ -25,6 +25,7 @@ import {
   clampAmountToRange, formatAmount, isMeasured, measuredLineName, measuredPriceKr,
   normalizePricing, unitDef, type ProductPricing,
 } from '@/lib/serviceUnits';
+import { NO_MIN_QTY, addStep, minQtyLabel, normalizeMinQty, qtyAfterRemove } from '@/lib/minOrderQty';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,8 @@ type CatId         = string;
 // `unit`/`minUnits`/`maxUnits` say how the item is priced: per piece (the plain
 // case), or per kilo / per m², where `price` is a rate and the customer picks an
 // amount on a slider — the same shape mattvätt has always had, per product.
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string; unit?: string; minUnits?: number; maxUnits?: number };
+// `minQty` is the fewest of the item that may be booked at once (1 = no limit).
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string; unit?: string; minUnits?: number; maxUnits?: number; minQty?: number };
 // `key` identifies the line, `id` identifies the product: one garment ordered
 // twice with different notes ("korta 2 cm", "korta 5 cm") is two lines that
 // still price from the same catalogue entry.
@@ -280,6 +282,17 @@ export default function HomePage() {
       ? mattvattLinePct(discountSettings.mattvatt, id)
       : (discountById[id] ?? 0);
 
+  // Fewest of each catalogue product that may be booked at once. Mattvätt lines
+  // and the legacy services are not in the catalogue, so they read back as 1.
+  const minQtyById = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const list of Object.values(strukenCatalog)) {
+      for (const p of list) map[p.id] = normalizeMinQty(p.minQty);
+    }
+    return map;
+  }, [strukenCatalog]);
+  const lineMinQty = (id: string) => minQtyById[id] ?? NO_MIN_QTY;
+
   // Cart helpers — a line is (product + note), so two notes on one garment stay
   // two lines instead of collapsing into a quantity of two.
   function addToCart(item: Omit<CartItem, 'quantity' | 'key'>) {
@@ -287,15 +300,21 @@ export default function HomePage() {
     setCart(prev => {
       const existing = prev.find(i => i.key === key);
       if (existing) return prev.map(i => i.key === key ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, key, quantity: 1 }];
+      // A product the shop only takes five at a time of goes in as five on the
+      // first tap — tapping "+" four times to reach a bookable basket is not a
+      // choice the customer is being offered, so it should not be asked for.
+      return [...prev, { ...item, key, quantity: addStep(0, lineMinQty(item.id)) }];
     });
   }
   function removeFromCart(key: string) {
     setCart(prev => {
       const existing = prev.find(i => i.key === key);
       if (!existing) return prev;
-      if (existing.quantity <= 1) return prev.filter(i => i.key !== key);
-      return prev.map(i => i.key === key ? { ...i, quantity: i.quantity - 1 } : i);
+      // Below the item's minimum there is no basket left to land in, so the line
+      // goes altogether rather than sitting there unbookable until the kassa.
+      const next = qtyAfterRemove(existing.quantity, lineMinQty(existing.id));
+      if (next < 1) return prev.filter(i => i.key !== key);
+      return prev.map(i => i.key === key ? { ...i, quantity: next } : i);
     });
   }
   /** Quantity of one exact line. For a product with no note, key === id. */
@@ -450,13 +469,25 @@ export default function HomePage() {
   const panelBasePrice = (t: InputTarget, amount: number) =>
     isMeasured(t.pricing.unit) ? measuredPriceKr(t.price, amount) : t.price;
 
+  /** The amount the panel would add the line at — undefined for a piece item. */
+  const panelAmount = (t: InputTarget) =>
+    isMeasured(t.pricing.unit) ? clampAmountToRange(inputAmount, t.pricing) : undefined;
+
+  /**
+   * How many pieces the panel's "Lägg till" will actually put in the basket:
+   * the whole minimum for a line that is not there yet, one more for a line the
+   * customer is topping up. Derived from the same key confirmInput adds under,
+   * so the button can never promise a number it does not deliver.
+   */
+  const panelAddQty = (t: InputTarget) =>
+    addStep(cartQty(cartLineKey(t.id, inputNote.trim() || undefined, panelAmount(t))), lineMinQty(t.id));
+
   function confirmInput() {
     if (!inputTarget) return;
-    const note     = inputNote.trim();
-    const measured = isMeasured(inputTarget.pricing.unit);
+    const note = inputNote.trim();
     if (inputTarget.needsNote && !note) return;
 
-    const amount = measured ? clampAmountToRange(inputAmount, inputTarget.pricing) : undefined;
+    const amount = panelAmount(inputTarget);
     addToCart({
       id:    inputTarget.id,
       // A measured line names the amount it was priced from, so the basket, the
@@ -471,12 +502,14 @@ export default function HomePage() {
   }
 
   // A single product tile (mattvätt + catalogue items share the same shape)
-  function ProductTile({ id, name, price, Icon, type, unit = 'st', warningTexts = [], needsPanel = false, panelLabel = '', isTest = false, onOpenInput, innerRef }: {
+  function ProductTile({ id, name, price, Icon, type, unit = 'st', minQty = NO_MIN_QTY, warningTexts = [], needsPanel = false, panelLabel = '', isTest = false, onOpenInput, innerRef }: {
     id: string; name: string; price: number;
     Icon: React.ComponentType<{ size: number; stroke: number }>;
     type: CartItem['type'];
     /** Pricing unit — a measured one turns the price into a rate ("150 kr /kg"). */
     unit?: string;
+    /** Fewest of this item the shop takes at once; 1 for the ordinary product. */
+    minQty?: number;
     warningTexts?: string[];
     /**
      * The tile opens the panel instead of adding straight to the basket: the
@@ -515,7 +548,12 @@ export default function HomePage() {
         {warningTexts.length > 0 && <WarningBadge texts={warningTexts} label={name} />}
         {isTest && <span className="of-test-badge">TEST</span>}
         <div className="prod-tile-icon"><Icon size={22} stroke={1.5} /></div>
-        <div className="prod-tile-name">{name}</div>
+        {/* Name and the minimum share one block so the tile keeps its three-part
+            layout — icon, title, foot — however many lines the badge adds. */}
+        <div className="prod-tile-mid">
+          <div className="prod-tile-name">{name}</div>
+          {minQty > NO_MIN_QTY && <span className="prod-tile-min">{minQtyLabel(minQty)}</span>}
+        </div>
         <div className="prod-tile-foot">
           <div
             className="prod-tile-price"
@@ -829,6 +867,7 @@ export default function HomePage() {
                       Icon={getProductIcon(p.icon, p.name)}
                       type="struken"
                       unit={pricing.unit}
+                      minQty={normalizeMinQty(p.minQty)}
                       warningTexts={(p.warningIds ?? []).map(w => warnings[w]).filter(Boolean)}
                       needsPanel={needsPanel}
                       panelLabel={panelLabel}
@@ -925,7 +964,10 @@ export default function HomePage() {
                           })()} kr
                         </span>
                         <button type="button" className="of-input-add" disabled={inputTarget.needsNote && !inputNote.trim()} onClick={confirmInput}>
+                          {/* The first add puts the whole minimum in, so the
+                              button says so rather than surprising the basket. */}
                           <IconPlus size={15} stroke={2.5} /> Lägg till
+                          {panelAddQty(inputTarget) > 1 && ` ${panelAddQty(inputTarget)} st`}
                         </button>
                       </div>
                     </div>
@@ -970,7 +1012,10 @@ export default function HomePage() {
                     {item.note && <div className="of-sheet-row-note">{item.note}</div>}
                     {/* A measured line is already priced for its own amount —
                         "3,5 kg" is in the name — so "/ st" would be a lie. */}
-                    <div className="of-sheet-row-per">{item.price} kr{item.amount === undefined ? ' / st' : ''}</div>
+                    <div className="of-sheet-row-per">
+                      {item.price} kr{item.amount === undefined ? ' / st' : ''}
+                      {lineMinQty(item.id) > NO_MIN_QTY && ` · minst ${lineMinQty(item.id)} st`}
+                    </div>
                   </div>
                   <div className="prod-stepper">
                     <button className="prod-step-btn" aria-label={`Ta bort ${item.name}`} onClick={() => removeFromCart(item.key)}>

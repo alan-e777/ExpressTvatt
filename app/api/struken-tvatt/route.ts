@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 import { normalizePricing } from '@/lib/serviceUnits';
+import { normalizeMinQty } from '@/lib/minOrderQty';
 
 /**
  * The public product catalogue. Every distinct `category` here is a category on
@@ -24,10 +25,11 @@ export async function GET() {
     const products = snap.docs
       .map(doc => {
         const data = doc.data();
-        // Pricing is normalized here rather than on each client: a per-kg item
-        // saved before the range existed still comes back with a usable slider
-        // range, and a `st` item can never carry a stray one.
-        return { id: doc.id, ...data, ...normalizePricing(data) };
+        // Pricing and the order minimum are normalized here rather than on each
+        // client: a per-kg item saved before the range existed still comes back
+        // with a usable slider range, a `st` item can never carry a stray one,
+        // and an item saved before minimums existed reads back as "one is fine".
+        return { id: doc.id, ...data, ...normalizePricing(data), minQty: normalizeMinQty(data.minQty) };
       })
       .filter(p => !hidden.has((p as { category?: string }).category ?? ''));
 

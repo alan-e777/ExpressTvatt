@@ -17,6 +17,7 @@ import {
   DEFAULT_UNIT, PRICE_UNITS, formatAmount, isMeasured, normalizeRange, unitDef,
   type PriceUnit,
 } from "@/lib/serviceUnits";
+import { NO_MIN_QTY, hasMinQty, normalizeMinQty } from "@/lib/minOrderQty";
 
 export type StrukenProduct = {
   id:              string;
@@ -37,7 +38,12 @@ export type StrukenProduct = {
   /** Ends of the customer's amount slider. Both 1 for a `st` item. */
   minUnits:         number;
   maxUnits:         number;
+  /** Fewest of this item a customer may book at once. 1 = no minimum. */
+  minQty:           number;
 };
+
+/** Everything about *how* an item is sold, written as one set when it is created. */
+type Ordering = { unit: PriceUnit; minUnits: number; maxUnits: number; minQty: number };
 
 const DEFAULT_ICON = PRODUCT_ICONS[0].key;
 
@@ -46,7 +52,7 @@ const DEFAULT_ICON = PRODUCT_ICONS[0].key;
 const EMPTY_NEW_CAT = {
   category: "", catIcon: DEFAULT_CATEGORY_ICON, desc: "", subtitle: "",
   name: "", price: "", discountPercent: "", icon: DEFAULT_ICON,
-  unit: DEFAULT_UNIT as PriceUnit, minUnits: "", maxUnits: "",
+  unit: DEFAULT_UNIT as PriceUnit, minUnits: "", maxUnits: "", minQty: "",
 };
 
 // Small grid popover for choosing one of the registered product icons.
@@ -266,21 +272,28 @@ function InputSelectButton({
 }
 
 /**
- * How one product is priced — a piece price, or a rate per kilo / per m².
+ * How one product is priced — a piece price, or a rate per kilo / per m² — and,
+ * where the caller asks for it, the fewest of it a customer may book at once.
  *
  * A measured unit replaces the customer's "+" with a slider, so the range that
  * slider offers is edited here, next to the unit it belongs to: a min/max means
  * nothing on a `st` item and is hidden for one.
+ *
+ * `onMinQty` is optional because the existing-product rows edit the minimum on
+ * their own chip instead — showing it in both places would give one value two
+ * controls in the same card.
  */
 function UnitFields({
-  unit, minUnits, maxUnits, onUnit, onMinUnits, onMaxUnits, onCommitRange,
+  unit, minUnits, maxUnits, minQty, onUnit, onMinUnits, onMaxUnits, onMinQty, onCommitRange,
 }: {
   unit:       PriceUnit;
   minUnits:   string;
   maxUnits:   string;
+  minQty?:    string;
   onUnit:     (unit: PriceUnit) => void;
   onMinUnits: (v: string) => void;
   onMaxUnits: (v: string) => void;
+  onMinQty?:  (v: string) => void;
   /** Called when a range field is left, for the places that save immediately. */
   onCommitRange?: () => void;
 }) {
@@ -327,6 +340,20 @@ function UnitFields({
             precis som mattvätt.
           </p>
         </>
+      )}
+
+      {onMinQty && (
+        <div>
+          <Label>Minsta antal</Label>
+          <div style={{ maxWidth: "9rem" }}>
+            <Input type="number" value={minQty ?? ""} onChange={onMinQty} placeholder={String(NO_MIN_QTY)} />
+          </div>
+          <p style={{ fontSize: "0.68rem", color: "#aaa", lineHeight: 1.45, margin: "0.35rem 0 0" }}>
+            Tomt eller 1 = ingen gräns. Sätt t.ex. 5 för att bara ta emot minst fem åt
+            gången — kunden kan då inte lägga färre i varukorgen, och beställningen
+            stoppas i kassan om den ändå gör det.
+          </p>
+        </div>
       )}
     </div>
   );
@@ -678,6 +705,7 @@ function CategoryCard({
   onDelete,
   onUpdatePrice,
   onUpdateDiscount,
+  onUpdateMinQty,
   onUpdateIcon,
   onUpdateName,
   onUpdateInput,
@@ -694,10 +722,11 @@ function CategoryCard({
   onDragHandleDown: (e: React.PointerEvent) => void;
   onSaveMeta:       (patch: Partial<CategoryMeta>) => Promise<void>;
   items:            StrukenProduct[];
-  onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string, pricing: { unit: PriceUnit; minUnits: number; maxUnits: number }) => Promise<void>;
+  onAdd:            (category: string, name: string, price: number, discountPercent: number, icon: string, ordering: Ordering) => Promise<void>;
   onDelete:         (id: string) => Promise<void>;
   onUpdatePrice:    (id: string, price: number) => Promise<void>;
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
+  onUpdateMinQty:   (id: string, minQty: number) => Promise<void>;
   onUpdateIcon:     (id: string, icon: string) => Promise<void>;
   onUpdateName:     (id: string, name: string) => Promise<void>;
   onUpdateInput:    (id: string, patch: { inputDisabled?: boolean; inputPlaceholder?: string }) => Promise<void>;
@@ -718,6 +747,8 @@ function CategoryCard({
   const [newUnit,     setNewUnit]     = useState<PriceUnit>(DEFAULT_UNIT);
   const [newMin,      setNewMin]      = useState("");
   const [newMax,      setNewMax]      = useState("");
+  // Fewest of the new item a customer may book at once — blank means one.
+  const [newMinQty,   setNewMinQty]   = useState("");
 
   // Inline price editing
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
@@ -726,6 +757,10 @@ function CategoryCard({
   // Inline discount editing
   const [editingDisc, setEditingDisc] = useState<string | null>(null);
   const [editDiscVal, setEditDiscVal] = useState("");
+
+  // Inline minimum-quantity editing
+  const [editingMin, setEditingMin] = useState<string | null>(null);
+  const [editMinVal, setEditMinVal] = useState("");
 
   // Inline name editing — renaming used to mean deleting the item and re-adding it.
   const [editingName, setEditingName] = useState<string | null>(null);
@@ -749,7 +784,7 @@ function CategoryCard({
     setAddError("");
     try {
       await onAdd(category, newName.trim(), price, clampPctInput(newDiscount), newIcon, {
-        unit: newUnit, ...normalizeRange(newUnit, newMin, newMax),
+        unit: newUnit, ...normalizeRange(newUnit, newMin, newMax), minQty: normalizeMinQty(newMinQty),
       });
       setNewName("");
       setNewPrice("");
@@ -758,6 +793,7 @@ function CategoryCard({
       setNewUnit(DEFAULT_UNIT);
       setNewMin("");
       setNewMax("");
+      setNewMinQty("");
     } catch {
       setAddError("Kunde inte lägga till. Försök igen.");
     } finally {
@@ -775,6 +811,13 @@ function CategoryCard({
   async function handleDiscSave(id: string) {
     await onUpdateDiscount(id, clampPctInput(editDiscVal));
     setEditingDisc(null);
+  }
+
+  async function handleMinSave(id: string) {
+    const minQty = normalizeMinQty(editMinVal);
+    setEditingMin(null);
+    if (minQty === normalizeMinQty(items.find(i => i.id === id)?.minQty)) return;
+    await onUpdateMinQty(id, minQty);
   }
 
   return (
@@ -885,6 +928,36 @@ function CategoryCard({
               </button>
             )}
 
+            {/* Minsta antal — click to edit inline, like price and discount */}
+            {editingMin === item.id ? (
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type="number"
+                  value={editMinVal}
+                  autoFocus
+                  onChange={e => setEditMinVal(e.target.value)}
+                  onBlur={() => handleMinSave(item.id)}
+                  onKeyDown={e => { if (e.key === "Enter") handleMinSave(item.id); if (e.key === "Escape") setEditingMin(null); }}
+                  style={{ width: "58px", padding: "0.2rem 1.3rem 0.2rem 0.4rem", border: "1px solid #aaa", borderRadius: "4px", fontSize: "0.8rem", textAlign: "right" }}
+                />
+                <span style={{ position: "absolute", right: "0.35rem", fontSize: "0.7rem", color: "#aaa", pointerEvents: "none" }}>st</span>
+              </div>
+            ) : (
+              <button
+                title={hasMinQty(item.minQty)
+                  ? `Kunden måste beställa minst ${normalizeMinQty(item.minQty)} st — klicka för att ändra`
+                  : "Inget minsta antal — klicka för att kräva flera åt gången"}
+                onClick={() => { setEditingMin(item.id); setEditMinVal(String(normalizeMinQty(item.minQty))); }}
+                style={{
+                  background: hasMinQty(item.minQty) ? "#ede9fe" : "#fafafa",
+                  border: "none", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.75rem",
+                  color: hasMinQty(item.minQty) ? "#6d28d9" : "#bbb", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                }}
+              >
+                {hasMinQty(item.minQty) ? `min ${normalizeMinQty(item.minQty)} st` : "min 1"}
+              </button>
+            )}
+
             {/* Pricing unit — styckpris, per kg or per m² (with its slider range) */}
             <UnitSelectButton
               unit={item.unit}
@@ -977,9 +1050,11 @@ function CategoryCard({
           unit={newUnit}
           minUnits={newMin}
           maxUnits={newMax}
+          minQty={newMinQty}
           onUnit={u => { setNewUnit(u); setAddError(""); }}
           onMinUnits={setNewMin}
           onMaxUnits={setNewMax}
+          onMinQty={setNewMinQty}
         />
         {addError && <p style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "0.1rem" }}>{addError}</p>}
         <p style={{ fontSize: "0.68rem", color: "#bbb", lineHeight: 1.4 }}>
@@ -1296,18 +1371,18 @@ export default function StrukenTvattEditor({
 
   async function handleAdd(
     category: string, name: string, price: number, discountPercent: number, icon: string,
-    pricing: { unit: PriceUnit; minUnits: number; maxUnits: number } = { unit: DEFAULT_UNIT, minUnits: 1, maxUnits: 1 },
+    ordering: Ordering = { unit: DEFAULT_UNIT, minUnits: 1, maxUnits: 1, minQty: NO_MIN_QTY },
   ) {
     const res = await fetch("/api/admin/struken-tvatt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price, category, discountPercent, icon, ...pricing }),
+      body: JSON.stringify({ name, price, category, discountPercent, icon, ...ordering }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "", ...pricing }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "", ...ordering }]);
   }
 
   /**
@@ -1363,6 +1438,21 @@ export default function StrukenTvattEditor({
     });
     if (!res.ok) { alert("Kunde inte spara rabatt. Försök igen."); return; }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, discountPercent } : p));
+  }
+
+  /** Minsta antal — optimistic, rolled back on failure like the other inline edits. */
+  async function handleUpdateMinQty(id: string, minQty: number) {
+    const previous = products.find(p => p.id === id)?.minQty ?? NO_MIN_QTY;
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, minQty } : p));
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minQty }),
+    });
+    if (!res.ok) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, minQty: previous } : p));
+      alert("Kunde inte spara minsta antal. Försök igen.");
+    }
   }
 
   async function handleUpdateName(id: string, name: string) {
@@ -1496,6 +1586,7 @@ export default function StrukenTvattEditor({
     try {
       await handleAdd(category, newCatForm.name.trim(), price, clampPctInput(newCatForm.discountPercent), newCatForm.icon, {
         unit: newCatForm.unit, ...normalizeRange(newCatForm.unit, newCatForm.minUnits, newCatForm.maxUnits),
+        minQty: normalizeMinQty(newCatForm.minQty),
       });
       // Sort new categories below the existing ones rather than tying with them.
       const maxOrder = categories.reduce((m, c) => Math.max(m, metaFor(c).order), 0);
@@ -1517,7 +1608,8 @@ export default function StrukenTvattEditor({
   return (
     <div>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
-        Klicka på namn, pris eller rabatt (%) för att ändra. Tryck på <strong>st</strong> för
+        Klicka på namn, pris eller rabatt (%) för att ändra. Tryck på <strong>min 1</strong>
+        för att kräva ett minsta antal av just det plagget, på <strong>st</strong> för
         att prissätta per kilo eller per m² i stället för per styck, på ! för att koppla en
         anmärkning till ett plagg, och på ✕ för att ta bort plagget. Dra i handtaget till
         vänster om en kategori för att ändra ordningen — den ordningen är den kunden ser.
@@ -1584,6 +1676,7 @@ export default function StrukenTvattEditor({
                   onDelete={handleDelete}
                   onUpdatePrice={handleUpdatePrice}
                   onUpdateDiscount={handleUpdateDiscount}
+                  onUpdateMinQty={handleUpdateMinQty}
                   onUpdateIcon={handleUpdateIcon}
                   onUpdateName={handleUpdateName}
                   onUpdateInput={handleUpdateInput}
@@ -1650,9 +1743,11 @@ export default function StrukenTvattEditor({
                   unit={newCatForm.unit}
                   minUnits={newCatForm.minUnits}
                   maxUnits={newCatForm.maxUnits}
+                  minQty={newCatForm.minQty}
                   onUnit={u => setNewCatForm(f => ({ ...f, unit: u }))}
                   onMinUnits={v => setNewCatForm(f => ({ ...f, minUnits: v }))}
                   onMaxUnits={v => setNewCatForm(f => ({ ...f, maxUnits: v }))}
+                  onMinQty={v => setNewCatForm(f => ({ ...f, minQty: v }))}
                 />
               </div>
               {newCatError && <p style={errorStyle}>{newCatError}</p>}

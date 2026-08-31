@@ -5,6 +5,7 @@ import type { ProductWarning } from "./WarningsManager";
 import type { CategoryMeta } from "@/lib/serviceCategories";
 import { normalizeMattvattSettings, type MattvattSettings } from "@/lib/mattvatt";
 import { normalizePricing } from "@/lib/serviceUnits";
+import { normalizeMinQty } from "@/lib/minOrderQty";
 
 // Always re-read Firestore on each request. Without this the route is served
 // from Next's static full-route cache, so adds/deletes don't appear on reload.
@@ -26,6 +27,9 @@ export default async function Page() {
       warningIds:      data.warningIds ?? [],
       inputDisabled:    !!data.inputDisabled,
       inputPlaceholder: data.inputPlaceholder ?? "",
+      // Smallest number a customer may book at once; 1 for everything saved
+      // before the field existed.
+      minQty:          normalizeMinQty(data.minQty),
       // Per piece / per kilo / per m², plus the range a measured item's slider
       // offers. Normalized here so an item saved before units existed arrives
       // as a plain `st` product rather than as undefined fields.

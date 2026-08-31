@@ -29,6 +29,13 @@ Read `style.md` before creating or editing any screen or component.
 - `TimePicker` no longer hard-codes the windows: it takes `kind="pickup" | "delivery"` and fetches the admin-configured list from `/api/timeslots` (module-level cache shared with the cart, same trick `DatePicker` uses for blocked dates). `minEndHour` greys out windows that have already closed today.
 - Kassa (`app/kassa/page.tsx`) fetches `customers/{uid}` on auth to show a profile card and pre-fill contact fields. `notes` textarea is the single source of truth — no separate careOf field.
 
+## Minimum order quantity (per item)
+A catalogue item can require a minimum number per booking — set per item under Tjänster, on the `min 1` chip in the product row (or the "Minsta antal" field in the add / new-category forms). Stored as `minQty` on the StrukenTvatt doc; 1 means no minimum, which is also what every pre-existing doc normalizes to.
+- `lib/minOrderQty.ts` is the single source of truth: `normalizeMinQty`, `minQtyLabel`, and the two cart rules `addStep` (first "+" adds the whole minimum) and `qtyAfterRemove` ("−" drops the line rather than leaving it short).
+- `/order` therefore cannot build a basket under a minimum, and shows a "Minst N st" badge on the tile. `create-cart-payment` re-checks every struken line against the catalogue anyway and refuses the basket if one is short.
+- The minimum counts *lines*, not units of a measured product — a per-kg item's own floor is `minUnits` (`lib/serviceUnits.ts`) and this sits on top of it.
+- The iOS app does not know about `minQty` yet — see `migration.md` #4.
+
 ## Booking time windows
 Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (`app/admin/(dashboard)/settings/TimeSlotsPanel.tsx`). Pickup and delivery keep **separate** lists; each card has a mirror button that copies its list over the other one.
 - `lib/timeslots.ts` is the single source of truth — types, defaults (`08-12`/`12-16`/`16-20`), `"HH-HH"` ⇄ `{start,end}` conversion, the strict `validateSlots()` used on save and the lenient `normalizeSlots()` used on read.

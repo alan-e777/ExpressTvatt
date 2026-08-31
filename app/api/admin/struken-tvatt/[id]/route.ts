@@ -3,6 +3,7 @@ import { db } from "@/lib/firebase-admin";
 import { isAdmin } from "@/lib/admin-auth";
 import { clampPct } from "@/lib/discount";
 import { normalizePricing, normalizeUnit } from "@/lib/serviceUnits";
+import { normalizeMinQty } from "@/lib/minOrderQty";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
@@ -23,6 +24,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     update.price = price;
   }
   if ("discountPercent" in body) update.discountPercent = clampPct(body.discountPercent);
+  // Smallest bookable number of this item. Normalized rather than validated: an
+  // empty or nonsense field means "no minimum", which is the safe reading — the
+  // alternative is refusing a save and leaving the admin with a stuck row.
+  if ("minQty" in body) update.minQty = normalizeMinQty(body.minQty);
   if ("icon" in body && typeof body.icon === "string") update.icon = body.icon;
   // Per-item overrides of the category's customer-input requirement.
   if ("inputDisabled" in body)    update.inputDisabled    = !!body.inputDisabled;

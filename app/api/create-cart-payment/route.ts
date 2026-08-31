@@ -12,6 +12,7 @@ import { isFirstTimeCustomer } from '@/lib/first-time';
 import { normalizeTimeSlotSettings, slotsToSpans } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { clampAmountToRange, isMeasured, measuredLineName, measuredPriceKr, normalizePricing } from '@/lib/serviceUnits';
+import { normalizeMinQty } from '@/lib/minOrderQty';
 
 type CartItem = {
   id:    string;
@@ -153,7 +154,8 @@ export async function POST(request: NextRequest) {
   );
 
   // Full docs, not just prices: a measured product prices as rate × amount, and
-  // its unit, range and name all come from the catalogue rather than the client.
+  // its unit, range, minimum and name all come from the catalogue rather than
+  // the client.
   const strukenById = Object.fromEntries(
     strukenSnap.docs.map(d => {
       const data = d.data();
@@ -162,6 +164,7 @@ export async function POST(request: NextRequest) {
         name:     (data.name as string) ?? '',
         category: (data.category as string) ?? '',
         pricing:  normalizePricing(data),
+        minQty:   normalizeMinQty(data.minQty),
       }];
     })
   );
@@ -224,6 +227,12 @@ export async function POST(request: NextRequest) {
   // amount. Pricing those at the minimum would charge more than the app showed,
   // so they are refused rather than guessed at.
   const unsupported: string[] = [];
+  // Lines that fall short of the item's own minimum. The order page cannot build
+  // a basket under one, so a short line arrived some other way — a tab left open
+  // since before the admin set it, a hand-edited cart link, or the iOS app,
+  // which does not know the rule exists. Refused rather than quietly topped up:
+  // charging for more than the customer chose is the worse surprise.
+  const belowMinimum: string[] = [];
 
   let totalOre = 0;
   let originalOre = 0;
@@ -259,6 +268,10 @@ export async function POST(request: NextRequest) {
     } else if (item.type === 'struken') {
       const product = strukenById[item.id];
       if (product && hiddenCategories.has(product.category)) { unavailable.push(product.name || item.name); continue; }
+      if (product && item.qty < product.minQty) {
+        belowMinimum.push(`${product.name || item.name} (minst ${product.minQty} st)`);
+        continue;
+      }
       if (product && isMeasured(product.pricing.unit)) {
         if (item.amount === undefined || item.amount === null) {
           unsupported.push(product.name || item.name);
@@ -313,6 +326,13 @@ export async function POST(request: NextRequest) {
   if (unavailable.length > 0) {
     return NextResponse.json(
       { error: `${unavailable.join(', ')} är inte längre tillgänglig${unavailable.length > 1 ? 'a' : ''}. Ta bort den från varukorgen och försök igen.` },
+      { status: 400 },
+    );
+  }
+
+  if (belowMinimum.length > 0) {
+    return NextResponse.json(
+      { error: `Minsta antal är inte uppfyllt för ${belowMinimum.join(', ')}. Justera varukorgen och försök igen.` },
       { status: 400 },
     );
   }

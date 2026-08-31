@@ -3,11 +3,12 @@ import { db } from "@/lib/firebase-admin";
 import { isAdmin } from "@/lib/admin-auth";
 import { clampPct } from "@/lib/discount";
 import { normalizePricing } from "@/lib/serviceUnits";
+import { normalizeMinQty } from "@/lib/minOrderQty";
 
 export async function POST(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
 
-  const { name, price, category, discountPercent, icon, inputDisabled, inputPlaceholder, unit, minUnits, maxUnits } = await request.json();
+  const { name, price, category, discountPercent, icon, inputDisabled, inputPlaceholder, unit, minUnits, maxUnits, minQty } = await request.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name is required." }, { status: 400 });
   // Never negative: the payment route prices from this catalogue, so a negative
   // value would subtract from the rest of the customer's basket. Exactly 0 is
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
     icon:            typeof icon === 'string' ? icon : '',
     inputDisabled:    !!inputDisabled,
     inputPlaceholder: typeof inputPlaceholder === 'string' ? inputPlaceholder.trim() : '',
+    // Smallest number of this item a customer may book at once. 1 means the
+    // ordinary case; the payment route re-checks every line against it.
+    minQty:          normalizeMinQty(minQty),
     ...pricing,
   };
 
