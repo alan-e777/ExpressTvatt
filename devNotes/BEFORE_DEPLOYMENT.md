@@ -272,10 +272,15 @@ an account.
 Verify with:
 
 ```bash
-curl -s "https://maps.googleapis.com/maps/api/geocode/json?address=Stockholm&key=$(grep '^GOOGLE_MAPS_API_KEY=' .env.local | cut -d= -f2-)" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status'))"
+./scripts/check-maps-key.sh            # tests the key in .env.local
+./scripts/check-maps-key.sh AIza...    # tests a key directly, e.g. the one in Vercel
 ```
 
-`OK` means fixed. `REQUEST_DENIED` means step 2 did not take.
+It prints the cause in plain words — billing not linked, APIs not enabled, key
+restricted, or key invalid — and never prints the key itself, only its prefix and
+length. Pass the key as an argument when the one you care about is in Vercel
+rather than `.env.local`; the two drift apart easily and a stale local key will
+happily report a problem that production does not have.
 
 #### Two traps
 
