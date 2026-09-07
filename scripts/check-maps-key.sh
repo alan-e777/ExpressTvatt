@@ -38,7 +38,6 @@ B = "https://maps.googleapis.com/maps/api/"
 # The app calls the *legacy* Places endpoints (place/autocomplete/json), so this
 # probes those specifically. Enabling only "Places API (New)" leaves them dead.
 PROBES = [
-    ("Places API",    "place/autocomplete/json", {"input": "Drottninggatan"}),
     ("Geocoding API", "geocode/json",            {"address": "Stockholm"}),
     ("Directions API","directions/json",         {"origin": "Stockholm", "destination": "Uppsala"}),
     ("Maps Static API","staticmap",              {"center": "Stockholm", "zoom": "10", "size": "100x100"}),
@@ -58,6 +57,39 @@ def classify(status, msg):
     return "?", (msg or status or "unrecognised response")
 
 results = []
+
+# Places API (New) is a POST to a different host with the key in a header, and it
+# is a SEPARATE product from the legacy "Places API" — enabling one does not
+# enable the other. This is the one lib/places.ts depends on.
+def probe_places_new():
+    req = urllib.request.Request(
+        "https://places.googleapis.com/v1/places:autocomplete",
+        data=json.dumps({"input": "Drottninggatan", "includedRegionCodes": ["se"],
+                         "languageCode": "sv"}).encode(),
+        headers={"Content-Type": "application/json", "X-Goog-Api-Key": key},
+        method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            body, code = r.read(), r.status
+    except urllib.error.HTTPError as e:
+        body, code = e.read(), e.code
+    except Exception as e:
+        return ("Places API (New)", "?", "network error: %s" % e)
+    text = body.decode("utf-8", "replace")
+    if code == 200:
+        n = len(json.loads(text).get("suggestions", []))
+        return ("Places API (New)", "ON", "" if n else "enabled, but returned no suggestions")
+    state, _ = classify("", text)
+    if state == "?" and ("SERVICE_DISABLED" in text or "has not been used" in text
+                         or "PERMISSION_DENIED" in text or "does not have permission" in text
+                         or "disabled" in text):
+        # The new API answers PERMISSION_DENIED for all of: not enabled, key
+        # restricted away from it, and billing off. Enabling it is the usual cause.
+        state = "OFF"
+    return ("Places API (New)", state, text.strip()[:300])
+
+results.append(probe_places_new())
+
 for name, path, params in PROBES:
     url = B + path + "?" + urllib.parse.urlencode({**params, "key": key})
     try:
@@ -110,6 +142,11 @@ elif any(s == "BADKEY" for _, s, _ in results):
 elif off:
     print("DIAGNOSIS: these are not enabled: " + ", ".join(off))
     print("  Fix: APIs & Services -> Library, search each name, press Enable.")
+    if "Places API (New)" in off:
+        print()
+        print("  NOTE: 'Places API (New)' is its own product, separate from the old")
+        print("  'Places API'. The address field in checkout depends on it — enabling")
+        print("  the legacy one does nothing, and the legacy one is retired anyway.")
 elif any(s == "LEGACY" for _, s, _ in results):
     print("DIAGNOSIS: this project cannot serve the legacy API the app calls.")
     print("  Google retired the legacy Places API for projects created after")
