@@ -1,39 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import { placeAddress } from "@/lib/places";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY ?? "";
 
+/**
+ * Street address + postcode for a place the customer picked. Shape unchanged
+ * (`{ address, postalCode }`) — only the upstream call moved to the new Places
+ * API, which names the fields `addressComponents` / `longText`.
+ */
 export async function GET(req: NextRequest) {
   const placeId = req.nextUrl.searchParams.get("placeId") ?? "";
-  if (!placeId || !API_KEY) return NextResponse.json({ address: "", postalCode: "" });
-
-  const params = new URLSearchParams({
-    place_id: placeId,
-    fields: "address_components",
-    key: API_KEY,
-  });
+  if (!placeId) return NextResponse.json({ address: "", postalCode: "" });
+  if (!API_KEY) {
+    console.error("[places/details] GOOGLE_MAPS_API_KEY is not set");
+    return NextResponse.json({ address: "", postalCode: "", error: "maps_key_missing" }, { status: 500 });
+  }
 
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?${params}`
-    );
-    const data = await res.json();
-
-    if (data.status !== "OK") return NextResponse.json({ address: "", postalCode: "" });
-
-    const comps: Array<{ long_name: string; types: string[] }> =
-      data.result.address_components ?? [];
-
-    const route        = comps.find(c => c.types.includes("route"))?.long_name ?? "";
-    const streetNumber = comps.find(c => c.types.includes("street_number"))?.long_name ?? "";
-    const postalRaw    = comps.find(c => c.types.includes("postal_code"))?.long_name ?? "";
-
-    const address  = streetNumber ? `${route} ${streetNumber}` : route;
-    const digits   = postalRaw.replace(/\D/g, "");
-    const postalCode =
-      digits.length === 5 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : postalRaw;
-
-    return NextResponse.json({ address, postalCode });
-  } catch {
-    return NextResponse.json({ address: "", postalCode: "" });
+    return NextResponse.json(await placeAddress(placeId, API_KEY));
+  } catch (err) {
+    // The client falls back to the prediction's own text when this fails, so a
+    // booking is still possible — but the postcode goes missing, which the shop
+    // needs. Worth an error in the log rather than a quiet blank.
+    console.error("[places/details]", err);
+    return NextResponse.json({ address: "", postalCode: "", error: "places_unavailable" }, { status: 502 });
   }
 }

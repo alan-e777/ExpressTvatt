@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import { isAdmin } from "@/lib/admin-auth";
+import { autocompleteAddresses } from "@/lib/places";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY ?? "";
 
@@ -36,23 +37,15 @@ export async function GET(req: NextRequest) {
       ? { lat: Number(latParam), lng: Number(lngParam), radiusKm: Number(kmParam) }
       : await getServiceArea();
 
-  const url = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
-  url.searchParams.set("input", q);
-  url.searchParams.set("types", "address");
-  url.searchParams.set("language", "sv");
-  url.searchParams.set("components", "country:SE");
-  url.searchParams.set("location", `${area.lat},${area.lng}`);
-  url.searchParams.set("radius", String(Math.round(area.radiusKm * 1000)));
-  url.searchParams.set("strictbounds", "true");
-  url.searchParams.set("key", API_KEY);
-
-  const resp = await fetch(url.toString());
-  const data = await resp.json();
-
-  const predictions = (data.predictions ?? []).map((p: { description: string; place_id: string }) => ({
-    description: p.description,
-    placeId: p.place_id,
-  }));
-
-  return NextResponse.json({ predictions });
+  // Same upstream call as the customer's field (lib/places.ts), but this route
+  // has always answered in its own camelCase shape, which the Settings page
+  // parses — so the mapping stays here rather than moving into the shared module.
+  try {
+    const found = await autocompleteAddresses(q, area, API_KEY);
+    const predictions = found.map(p => ({ description: p.description, placeId: p.place_id }));
+    return NextResponse.json({ predictions });
+  } catch (err) {
+    console.error("[admin/driver/autocomplete]", err);
+    return NextResponse.json({ predictions: [], error: "places_unavailable" }, { status: 502 });
+  }
 }

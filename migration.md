@@ -55,7 +55,25 @@ Order the open list by how badly it bites, worst first.
   per-kg or per-m² product fails at payment.
 - **Fix:** port the amount picker and send `amount` on those lines.
 
-### 4. Minsta antal per vara is not enforced in the app
+### 4. The app's address confirmation calls a dead Google endpoint
+- **Web:** `/api/places/autocomplete` and `/api/places/details` now use the **new**
+  Places API (`places.googleapis.com/v1`, via `lib/places.ts`) and normalise the
+  answer back to the legacy `{ place_id, description, structured_formatting }`
+  shape — so the app's `fetchSuggestions`, which calls our route, keeps working
+  untouched.
+- **App:** `skraddare-app/lib/places.ts` → `fetchPlaceDetails` does **not** call our
+  route. It calls Google's legacy `maps/api/place/details/json` directly with its own
+  `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`. Google switched the legacy Places API off for
+  Cloud projects created after March 2025, and the owner's project is one of those.
+- **Customer hits:** suggestions appear, but picking one returns nothing — no street,
+  no postcode — so the address can never be confirmed and the booking cannot be
+  completed. Silent: the function returns empty strings on any non-OK status.
+- **Fix:** delete `fetchPlaceDetails`' direct Google call and point it at
+  `${API_URL}/api/places/details?placeId=…`, which already returns exactly the
+  `{ address, postalCode }` it wants. That also retires
+  `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY` — the app then needs no Google key at all.
+
+### 5. Minsta antal per vara is not enforced in the app
 - **Web:** a catalogue item can carry a `minQty` — the fewest of it the shop takes at
   once, set per item under Tjänster. `/order` shows a "Minst 5 st" badge, the first "+"
   adds the whole minimum, and "−" takes the line out rather than leaving it short, so a
@@ -70,13 +88,13 @@ Order the open list by how badly it bites, worst first.
   it on the product row, and mirror the two cart rules from `lib/minOrderQty.ts` —
   `addStep` on "+" and `qtyAfterRemove` on "−".
 
-### 5. Admin-blocked dates are not greyed out in the app
+### 6. Admin-blocked dates are not greyed out in the app
 - **Web:** `components/DatePicker.tsx` fetches `/api/availability` and disables blocked days.
 - **App:** `components/DatePickerModal.tsx` offers every date.
 - **Customer hits:** picks a blocked day, fills in the whole form, gets rejected at payment.
 - **Fix:** same fetch in `DatePickerModal` (the endpoint is public and needs no auth).
 
-### 6. No 0 kr test-order path in the app
+### 7. No 0 kr test-order path in the app
 - **Web:** an all-0 kr basket skips Stripe entirely and the order is written already paid.
 - **App:** `CartPaymentScreen` waits for a `clientSecret` and keeps the pay button disabled
   when the server returns `null` for one.
@@ -84,26 +102,26 @@ Order the open list by how badly it bites, worst first.
 - **Fix:** when the response has no `clientSecret` but has an `orderId`, jump straight to the
   confirmation screen.
 
-### 7. Shared logic is duplicated, not imported
+### 8. Shared logic is duplicated, not imported
 `skraddare-app/lib/discount.ts`, `lib/rut.ts` and `lib/timeslots.ts` are hand-copied mirrors
 of the website files of the same name (RN cannot import across the Next app). **Any change to
 a web copy must be mirrored into the app copy in the same commit** or the app's price preview
 drifts from what the server charges. Same story for `lib/productIcons.ts`.
 
-### 8. Dead legacy screens still in the tree
+### 9. Dead legacy screens still in the tree
 `BookScreen.tsx`, `PaymentScreen.tsx`, `ProductsScreen.tsx` and `StrukenTvattScreen.tsx` are
 not registered in `navigation/RootNavigator.tsx` — leftovers from the single-service flow that
 posted an exact time ("14:00") to `/api/create-payment`. The website dropped that flow.
 - **Fix:** delete them (and `lib/api.ts`), then decide whether `/api/create-payment` still has
   any caller. Until then, do not "fix" those screens — they are not shipping.
 
-### 9. No privacy-policy link in the app
+### 10. No privacy-policy link in the app
 - **Web:** `/integritetspolicy`, driven by the GDPR settings the admin edits.
 - **App:** `ProfileScreen` links to nothing.
 - **Customer hits:** nothing — but App Store review requires the link.
 - **Fix:** link out to the hosted policy from Profil.
 
-### 10. First-time discount is derived differently
+### 11. First-time discount is derived differently
 - **Web:** `/api/first-time-eligibility` (verifies the ID token server-side).
 - **App:** reads `customers/{uid}.hasPlacedOrder` straight from Firestore.
 - **Customer hits:** nothing today — the server decides the real discount either way, this is
