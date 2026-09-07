@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Diagnose a Google Maps API key and say, in plain words, what is wrong with it.
+# Diagnose a Google Maps API key: which APIs are on, and what is wrong if not.
 #
 #   ./scripts/check-maps-key.sh            # tests the key in .env.local
 #   ./scripts/check-maps-key.sh AIza…      # tests a key you paste on the command line
 #
 # The key is never printed — only its prefix and length, which is what the
-# handover runbook allows to be shared. Google's REST APIs return a plain error
-# string for every failure mode, and those strings are what this maps to a cause.
+# handover runbook allows to be shared.
 #
-# What it cannot see: the Maps JavaScript API has no REST endpoint, so if every
-# check below passes and the map still fails in the browser, the cause is one of
-# the two things listed at the end.
+# Four of the five APIs this app needs have REST endpoints and are tested for
+# real. Maps JavaScript API has none: it is a browser library, and the only
+# honest way to check it is the browser console. Do not trust any terminal
+# "test" of it — the auth endpoint answers about the shape of the request, not
+# about your key, so it reports confident nonsense.
 set -uo pipefail
 
 KEY="${1:-}"
@@ -23,70 +24,86 @@ fi
 RAW_LEN=${#KEY}
 CLEAN=$(printf %s "$KEY" | tr -d '[:space:]')
 echo "Key:  prefix=${CLEAN:0:4}…  length=${#CLEAN}"
-[ "$RAW_LEN" -ne "${#CLEAN}" ] && echo "  !!  The key has whitespace in or around it. Strip it — this alone breaks the key."
-case "$CLEAN" in
-  AIza*) ;;
-  *) echo "  !!  A browser/server Maps key normally starts with 'AIza'. This one does not." ;;
-esac
-[ "${#CLEAN}" -ne 39 ] && echo "  !!  Expected 39 characters — this looks truncated or over-copied."
+[ "$RAW_LEN" -ne "${#CLEAN}" ] && echo "  !!  Whitespace in or around the key. Strip it — this alone breaks it."
+case "$CLEAN" in AIza*) ;; *) echo "  !!  A Maps key normally starts with 'AIza'. This one does not." ;; esac
+[ "${#CLEAN}" -ne 39 ] && echo "  !!  Expected 39 characters — looks truncated or over-copied."
 echo
 
-MSG=$(curl -s --max-time 20 \
-  "https://maps.googleapis.com/maps/api/geocode/json?address=Stockholm&key=$CLEAN" \
-  | python3 -c 'import sys,json
-try:
-    d=json.load(sys.stdin)
-except Exception:
-    print("PARSE_FAIL"); raise SystemExit
-print(d.get("status","?")+"|"+d.get("error_message",""))' 2>/dev/null)
+python3 - "$CLEAN" <<'PYEOF'
+import json, sys, urllib.parse, urllib.request
 
-STATUS="${MSG%%|*}"
-DETAIL="${MSG#*|}"
-echo "Geocoding API: $STATUS"
-[ -n "$DETAIL" ] && echo "  $DETAIL"
-echo
+key = sys.argv[1]
+B = "https://maps.googleapis.com/maps/api/"
 
-case "$DETAIL$STATUS" in
-  *"enable Billing"*|*"BILLING"*)
-    echo "DIAGNOSIS: billing is not linked to this project."
-    echo "  This is STEG 2 in google-keys.pdf, and the trap the warning box covers:"
-    echo "  adding a card and linking the project to it are two separate actions."
-    echo "  Fix: console.cloud.google.com -> Fakturering (Billing). The project name"
-    echo "  and the billing account name must appear together. If it says the project"
-    echo "  has no billing account, click 'Lank ett faktureringskonto' and pick one."
-    ;;
-  *"not authorized to use this API"*|*"has not been used in project"*|*"is disabled"*)
-    echo "DIAGNOSIS: the APIs are not switched on for this project."
-    echo "  This is STEG 3. All five are needed:"
-    echo "    Maps JavaScript / Places / Geocoding / Directions / Maps Static"
-    echo "  Fix: APIs & Services -> Library, search each, press Enable."
-    ;;
-  *"referer restrictions"*|*"referrer restrictions"*|*"IP, IP range"*)
-    echo "DIAGNOSIS: this key carries restrictions that block server-side use."
-    echo "  Someone pressed 'Begransa nyckel' / Restrict key. A referrer-restricted"
-    echo "  key works in a browser but not from a server, and this app needs both."
-    echo "  Fix: two keys — a referrer-restricted browser key, and a separate"
-    echo "  server key. See BEFORE_DEPLOYMENT.md, the Google Maps section."
-    ;;
-  *"API key not valid"*|*"INVALID_REQUEST"*|*"provided API key is invalid"*|*REQUEST_DENIED*)
-    echo "DIAGNOSIS: Google rejected the key itself."
-    echo "  Usually a mistyped or partially-copied key, or a key from a different"
-    echo "  project than the one that has billing. Re-copy it from"
-    echo "  APIs & Services -> Credentials and check nothing was cut off."
-    ;;
-  *OK*)
-    echo "DIAGNOSIS: billing is live and this key works for the REST APIs."
-    echo
-    echo "  If the map in /admin/settings STILL fails, only two causes remain,"
-    echo "  because the Maps JavaScript API cannot be tested from here:"
-    echo "    1. 'Maps JavaScript API' specifically is not enabled (the other four"
-    echo "       can be on while that one is off — it is its own switch)."
-    echo "    2. The key has an HTTP-referrer restriction that does not include the"
-    echo "       site you are loading. Localhost needs its own entry:"
-    echo "         http://localhost:3001/*"
-    echo "  Check both at APIs & Services -> Credentials -> click the key."
-    ;;
-  *)
-    echo "DIAGNOSIS: unrecognised response — paste the two lines above to Claude."
-    ;;
-esac
+# The app calls the *legacy* Places endpoints (place/autocomplete/json), so this
+# probes those specifically. Enabling only "Places API (New)" leaves them dead.
+PROBES = [
+    ("Places API",    "place/autocomplete/json", {"input": "Drottninggatan"}),
+    ("Geocoding API", "geocode/json",            {"address": "Stockholm"}),
+    ("Directions API","directions/json",         {"origin": "Stockholm", "destination": "Uppsala"}),
+    ("Maps Static API","staticmap",              {"center": "Stockholm", "zoom": "10", "size": "100x100"}),
+]
+
+def classify(status, msg):
+    m = (msg or "").lower()
+    if "enable billing" in m or "billing" in m:            return "BILLING",    "billing is not linked to the project"
+    if "not authorized" in m or "has not been used" in m or "is disabled" in m:
+        return "OFF",       "this API is not enabled"
+    if "referer" in m or "referrer" in m or "ip, ip range" in m:
+        return "RESTRICTED","the key's restrictions block this call"
+    if "api key not valid" in m or "invalid" in m:         return "BADKEY",    "Google rejected the key"
+    if status in ("OK", "ZERO_RESULTS"):                   return "ON",        ""
+    return "?", (msg or status or "unrecognised response")
+
+results, notes = [], set()
+for name, path, params in PROBES:
+    url = B + path + "?" + urllib.parse.urlencode({**params, "key": key})
+    try:
+        with urllib.request.urlopen(url, timeout=20) as r:
+            body, code = r.read(), r.status
+    except urllib.error.HTTPError as e:
+        body, code = e.read(), e.code
+    except Exception as e:
+        results.append((name, "?", "network error: %s" % e)); continue
+
+    if path == "staticmap":
+        if code == 200 and body[:4] in (b"\x89PNG", b"\xff\xd8\xff\xe0", b"GIF8"):
+            state, why = "ON", ""
+        else:
+            state, why = classify("", body.decode("utf-8", "replace"))
+    else:
+        try:
+            d = json.loads(body.decode("utf-8", "replace"))
+        except Exception:
+            results.append((name, "?", "unparseable response")); continue
+        state, why = classify(d.get("status", ""), d.get("error_message", ""))
+    results.append((name, state, why))
+    if why: notes.add(why)
+
+LABEL = {"ON": "enabled", "OFF": "NOT ENABLED", "BILLING": "BILLING NOT LINKED",
+         "RESTRICTED": "BLOCKED BY RESTRICTIONS", "BADKEY": "KEY REJECTED", "?": "unknown"}
+print("  %-22s %s" % ("Maps JavaScript API", "cannot be tested here — read the browser console"))
+for name, state, _ in results:
+    print("  %-22s %s" % (name, LABEL[state]))
+print()
+
+off = [n for n, s, _ in results if s == "OFF"]
+if any(s == "BILLING" for _, s, _ in results):
+    print("DIAGNOSIS: billing is not linked to the project (STEG 2 in google-keys.pdf).")
+    print("  Adding a card and linking the project to it are two separate actions.")
+elif any(s == "RESTRICTED" for _, s, _ in results):
+    print("DIAGNOSIS: the key carries restrictions that block server-side use.")
+    print("  A referrer-restricted key works in a browser but not from a server,")
+    print("  and this app needs both. Two keys are required — see BEFORE_DEPLOYMENT.md.")
+elif any(s == "BADKEY" for _, s, _ in results):
+    print("DIAGNOSIS: Google rejected the key. Re-copy it from Credentials.")
+elif off:
+    print("DIAGNOSIS: these are not enabled: " + ", ".join(off))
+    print("  Fix: APIs & Services -> Library, search each name, press Enable.")
+else:
+    print("DIAGNOSIS: all four testable APIs are live on this key.")
+    print("  If the map still fails, it is Maps JavaScript API — its own switch,")
+    print("  and the only one this script cannot see. The browser console names it:")
+    print("    ApiNotActivatedMapError   -> enable Maps JavaScript API")
+    print("    RefererNotAllowedMapError -> the key's referrer list excludes this site")
+PYEOF
