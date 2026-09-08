@@ -3,6 +3,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { DriverSettings } from "@/app/api/admin/settings/route";
+import {
+  CIRCLE_POINTS, DEFAULT_SERVICE_AREA, MAX_POINTS, MIN_POINTS,
+  areaSqKm, boundingCircle, findSelfIntersection, polygonFromCircle, validatePolygon,
+  type LatLng,
+} from "@/lib/serviceArea";
 import { DISCOUNT_DEFAULTS, clampPct, type DiscountSettings } from "@/lib/discount";
 import {
   MATTA_TYPES, MATTVATT_DEFAULTS, SQM_STEP, clampKrPerSqm, clampSqm,
@@ -21,7 +26,7 @@ type Prediction = { description: string; placeId: string };
 
 const SECTION_TERMS = {
   driver:    "chaufför chaufförens platser startplats slutplats adress adresser rutt ruttplanering start slut",
-  area:      "tjänsteområde område radie km cirkel centrum karta google maps adresser räckvidd",
+  area:      "tjänsteområde område yta form polygon punkter hörn rita redigera karta google maps adresser räckvidd radie km cirkel centrum",
   delivery:  "leverans leveransavgift frakt gratis fri tröskel gränsvärde hemleverans upphämtning avgift kr",
   timeslots: "tider tid tidsfönster tidsfonster tidsintervall klockslag schema öppettider oppettider upphämtning upphamtning avlämning avlamning hämtning leveranstid bokningstid timmar fönster",
   discounts: "rabatt rabatter förstagångsrabatt procent kampanj ny kund mattvätt matta flera",
@@ -29,7 +34,7 @@ const SECTION_TERMS = {
   admins:    "administratörer admin adminkonton konto konton roll roller huvudadmin lösenord behörighet användare",
   gdpr:      "gdpr integritetspolicy personuppgifter dataskydd policy juridik företagsuppgifter organisationsnummer",
   avsandare: "avsändare avsandare epost e-post mejl sms resend 46elks from svara till domän sandbox testavsändare",
-  map:       "karta google maps tjänsteområde radie cirkel centrum",
+  map:       "karta google maps tjänsteområde form polygon punkter rita redigera radie cirkel centrum",
   wishlist:  "önskelista önskemål wishlist funktioner idéer förslag",
 } as const;
 
@@ -64,12 +69,13 @@ function PlacesInput({
   value,
   onChange,
   placeholder,
-  serviceArea,
+  polygon,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  serviceArea: DriverSettings["serviceArea"];
+  /** The shape currently on the map — including edits not yet saved. */
+  polygon: LatLng[];
 }) {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [open, setOpen] = useState(false);
@@ -94,9 +100,7 @@ function PlacesInput({
     debounceRef.current = setTimeout(async () => {
       try {
         const params = new URLSearchParams({ q: v });
-        params.set("lat", String(serviceArea.lat));
-        params.set("lng", String(serviceArea.lng));
-        params.set("radiusKm", String(serviceArea.radiusKm));
+        if (polygon.length >= MIN_POINTS) params.set("polygon", JSON.stringify(polygon));
         const res = await fetch(`/api/admin/driver/autocomplete?${params}`);
         const data = await res.json();
         setPredictions(data.predictions ?? []);
@@ -177,7 +181,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   const [settings, setSettings] = useState<DriverSettings>({
     startAddr: "",
     stopAddr: "",
-    serviceArea: { lat: 59.3342, lng: 18.0709, radiusKm: 5 },
+    serviceArea: DEFAULT_SERVICE_AREA,
     freeDeliveryThresholdKr: 0,
     deliveryFeeKr: 0,
   });
@@ -186,13 +190,43 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [areaSaveError, setAreaSaveError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+
+  // ── Service-area editor ───────────────────────────────────────────────────
+  // Off by default: the shape is only draggable once the admin says so, so a
+  // stray click on the map cannot silently redraw where the company delivers.
+  const [editingArea, setEditingArea] = useState(false);
 
   // Map refs
   const mapDivRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const circleRef = useRef<google.maps.Circle | null>(null);
+  const polygonRef = useRef<google.maps.Polygon | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
   const mapReady = useRef(false);
+  // Read inside the map's click listener, which is attached once at init and
+  // would otherwise close over the first value of `editingArea` forever.
+  const editingRef = useRef(false);
+  // Bumped when the map finishes loading, so the polygon-sync effect below
+  // re-runs against a map that now exists.
+  const [mapLive, setMapLive] = useState(0);
+
+  useEffect(() => { editingRef.current = editingArea; }, [editingArea]);
+
+  const polygon = settings.serviceArea.polygon;
+  const setPolygon = useCallback((next: LatLng[] | ((prev: LatLng[]) => LatLng[])) => {
+    setSettings(s => {
+      const points = typeof next === "function" ? next(s.serviceArea.polygon) : next;
+      // The bounding circle is recomputed on every edit so the readout, and any
+      // consumer that can only take a circle, never lags behind the shape. Below
+      // three points there is no circle to derive, so the last good one stands —
+      // deriving one from an empty array yields NaN.
+      const circle = points.length >= MIN_POINTS
+        ? boundingCircle(points)
+        : { lat: s.serviceArea.lat, lng: s.serviceArea.lng, radiusKm: s.serviceArea.radiusKm };
+      return { ...s, serviceArea: { ...circle, polygon: points } };
+    });
+  }, []);
 
   // Load settings from API
   useEffect(() => {
@@ -214,46 +248,97 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   useEffect(() => {
   }, []);
 
-  // Draw / update circle whenever settings.serviceArea changes and map is ready
-  const syncCircle = useCallback((area: DriverSettings["serviceArea"]) => {
-    if (!mapRef.current) return;
-    const center = { lat: area.lat, lng: area.lng };
-    const radiusM = area.radiusKm * 1000;
-    if (circleRef.current) {
-      circleRef.current.setCenter(center);
-      circleRef.current.setRadius(radiusM);
-      mapRef.current.panTo(center);
-    } else {
-      const circle = new google.maps.Circle({
-        map: mapRef.current,
-        center,
-        radius: radiusM,
-        editable: true,
-        draggable: true,
+  // ── Draw the polygon and its handles ──────────────────────────────────────
+  // Google's own `editable: true` polygon gives drag handles, but no point
+  // numbers — and the order points were placed in is exactly what this editor
+  // is about. So the polygon itself stays non-editable and the handles are our
+  // own numbered markers, which can also carry a right-click to delete.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || typeof google === "undefined") return;
+
+    // Polygon: created once, then just re-pathed.
+    if (!polygonRef.current) {
+      polygonRef.current = new google.maps.Polygon({
+        map,
         fillColor: "#4b8c5c",
         fillOpacity: 0.12,
         strokeColor: "#4b8c5c",
         strokeWeight: 2,
-      });
-      circleRef.current = circle;
-
-      circle.addListener("radius_changed", () => {
-        const km = Math.round((circle.getRadius() / 1000) * 10) / 10;
-        setSettings(s => ({ ...s, serviceArea: { ...s.serviceArea, radiusKm: km } }));
-      });
-      circle.addListener("center_changed", () => {
-        const c = circle.getCenter();
-        if (!c) return;
-        setSettings(s => ({
-          ...s,
-          serviceArea: {
-            ...s.serviceArea,
-            lat: Math.round(c.lat() * 10000) / 10000,
-            lng: Math.round(c.lng() * 10000) / 10000,
-          },
-        }));
+        clickable: false,   // clicks must reach the map, which is what adds a point
+        zIndex: 1,
       });
     }
+    polygonRef.current.setPath(polygon);
+    polygonRef.current.setOptions({
+      strokeColor: editingArea ? "#2f6b40" : "#4b8c5c",
+      strokeWeight: editingArea ? 2.5 : 2,
+    });
+
+    // Markers only exist while editing, and are rebuilt only when the number of
+    // points changes — dragging one must not tear down the marker under the
+    // cursor mid-gesture.
+    const wanted = editingArea ? polygon.length : 0;
+    if (markersRef.current.length !== wanted) {
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
+
+      for (let i = 0; i < wanted; i++) {
+        const marker = new google.maps.Marker({
+          map,
+          position: polygon[i],
+          draggable: true,
+          zIndex: 2,
+          label: { text: String(i + 1), color: "#fff", fontSize: "11px", fontWeight: "700" },
+          title: `Punkt ${i + 1} — dra för att flytta, högerklicka för att ta bort`,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: "#2f6b40",
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 2,
+          },
+        });
+
+        // Live path update while dragging, committed to React state on release —
+        // one state write per gesture rather than one per mouse move.
+        marker.addListener("drag", () => {
+          const pos = marker.getPosition();
+          if (pos && polygonRef.current) polygonRef.current.getPath().setAt(i, pos);
+        });
+        marker.addListener("dragend", () => {
+          const pos = marker.getPosition();
+          if (!pos) return;
+          setPolygon(prev => prev.map((pt, idx) => (idx === i ? { lat: pos.lat(), lng: pos.lng() } : pt)));
+        });
+        // `rightclick` on older Maps builds, `contextmenu` on newer ones. Both
+        // are registered so removal works either way; the guard stops a build
+        // that fires both from taking two points off at once.
+        let lastRemoval = 0;
+        const removePoint = () => {
+          const now = Date.now();
+          if (now - lastRemoval < 300) return;
+          lastRemoval = now;
+          setPolygon(prev => (prev.length > MIN_POINTS ? prev.filter((_, idx) => idx !== i) : prev));
+        };
+        marker.addListener("rightclick", removePoint);
+        marker.addListener("contextmenu", removePoint);
+
+        markersRef.current.push(marker);
+      }
+    } else {
+      markersRef.current.forEach((m, i) => m.setPosition(polygon[i]));
+    }
+  }, [polygon, editingArea, mapLive, setPolygon]);
+
+  /** Frame the whole shape — used on load and by the "visa hela området" button. */
+  const fitToPolygon = useCallback((points: LatLng[]) => {
+    const map = mapRef.current;
+    if (!map || points.length < MIN_POINTS || typeof google === "undefined") return;
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach(pt => bounds.extend(pt));
+    map.fitBounds(bounds, 32);
   }, []);
 
   // Initialize Google Maps once settings are loaded
@@ -283,9 +368,22 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           disableDefaultUI: true,
           zoomControl: true,
           streetViewControl: false,
+          // A click on the map means "add a point" while editing, so the map
+          // must not also swallow it as a POI click and open an info window.
+          clickableIcons: false,
         });
         mapRef.current = map;
-        syncCircle(settings.serviceArea);
+
+        // Attached once. `editingRef` rather than `editingArea` because this
+        // closure outlives every render that follows.
+        map.addListener("click", (e: google.maps.MapMouseEvent) => {
+          if (!editingRef.current || !e.latLng) return;
+          const pt = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+          setPolygon(prev => (prev.length >= MAX_POINTS ? prev : [...prev, pt]));
+        });
+
+        setMapLive(v => v + 1);   // lets the polygon effect run now the map exists
+        fitToPolygon(settings.serviceArea.polygon);
       } catch (err) {
         setMapError(`Kartfel: ${String(err)}`);
         mapReady.current = false;
@@ -317,21 +415,42 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
       // Reset on unmount so map reinitialises if user navigates away and back
       mapReady.current = false;
       mapRef.current = null;
-      circleRef.current = null;
+      polygonRef.current = null;
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
-  function updateRadius(km: number) {
-    const area = { ...settings.serviceArea, radiusKm: km };
-    setSettings(s => ({ ...s, serviceArea: area }));
-    if (circleRef.current) circleRef.current.setRadius(km * 1000);
+  // ── Editor actions ────────────────────────────────────────────────────────
+
+  /** Drop the most recently placed point. */
+  const undoPoint = () => setPolygon(prev => prev.slice(0, -1));
+
+  /** Start over: the next clicks build a shape from nothing. */
+  const clearPoints = () => setPolygon([]);
+
+  /** Back to a regular octagon around the current area — the old circle, in effect. */
+  function resetToCircle() {
+    const circle = polygon.length >= MIN_POINTS
+      ? boundingCircle(polygon)
+      : { lat: settings.serviceArea.lat, lng: settings.serviceArea.lng, radiusKm: settings.serviceArea.radiusKm };
+    const points = polygonFromCircle({ lat: circle.lat, lng: circle.lng }, circle.radiusKm, CIRCLE_POINTS);
+    setPolygon(points);
+    fitToPolygon(points);
   }
 
+  // Why the shape cannot be saved, or null. Shown live under the map controls
+  // and re-checked by the server, which is what actually enforces it.
+  const areaError = validatePolygon(polygon);
+  const crossing  = polygon.length >= MIN_POINTS ? findSelfIntersection(polygon) : null;
+
   async function save() {
+    if (areaError) { setAreaSaveError(areaError); return; }
+    setAreaSaveError(null);
     setSaving(true);
     try {
-      await Promise.all([
+      const [areaRes] = await Promise.all([
         fetch("/api/admin/settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -343,6 +462,13 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           body: JSON.stringify(discounts),
         }),
       ]);
+      // The server re-validates the shape. Saying "✓ Sparat" over a rejection
+      // would leave the admin believing in an area that was never stored.
+      if (!areaRes.ok) {
+        const msg = await areaRes.json().catch(() => null);
+        setAreaSaveError(msg?.error ?? "Tjänsteområdet kunde inte sparas.");
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
@@ -421,7 +547,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
                 value={settings.startAddr}
                 onChange={v => setSettings(s => ({ ...s, startAddr: v }))}
                 placeholder="t.ex. Storgatan 1, Stockholm"
-                serviceArea={settings.serviceArea}
+                polygon={polygon}
               />
             </div>
 
@@ -434,7 +560,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
                 value={settings.stopAddr}
                 onChange={v => setSettings(s => ({ ...s, stopAddr: v }))}
                 placeholder="t.ex. Storgatan 1, Stockholm"
-                serviceArea={settings.serviceArea}
+                polygon={polygon}
               />
             </div>
           </section>
@@ -445,32 +571,136 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", padding: "1.25rem" }}>
             <p style={labelStyle}>Tjänsteområde</p>
             <p style={{ fontSize: "0.8rem", color: "#aaa", marginBottom: "1rem" }}>
-              Adresser utanför detta område visas inte vid adressinmatning. Dra i cirkelns kant på kartan eller justera radien nedan.
+              Adresser utanför detta område visas inte vid adressinmatning. Slå på
+              redigering och klicka på kartan för att rita formen.
             </p>
 
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={fieldLabelStyle}>Centrum</label>
-              <p style={{ fontSize: "0.8rem", color: "#555", background: "#f9f9f8", border: "1px solid #eee", borderRadius: "6px", padding: "0.4rem 0.65rem", margin: 0 }}>
-                {settings.serviceArea.lat.toFixed(4)}, {settings.serviceArea.lng.toFixed(4)}
-                <span style={{ color: "#bbb", marginLeft: "0.5rem", fontSize: "0.72rem" }}>(dra cirkeln för att flytta)</span>
-              </p>
+            {/* Edit toggle — the shape is locked until this is on */}
+            <button
+              type="button"
+              onClick={() => setEditingArea(v => !v)}
+              style={{
+                width: "100%", padding: "0.6rem 0.9rem", marginBottom: "0.85rem",
+                background: editingArea ? "#2f6b40" : "#fff",
+                color: editingArea ? "#fff" : "#1a1a1a",
+                border: `1px solid ${editingArea ? "#2f6b40" : "#e0e0e0"}`,
+                borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              {editingArea ? "✓ Klar med redigering" : "✎ Redigera område"}
+            </button>
+
+            {editingArea && (
+              <div style={{
+                background: "#f4f9f5", border: "1px solid #d8e9dc", borderRadius: "8px",
+                padding: "0.7rem 0.8rem", marginBottom: "0.85rem",
+                fontSize: "0.75rem", color: "#3d6b48", lineHeight: 1.65,
+              }}>
+                <strong style={{ display: "block", marginBottom: "0.25rem" }}>Så ritar du</strong>
+                Klicka på kartan för att lägga till en punkt — punkterna binds ihop i
+                den ordning du placerar dem, och sista punkten kopplas tillbaka till
+                den första. Dra en punkt för att flytta den, högerklicka på den för
+                att ta bort den.
+              </div>
+            )}
+
+            {/* Point count, area, and the shape's own health */}
+            <div style={{
+              display: "flex", alignItems: "baseline", gap: "0.5rem", flexWrap: "wrap",
+              fontSize: "0.8rem", color: "#555",
+              background: "#f9f9f8", border: "1px solid #eee", borderRadius: "6px",
+              padding: "0.45rem 0.65rem", marginBottom: "0.75rem",
+            }}>
+              <strong>{polygon.length} {polygon.length === 1 ? "punkt" : "punkter"}</strong>
+              {polygon.length >= MIN_POINTS && (
+                <>
+                  <span style={{ color: "#ddd" }}>·</span>
+                  <span>≈ {areaSqKm(polygon).toFixed(1)} km²</span>
+                  <span style={{ color: "#ddd" }}>·</span>
+                  <span style={{ color: "#999", fontSize: "0.72rem" }}>
+                    {settings.serviceArea.lat.toFixed(4)}, {settings.serviceArea.lng.toFixed(4)}
+                  </span>
+                </>
+              )}
             </div>
 
-            <div>
-              <label style={fieldLabelStyle}>Radie: <strong>{settings.serviceArea.radiusKm} km</strong></label>
-              <input
-                type="range"
-                min={1}
-                max={50}
-                step={0.5}
-                value={settings.serviceArea.radiusKm}
-                onChange={e => updateRadius(Number(e.target.value))}
-                style={{ width: "100%", accentColor: "#4b8c5c" }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#bbb" }}>
-                <span>1 km</span><span>50 km</span>
+            {areaError && (
+              <p style={{
+                fontSize: "0.76rem", color: "#b91c1c", background: "#fef2f2",
+                border: "1px solid #fecaca", borderRadius: "6px",
+                padding: "0.5rem 0.65rem", margin: "0 0 0.75rem", lineHeight: 1.5,
+              }}>
+                {areaError}
+                {crossing && ` (kanterna mellan punkt ${crossing[0] + 1} och ${crossing[1] + 1}).`}
+              </p>
+            )}
+
+            {editingArea && (
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.85rem" }}>
+                <button type="button" onClick={undoPoint} disabled={polygon.length === 0} style={miniBtnStyle(polygon.length === 0)}>
+                  ↶ Ångra sista
+                </button>
+                <button type="button" onClick={clearPoints} disabled={polygon.length === 0} style={miniBtnStyle(polygon.length === 0)}>
+                  Rensa alla
+                </button>
+                <button type="button" onClick={resetToCircle} style={miniBtnStyle(false)}>
+                  ○ Återställ till cirkel
+                </button>
+                <button type="button" onClick={() => fitToPolygon(polygon)} disabled={polygon.length < MIN_POINTS} style={miniBtnStyle(polygon.length < MIN_POINTS)}>
+                  ⤢ Visa hela
+                </button>
               </div>
-            </div>
+            )}
+
+            {/* The points themselves — the reliable way to remove one without
+                hunting for a marker hidden under another. */}
+            {editingArea && polygon.length > 0 && (
+              <div>
+                <label style={fieldLabelStyle}>Punkter i ordning</label>
+                <ul style={{
+                  listStyle: "none", margin: 0, padding: 0,
+                  maxHeight: "180px", overflowY: "auto",
+                  border: "1px solid #eee", borderRadius: "6px",
+                }}>
+                  {polygon.map((pt, i) => (
+                    <li key={i} style={{
+                      display: "flex", alignItems: "center", gap: "0.5rem",
+                      padding: "0.35rem 0.5rem",
+                      borderBottom: i < polygon.length - 1 ? "1px solid #f5f5f5" : "none",
+                      fontSize: "0.75rem", color: "#555",
+                    }}>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        width: 20, height: 20, flexShrink: 0,
+                        borderRadius: "50%", background: "#2f6b40", color: "#fff",
+                        fontSize: "0.68rem", fontWeight: 700,
+                      }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontVariantNumeric: "tabular-nums" }}>
+                        {pt.lat.toFixed(4)}, {pt.lng.toFixed(4)}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Ta bort punkt ${i + 1}`}
+                        title={polygon.length <= MIN_POINTS ? `Ett område behöver minst ${MIN_POINTS} punkter` : "Ta bort punkten"}
+                        disabled={polygon.length <= MIN_POINTS}
+                        onClick={() => setPolygon(prev => prev.filter((_, idx) => idx !== i))}
+                        style={{
+                          background: "none", border: "none", padding: "0 0.2rem",
+                          color: polygon.length <= MIN_POINTS ? "#ddd" : "#c0392b",
+                          cursor: polygon.length <= MIN_POINTS ? "not-allowed" : "pointer",
+                          fontSize: "0.95rem", lineHeight: 1,
+                        }}
+                      >×</button>
+                    </li>
+                  ))}
+                </ul>
+                {polygon.length >= MAX_POINTS && (
+                  <p style={{ fontSize: "0.72rem", color: "#b45309", margin: "0.4rem 0 0" }}>
+                    Max {MAX_POINTS} punkter — ta bort en punkt för att kunna lägga till en ny.
+                  </p>
+                )}
+              </div>
+            )}
           </section>
           </Filterable>
 
@@ -630,10 +860,21 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           </Filterable>
 
           {/* Save button */}
+          {showsSaveButton && areaSaveError && (
+            <p style={{
+              fontSize: "0.78rem", color: "#b91c1c", background: "#fef2f2",
+              border: "1px solid #fecaca", borderRadius: "8px",
+              padding: "0.6rem 0.75rem", margin: 0,
+            }}>
+              Inget sparades — {areaSaveError}
+            </p>
+          )}
+
           {showsSaveButton && (
           <button
             onClick={save}
-            disabled={saving}
+            disabled={saving || !!areaError}
+            title={areaError ?? undefined}
             style={{
               padding: "0.75rem 1.25rem",
               background: saved ? "#f0fdf4" : "#1a1a1a",
@@ -642,8 +883,8 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               borderRadius: "8px",
               fontSize: "0.875rem",
               fontWeight: 600,
-              cursor: saving ? "not-allowed" : "pointer",
-              opacity: saving ? 0.6 : 1,
+              cursor: saving || areaError ? "not-allowed" : "pointer",
+              opacity: saving || areaError ? 0.6 : 1,
               transition: "background 0.2s, color 0.2s",
             }}
           >
@@ -658,7 +899,11 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden" }}>
           <div style={{ padding: "1rem 1.25rem 0.5rem", borderBottom: "1px solid #f0f0f0" }}>
             <p style={labelStyle}>Karta — tjänsteområde</p>
-            <p style={{ fontSize: "0.78rem", color: "#aaa", margin: 0 }}>Dra i cirkelns kant för att ändra radien · Dra i mitten för att flytta centrum</p>
+            <p style={{ fontSize: "0.78rem", color: editingArea ? "#2f6b40" : "#aaa", margin: 0 }}>
+              {editingArea
+                ? "Klicka för att lägga till en punkt · Dra för att flytta · Högerklicka på en punkt för att ta bort"
+                : "Slå på “Redigera område” för att ändra formen"}
+            </p>
           </div>
           {/* Map div stays mounted at all times — swapping it out causes the blink */}
           <div style={{ position: "relative" }}>
@@ -1021,3 +1266,15 @@ const fieldLabelStyle: React.CSSProperties = {
   display: "block", fontSize: "0.78rem", fontWeight: 600,
   color: "#555", marginBottom: "0.35rem",
 };
+
+/** The small secondary actions in the service-area editor. */
+const miniBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  padding: "0.35rem 0.6rem",
+  background: "#fff",
+  color: disabled ? "#ccc" : "#444",
+  border: `1px solid ${disabled ? "#f0f0f0" : "#e0e0e0"}`,
+  borderRadius: "6px",
+  fontSize: "0.74rem",
+  fontWeight: 600,
+  cursor: disabled ? "not-allowed" : "pointer",
+});

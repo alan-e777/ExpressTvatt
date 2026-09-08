@@ -18,9 +18,14 @@
 // exactly why a completely dead address field produced no console output and no
 // server error — it looked identical to "no matches for that street".
 
+import { boundingRect, type LatLng, type ServiceArea } from './serviceArea';
+
 const BASE = 'https://places.googleapis.com/v1';
 
-export type ServiceArea = { lat: number; lng: number; radiusKm: number };
+// Re-exported so the routes that already `import type { ServiceArea } from
+// '@/lib/places'` keep compiling — the type itself now lives in `serviceArea.ts`
+// alongside the polygon maths.
+export type { ServiceArea };
 
 /** One suggestion, in the legacy shape both clients already parse. */
 export type LegacyPrediction = {
@@ -43,6 +48,34 @@ function radiusMetres(area: ServiceArea): number {
   return Math.min(50_000, Math.max(1, m));
 }
 
+/**
+ * The tightest boundary this API can express for the admin's area.
+ *
+ * `locationRestriction` takes a circle or a rectangle, never a polygon, so a
+ * drawn shape goes up as its bounding box — tighter than its bounding circle for
+ * anything longer than it is wide, which a delivery area along a road usually is.
+ * The exact polygon is applied afterwards, in `/api/places/details`, once the
+ * chosen place has coordinates to test.
+ */
+function locationRestriction(area: ServiceArea): Record<string, unknown> {
+  const polygon = area.polygon ?? [];
+  if (polygon.length >= 3) {
+    const { low, high } = boundingRect(polygon);
+    return {
+      rectangle: {
+        low:  { latitude: low.lat,  longitude: low.lng  },
+        high: { latitude: high.lat, longitude: high.lng },
+      },
+    };
+  }
+  return {
+    circle: {
+      center: { latitude: Number(area.lat), longitude: Number(area.lng) },
+      radius: radiusMetres(area),
+    },
+  };
+}
+
 class PlacesError extends Error {
   constructor(readonly status: number, readonly body: string) {
     super(`Places API ${status}: ${body.slice(0, 400)}`);
@@ -61,7 +94,7 @@ async function post(path: string, key: string, body: unknown) {
 }
 
 /**
- * Address suggestions inside the admin's service circle.
+ * Address suggestions inside the admin's service area.
  *
  * `locationRestriction` is the new API's name for what the legacy call did with
  * `location` + `radius` + `strictbounds=true`: a hard boundary, not a nudge, so
@@ -77,12 +110,7 @@ export async function autocompleteAddresses(
     languageCode: 'sv',
     includedRegionCodes: ['se'],
     includedPrimaryTypes: ADDRESS_TYPES,
-    locationRestriction: {
-      circle: {
-        center: { latitude: Number(area.lat), longitude: Number(area.lng) },
-        radius: radiusMetres(area),
-      },
-    },
+    locationRestriction: locationRestriction(area),
   };
 
   let data: any;
@@ -118,15 +146,22 @@ export async function autocompleteAddresses(
     .filter((p: LegacyPrediction) => p.place_id && p.description);
 }
 
-/** Street address and postcode for one place id, formatted the Swedish way. */
+/**
+ * Street address, postcode and coordinates for one place id, formatted the
+ * Swedish way.
+ *
+ * `location` is what makes the drawn polygon enforceable: the autocomplete call
+ * can only be restricted to the area's bounding box, so this is the first point
+ * at which the exact shape can be tested. `/api/places/details` does that test.
+ */
 export async function placeAddress(
   placeId: string,
   key: string,
-): Promise<{ address: string; postalCode: string }> {
+): Promise<{ address: string; postalCode: string; location: LatLng | null }> {
   // The field mask is required and is also what the call is billed on, so it
-  // asks for address components and nothing else.
+  // asks for address components plus the coordinates and nothing else.
   const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
-    headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'addressComponents' },
+    headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'addressComponents,location' },
   });
   if (!res.ok) throw new PlacesError(res.status, await res.text());
   const data = await res.json();
@@ -142,5 +177,9 @@ export async function placeAddress(
   const digits  = postalRaw.replace(/\D/g, '');
   const postalCode = digits.length === 5 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : postalRaw;
 
-  return { address, postalCode };
+  const lat = data.location?.latitude;
+  const lng = data.location?.longitude;
+  const location = typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null;
+
+  return { address, postalCode, location };
 }

@@ -1,6 +1,16 @@
 ## Deployment
 See `devNotes/BEFORE_DEPLOYMENT.md` for known security and data issues that must be resolved before going live. Includes exact code fixes for each item.
 
+## Never commit the owner's personal files
+Files the owner writes **for themselves** — notes, scratch prompts, working instructions, todo lists, personal reference — are not part of the codebase and must **never** be committed or pushed. If the owner creates `instructions.md`, `notes.md`, `todo.md`, `ideas.md`, a stray `.txt` dump or anything similar, leave it alone: do not `git add` it, do not include it in a commit, do not mention it in a commit message.
+
+This is a carve-out from "always commit + push in the same turn". That rule covers **actual changes** — code, config, and the project docs that are checked in on purpose (`CLAUDE.md`, `migration.md`, `structure.md`, `style.md`, `workflow.md`, `devNotes/`). It does not cover the owner's own working files.
+
+- Prefer `git add <specific paths>` over `git add -A` / `git add .`, so an untracked personal file cannot be swept in.
+- Before committing, read `git status` and stage deliberately. If an unfamiliar file appears that you did not create, treat it as the owner's and leave it untracked.
+- If a personal file genuinely should be ignored for good, add its name to the "Claude scratch files" block in `.gitignore` — but ask first, and never `git rm` a file the owner created.
+- If one is already tracked, say so and let the owner decide; do not remove it from git on your own.
+
 ## Default target
 Unless the user says "mobile", "app", "iOS", or "Expo", always assume changes are for the **website** (`app/` — Next.js). Never touch `skraddare-app/` unless explicitly asked. The app is not live yet, which is why web-only changes are fine — but they leave debt, see below.
 
@@ -34,7 +44,7 @@ A catalogue item can require a minimum number per booking — set per item under
 - `lib/minOrderQty.ts` is the single source of truth: `normalizeMinQty`, `minQtyLabel`, and the two cart rules `addStep` (first "+" adds the whole minimum) and `qtyAfterRemove` ("−" drops the line rather than leaving it short).
 - `/order` therefore cannot build a basket under a minimum, and shows a "Minst N st" badge on the tile. `create-cart-payment` re-checks every struken line against the catalogue anyway and refuses the basket if one is short.
 - The minimum counts *lines*, not units of a measured product — a per-kg item's own floor is `minUnits` (`lib/serviceUnits.ts`) and this sits on top of it.
-- The iOS app does not know about `minQty` yet — see `migration.md` #4.
+- The iOS app does not know about `minQty` yet — see `migration.md` #6.
 
 ## Booking time windows
 Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (`app/admin/(dashboard)/settings/TimeSlotsPanel.tsx`). Pickup and delivery keep **separate** lists; each card has a mirror button that copies its list over the other one.
@@ -44,6 +54,16 @@ Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (
 - Rules: gaps are fine (08–12 + 14–16 leaves 12–14 unbookable), overlaps are rejected, an empty list is rejected (it would make booking impossible), max 12 windows. Enforced in the panel *and* re-checked in `POST /api/admin/timeslots`; a corrupt doc falls back to the defaults on read so checkout can never end up with nothing to book.
 - Routes: `GET/POST /api/admin/timeslots` (admin) · `GET /api/timeslots` (public, for the pickers — `settings` is not client-readable per `firestore.rules`).
 - The iOS app reads the same list: `skraddare-app/lib/timeslots.ts` (hand-copied mirror — keep the two in sync) feeds `TimeSpanPickerModal`/`CheckoutScreen`. Because both clients agree, `create-cart-payment` rejects a pickup or delivery time that is not on the admin's list; an empty time or a failed settings read skips the check rather than blocking checkout.
+
+## Service area (delivery zone)
+Admin-editable under Inställningar → "Tjänsteområde" (`app/admin/(dashboard)/settings/SettingsClient.tsx`). It used to be a circle; it is now a **polygon with any number of points (3–60)**, drawn on the map.
+- `lib/serviceArea.ts` is the single source of truth: types, `pointInPolygon`, `boundingCircle`, `boundingRect`, `polygonFromCircle`, `areaSqKm`, the strict `validatePolygon()` used on save and the lenient `normalizeServiceArea()` used on read. Client-safe — no `firebase-admin`. `lib/serviceArea-server.ts` holds the one Firestore read (`getServiceArea()`).
+- Firestore `settings/driver` → `serviceArea: { polygon: [{lat,lng}], lat, lng, radiusKm }`. **`lat`/`lng`/`radiusKm` are the polygon's bounding circle**, recomputed server-side on every save — never edited on their own, kept only for consumers that cannot express a polygon. A document written before polygons existed reads back as an editable octagon around its old circle, so nothing had to be migrated.
+- **Google cannot take a polygon.** `locationRestriction` accepts a circle or a rectangle and nothing else. So the enforcement is two-stage: `/api/places/autocomplete` restricts suggestions to the polygon's **bounding box**, and `/api/places/details` applies the **exact** shape once the chosen place has coordinates — answering `{ outsideArea: true }`, deliberately with status 200, because the client falls back to the prediction's own text on an error status and would otherwise accept the address being rejected. `components/AddressAutocomplete.tsx` shows the message and leaves the field unconfirmed.
+- Editing is behind an explicit **"Redigera område"** toggle, so a stray map click cannot redraw the delivery zone. While it is on: click the map to append a point (they connect in placement order), drag a numbered marker to move one, right-click it or use the × in the point list to remove it. Buttons: Ångra sista · Rensa alla · Återställ till cirkel · Visa hela.
+- Rules: 3–60 points; **self-intersecting shapes are rejected** (a bow-tie's overlap reads as *outside*, which is never what dragging a corner past another one meant). Enforced in the panel *and* re-checked in `POST /api/admin/settings`; a corrupt document falls back to the default 5 km octagon on read, so the address field can never go dead because of bad settings.
+- The Settings page's own start/stop address inputs pass the **unsaved** polygon to `/api/admin/driver/autocomplete` as a `polygon` query param, so suggestions follow the shape being drawn.
+- The iOS app is held to the bounding box only — see `migration.md` #5.
 
 ## Admin dashboard (`app/admin/`)
 Protected by `middleware.ts` + cookie-based session (`admin-session`).

@@ -73,7 +73,32 @@ Order the open list by how badly it bites, worst first.
   `{ address, postalCode }` it wants. That also retires
   `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY` — the app then needs no Google key at all.
 
-### 5. Minsta antal per vara is not enforced in the app
+### 5. The app cannot see the drawn service area, only its bounding box
+- **Web:** the admin now draws the delivery area as a polygon with any number of points
+  (Inställningar → Tjänsteområde). Google's `locationRestriction` takes a circle or a
+  rectangle and **never a polygon**, so `/api/places/autocomplete` restricts suggestions to
+  the polygon's bounding box and the exact shape is applied one step later, in
+  `/api/places/details`: it asks Google for the place's coordinates, runs
+  `pointInPolygon` from `lib/serviceArea.ts`, and answers
+  `{ outsideArea: true }` for an address inside the box but outside the shape.
+  `components/AddressAutocomplete.tsx` shows "Vi kör tyvärr inte till den adressen ännu"
+  and leaves the field unconfirmed, so checkout cannot proceed.
+- **App:** `skraddare-app/lib/places.ts` → `fetchPlaceDetails` calls Google directly
+  (see #4) and so never receives that flag. Its suggestions come from our route, so it is
+  still held to the **bounding box** — but nothing checks the polygon itself.
+- **Customer hits:** in a concave or elongated area — an L along two roads, say — an
+  address in the notch of the L is offered *and accepted* in the app. The driver gets a
+  pickup outside the area the owner drew. The more the shape differs from a circle, the
+  wider the hole; for the default octagon it is the corners only.
+- **Fix:** the same one as #4 — point `fetchPlaceDetails` at
+  `${API_URL}/api/places/details?placeId=…` and honour `outsideArea` in
+  `skraddare-app/components/AddressAutocomplete.tsx` the way the web component does.
+  Fixing #4 gets most of this for free; only the `outsideArea` branch is extra.
+- **Note:** `create-cart-payment` does **not** re-check the address against the area — it
+  never did, for either client. Closing this properly would mean storing the picked
+  coordinates on the order and testing them server-side at checkout.
+
+### 6. Minsta antal per vara is not enforced in the app
 - **Web:** a catalogue item can carry a `minQty` — the fewest of it the shop takes at
   once, set per item under Tjänster. `/order` shows a "Minst 5 st" badge, the first "+"
   adds the whole minimum, and "−" takes the line out rather than leaving it short, so a
@@ -88,13 +113,13 @@ Order the open list by how badly it bites, worst first.
   it on the product row, and mirror the two cart rules from `lib/minOrderQty.ts` —
   `addStep` on "+" and `qtyAfterRemove` on "−".
 
-### 6. Admin-blocked dates are not greyed out in the app
+### 7. Admin-blocked dates are not greyed out in the app
 - **Web:** `components/DatePicker.tsx` fetches `/api/availability` and disables blocked days.
 - **App:** `components/DatePickerModal.tsx` offers every date.
 - **Customer hits:** picks a blocked day, fills in the whole form, gets rejected at payment.
 - **Fix:** same fetch in `DatePickerModal` (the endpoint is public and needs no auth).
 
-### 7. No 0 kr test-order path in the app
+### 8. No 0 kr test-order path in the app
 - **Web:** an all-0 kr basket skips Stripe entirely and the order is written already paid.
 - **App:** `CartPaymentScreen` waits for a `clientSecret` and keeps the pay button disabled
   when the server returns `null` for one.
@@ -102,26 +127,26 @@ Order the open list by how badly it bites, worst first.
 - **Fix:** when the response has no `clientSecret` but has an `orderId`, jump straight to the
   confirmation screen.
 
-### 8. Shared logic is duplicated, not imported
+### 9. Shared logic is duplicated, not imported
 `skraddare-app/lib/discount.ts`, `lib/rut.ts` and `lib/timeslots.ts` are hand-copied mirrors
 of the website files of the same name (RN cannot import across the Next app). **Any change to
 a web copy must be mirrored into the app copy in the same commit** or the app's price preview
 drifts from what the server charges. Same story for `lib/productIcons.ts`.
 
-### 9. Dead legacy screens still in the tree
+### 10. Dead legacy screens still in the tree
 `BookScreen.tsx`, `PaymentScreen.tsx`, `ProductsScreen.tsx` and `StrukenTvattScreen.tsx` are
 not registered in `navigation/RootNavigator.tsx` — leftovers from the single-service flow that
 posted an exact time ("14:00") to `/api/create-payment`. The website dropped that flow.
 - **Fix:** delete them (and `lib/api.ts`), then decide whether `/api/create-payment` still has
   any caller. Until then, do not "fix" those screens — they are not shipping.
 
-### 10. No privacy-policy link in the app
+### 11. No privacy-policy link in the app
 - **Web:** `/integritetspolicy`, driven by the GDPR settings the admin edits.
 - **App:** `ProfileScreen` links to nothing.
 - **Customer hits:** nothing — but App Store review requires the link.
 - **Fix:** link out to the hosted policy from Profil.
 
-### 11. First-time discount is derived differently
+### 12. First-time discount is derived differently
 - **Web:** `/api/first-time-eligibility` (verifies the ID token server-side).
 - **App:** reads `customers/{uid}.hasPlacedOrder` straight from Firestore.
 - **Customer hits:** nothing today — the server decides the real discount either way, this is

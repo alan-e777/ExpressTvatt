@@ -8,12 +8,14 @@ firebase-service-account.json.bak
 # Claude local settings (machine-specific)
 .claude/settings.local.json
 
-# Claude scratch files
+# Owner's personal / scratch files — see "Never commit the owner's personal
+# files" in CLAUDE.md. Add a name here when one turns out to be permanent.
 firebaseConfig
 memory.md
 PROMPT.md
 promptHomeScreen.md
 prompts/
+instructions.md
 
 # Expo dev logs (can contain env vars)
 .expo/dev/logs/

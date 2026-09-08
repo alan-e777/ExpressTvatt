@@ -1,25 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase-admin";
-import { autocompleteAddresses, type ServiceArea } from "@/lib/places";
+import { autocompleteAddresses } from "@/lib/places";
+import { getServiceArea } from "@/lib/serviceArea-server";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY ?? "";
 
-const DEFAULT_AREA: ServiceArea = { lat: 59.3342, lng: 18.0709, radiusKm: 5 };
-
-async function getServiceArea(): Promise<ServiceArea> {
-  try {
-    const snap = await db.collection("settings").doc("driver").get();
-    if (snap.exists) {
-      const area = snap.data()?.serviceArea as Partial<ServiceArea> | undefined;
-      if (area?.lat && area?.lng && area?.radiusKm) return area as ServiceArea;
-    }
-  } catch { /* fall through */ }
-  return DEFAULT_AREA;
-}
-
 /**
  * Address suggestions for the customer's address field, restricted to the
- * admin's service circle.
+ * admin's service area.
+ *
+ * The restriction sent upstream is the area's bounding box, because Google's
+ * `locationRestriction` cannot take a polygon. A suggestion inside the box but
+ * outside the drawn shape is therefore still offered here and rejected on
+ * selection by `/api/places/details`, which is the first point where the place
+ * has coordinates to test.
  *
  * The response keeps the legacy Google shape (`place_id`, `description`,
  * `structured_formatting`) because two clients parse it: `AddressAutocomplete`

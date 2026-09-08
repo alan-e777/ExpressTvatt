@@ -29,6 +29,10 @@ export default function AddressAutocomplete({
   const [open,        setOpen]        = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [confirmed,   setConfirmed]   = useState(false);
+  // Set when the picked address geocodes outside the admin's service area. The
+  // suggestion list can offer such an address because Google can only be
+  // restricted to the area's bounding box — see `/api/places/details`.
+  const [outside,     setOutside]     = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipRef     = useRef(false);
   const wrapRef     = useRef<HTMLDivElement>(null);
@@ -43,6 +47,7 @@ export default function AddressAutocomplete({
       setOpen(false);
       return;
     }
+    setOutside(false);
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
@@ -79,9 +84,22 @@ export default function AddressAutocomplete({
     setPredictions([]);
     skipRef.current = true;
     setLoading(true);
+    setOutside(false);
     try {
       const res = await fetch(`/api/places/details?placeId=${encodeURIComponent(p.place_id)}`);
       const data = await res.json();
+
+      // Outside the drawn area: leave the text in the field so the customer can
+      // see what they picked, but do not confirm it — the parent form treats an
+      // unconfirmed address as incomplete and will not let checkout proceed.
+      if (data.outsideArea) {
+        onChange(p.structured_formatting.main_text);
+        setOutside(true);
+        setConfirmed(false);
+        onConfirmChange?.(false);
+        return;
+      }
+
       const address = data.address || p.structured_formatting.main_text;
       onChange(address);
       onSelect(address, data.postalCode ?? "");
@@ -103,6 +121,7 @@ export default function AddressAutocomplete({
       setConfirmed(false);
       onConfirmChange?.(false);
     }
+    setOutside(false);
     onChange(e.target.value);
   }
 
@@ -118,6 +137,7 @@ export default function AddressAutocomplete({
           style={{
             paddingRight: 38,
             ...(confirmed && { boxShadow: "0 0 0 1.5px var(--forest-mid)" }),
+            ...(outside   && { boxShadow: "0 0 0 1.5px #dc2626" }),
           }}
         />
         <div style={{
@@ -139,6 +159,13 @@ export default function AddressAutocomplete({
           ) : null}
         </div>
       </div>
+
+      {outside && (
+        <p style={{ fontSize: 12, color: "#dc2626", margin: "6px 2px 0", lineHeight: 1.5 }}>
+          Vi kör tyvärr inte till den adressen ännu. Välj en adress inom vårt
+          upphämtningsområde.
+        </p>
+      )}
 
       {open && predictions.length > 0 && (
         <div style={{
