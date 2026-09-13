@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 import { normalizePricing } from '@/lib/serviceUnits';
 import { normalizeMinQty } from '@/lib/minOrderQty';
+import { normalizeRutEligible } from '@/lib/rut';
 
 /**
  * The public product catalogue. Every distinct `category` here is a category on
@@ -29,7 +30,13 @@ export async function GET() {
         // client: a per-kg item saved before the range existed still comes back
         // with a usable slider range, a `st` item can never carry a stray one,
         // and an item saved before minimums existed reads back as "one is fine".
-        return { id: doc.id, ...data, ...normalizePricing(data), minQty: normalizeMinQty(data.minQty) };
+        return {
+          id: doc.id, ...data, ...normalizePricing(data),
+          minQty: normalizeMinQty(data.minQty),
+          // Absent means eligible, so an item saved before RUT could be turned
+          // off still reads back the way it has always been priced.
+          rutEligible: normalizeRutEligible(data.rutEligible),
+        };
       })
       .filter(p => !hidden.has((p as { category?: string }).category ?? ''));
 

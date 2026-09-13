@@ -6,6 +6,7 @@ import type { CategoryMeta } from "@/lib/serviceCategories";
 import { normalizeMattvattSettings, type MattvattSettings } from "@/lib/mattvatt";
 import { normalizePricing } from "@/lib/serviceUnits";
 import { normalizeMinQty } from "@/lib/minOrderQty";
+import { normalizeRutEligible } from "@/lib/rut";
 
 // Always re-read Firestore on each request. Without this the route is served
 // from Next's static full-route cache, so adds/deletes don't appear on reload.
@@ -30,6 +31,8 @@ export default async function Page() {
       // Smallest number a customer may book at once; 1 for everything saved
       // before the field existed.
       minQty:          normalizeMinQty(data.minQty),
+      // Whether RUT-avdrag applies to this item. Absent means yes.
+      rutEligible:     normalizeRutEligible(data.rutEligible),
       // Per piece / per kilo / per m², plus the range a measured item's slider
       // offers. Normalized here so an item saved before units existed arrives
       // as a plain `st` product rather than as undefined fields.
@@ -61,6 +64,10 @@ export default async function Page() {
         requiresInput:    !!data.requiresInput,
         inputLabel:       data.inputLabel ?? "",
         inputPlaceholder: data.inputPlaceholder ?? "",
+        // What the category's RUT toggle last wrote. The products carry their
+        // own flag, so this is only the toggle's own state — and, for Mattvätt,
+        // the whole truth.
+        rutEligible:      data.rutEligible !== false,
       };
     })
     .filter(m => m.name);

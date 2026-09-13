@@ -12,7 +12,7 @@ import { categoryDocId, MATTVATT_CATEGORY, NEW_CATEGORY_ORDER } from "@/lib/serv
 export async function PUT(request: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Session expired — please sign in again." }, { status: 403 });
 
-  const { name, icon, desc, subtitle, order, hidden, requiresInput, inputLabel, inputPlaceholder } = await request.json();
+  const { name, icon, desc, subtitle, order, hidden, requiresInput, inputLabel, inputPlaceholder, rutEligible } = await request.json();
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "Kategorinamn saknas." }, { status: 400 });
   }
@@ -29,6 +29,10 @@ export async function PUT(request: NextRequest) {
   if (typeof requiresInput === "boolean")  update.requiresInput    = requiresInput;
   if (typeof inputLabel === "string")      update.inputLabel       = inputLabel.trim();
   if (typeof inputPlaceholder === "string") update.inputPlaceholder = inputPlaceholder.trim();
+  // The category's own RUT flag. Writing it here does NOT touch the products —
+  // that is what POST /api/admin/service-categories/rut is for. This path exists
+  // so Mattvätt, which has no products, can still be toggled.
+  if (typeof rutEligible === "boolean") update.rutEligible = rutEligible;
   if (order !== undefined) {
     const n = Number(order);
     update.order = Number.isFinite(n) ? Math.round(n) : NEW_CATEGORY_ORDER;

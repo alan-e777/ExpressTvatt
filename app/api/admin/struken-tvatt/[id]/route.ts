@@ -29,6 +29,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // alternative is refusing a save and leaving the admin with a stuck row.
   if ("minQty" in body) update.minQty = normalizeMinQty(body.minQty);
   if ("icon" in body && typeof body.icon === "string") update.icon = body.icon;
+  // Whether RUT-avdrag applies to this item. Per product, not inherited from the
+  // category: the category toggle writes this field over every item it holds,
+  // and a single item can then be flipped back on its own.
+  if ("rutEligible" in body) update.rutEligible = !!body.rutEligible;
   // Per-item overrides of the category's customer-input requirement.
   if ("inputDisabled" in body)    update.inputDisabled    = !!body.inputDisabled;
   if ("inputPlaceholder" in body && typeof body.inputPlaceholder === "string") {

@@ -13,9 +13,10 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DatePicker from '@/components/DatePicker';
 import TimePicker from '@/components/TimePicker';
 import Confetti from '@/components/Confetti';
-import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { formatPersonnummer, isValidPersonnummer, normalizeRutEligible, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { fetchTimeSlots, TIMESLOT_DEFAULTS, type TimeSlotSettings } from '@/lib/timeslots';
+import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -179,6 +180,11 @@ function CheckoutForm() {
   const [sheetOpen,        setSheetOpen]        = useState(false);
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(DISCOUNT_DEFAULTS);
   const [strukenDiscounts, setStrukenDiscounts] = useState<Record<string, number>>({});
+  // Which lines RUT may be deducted from — read from the catalogue rather than
+  // carried in the cart URL, so the preview here is derived from the same source
+  // create-cart-payment prices from and cannot be talked out of it by a link.
+  const [rutEligibleById, setRutEligibleById] = useState<Record<string, boolean>>({});
+  const [mattvattRutEligible, setMattvattRutEligible] = useState(true);
   const [isFirstTime,      setIsFirstTime]      = useState(false);
   const [deliverySettings, setDeliverySettings] = useState<{ freeDeliveryThresholdKr: number; deliveryFeeKr: number }>({ freeDeliveryThresholdKr: 0, deliveryFeeKr: 0 });
 
@@ -204,11 +210,26 @@ function CheckoutForm() {
       .then(setDiscountSettings)
       .catch(() => {});
     fetch('/api/struken-tvatt')
-      .then(r => r.json() as Promise<{ id: string; discountPercent?: number }[]>)
+      .then(r => r.json() as Promise<{ id: string; discountPercent?: number; rutEligible?: boolean }[]>)
       .then(products => {
         const map: Record<string, number> = {};
-        for (const p of products) map[p.id] = p.discountPercent ?? 0;
+        const rut: Record<string, boolean> = {};
+        for (const p of products) {
+          map[p.id] = p.discountPercent ?? 0;
+          rut[p.id] = normalizeRutEligible(p.rutEligible);
+        }
         setStrukenDiscounts(map);
+        setRutEligibleById(rut);
+      })
+      .catch(() => {});
+    // Mattvätt is priced from settings and has no catalogue products, so its RUT
+    // eligibility only exists on the category. A failed read leaves it eligible,
+    // matching how every line behaved before the flag existed.
+    fetch('/api/service-categories')
+      .then(r => r.json() as Promise<{ name: string; rutEligible?: boolean }[]>)
+      .then(metas => {
+        if (!Array.isArray(metas)) return;
+        setMattvattRutEligible(metas.find(m => m.name === MATTVATT_CATEGORY)?.rutEligible !== false);
       })
       .catch(() => {});
     fetch('/api/delivery-settings')
@@ -260,8 +281,10 @@ function CheckoutForm() {
     id.startsWith('matta-')
       ? mattvattLinePct(discountSettings.mattvatt, id)
       : (strukenDiscounts[id] ?? 0);
-  const { subtotalKr, totalKr, savingsKr } = computeCartTotals(
-    items,
+  const rutEligibleFor = (id: string) =>
+    id.startsWith('matta-') ? mattvattRutEligible : (rutEligibleById[id] ?? true);
+  const { subtotalKr, totalKr, savingsKr, rutEligibleTotalKr } = computeCartTotals(
+    items.map(i => ({ ...i, rutEligible: rutEligibleFor(i.id) })),
     perItemPct,
     { firstTimeDiscountPercent: discountSettings.firstTimeDiscountPercent, multipleDiscountsAllowed: discountSettings.multipleDiscountsAllowed },
     isFirstTime,
@@ -272,8 +295,10 @@ function CheckoutForm() {
   const deliveryFeeKr = items.length > 0 && totalKr < deliverySettings.freeDeliveryThresholdKr
     ? deliverySettings.deliveryFeeKr
     : 0;
-  // RUT-avdrag is deducted directly from what the customer pays (items only).
-  const rutDiscountKr = rutAvdrag ? rutRefundKr(totalKr) : 0;
+  // RUT-avdrag is deducted directly from what the customer pays — items only,
+  // and only the lines the admin marked RUT-eligible. Mirrors create-cart-payment
+  // exactly, so the figure shown here is the figure charged.
+  const rutDiscountKr = rutAvdrag ? rutRefundKr(rutEligibleTotalKr) : 0;
   const grandTotalKr = totalKr - rutDiscountKr + deliveryFeeKr;
 
   // Pickup can still be booked today as long as one window has not closed yet.
@@ -732,6 +757,16 @@ function CheckoutForm() {
             </p>
           </div>
         </label>
+
+        {/* RUT is ticked but nothing in the basket qualifies. The box deliberately
+            stays on — the customer may go back and add something that does — so
+            without this line the checkbox would simply appear to do nothing. */}
+        {rutAvdrag && items.length > 0 && rutEligibleTotalKr === 0 && (
+          <p className="micro" style={{ color: 'var(--text-muted)', margin: 'var(--sp-sm) 0 0', lineHeight: 1.5 }}>
+            Ingen av tjänsterna i din varukorg ger RUT-avdrag, så priset är oförändrat.
+            Avdraget dras automatiskt om du lägger till en tjänst som omfattas.
+          </p>
+        )}
 
         {rutAvdrag && (
           <div className="input-group" style={{ marginBottom: 0, marginTop: 'var(--sp-md)' }}>

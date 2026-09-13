@@ -26,6 +26,9 @@ export async function GET() {
         requiresInput:    !!data.requiresInput,
         inputLabel:       data.inputLabel ?? '',
         inputPlaceholder: data.inputPlaceholder ?? '',
+        // Only an explicit false takes a category out of RUT. For Mattvätt this
+        // is the whole answer — it has no catalogue products to carry the flag.
+        rutEligible:      data.rutEligible !== false,
       };
     });
     return NextResponse.json(metas.filter(m => m.name));

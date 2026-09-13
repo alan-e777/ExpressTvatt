@@ -44,7 +44,18 @@ A catalogue item can require a minimum number per booking — set per item under
 - `lib/minOrderQty.ts` is the single source of truth: `normalizeMinQty`, `minQtyLabel`, and the two cart rules `addStep` (first "+" adds the whole minimum) and `qtyAfterRemove` ("−" drops the line rather than leaving it short).
 - `/order` therefore cannot build a basket under a minimum, and shows a "Minst N st" badge on the tile. `create-cart-payment` re-checks every struken line against the catalogue anyway and refuses the basket if one is short.
 - The minimum counts *lines*, not units of a measured product — a per-kg item's own floor is `minUnits` (`lib/serviceUnits.ts`) and this sits on top of it.
-- The iOS app does not know about `minQty` yet — see `migration.md` #6.
+- The iOS app does not know about `minQty` yet — see `migration.md` #7.
+
+## RUT-avdrag eligibility (per item & per category)
+Not everything a laundry sells qualifies for the household-service deduction, so RUT is set **per catalogue item**, with a category-level toggle that applies to all of them at once. Both live under Tjänster: a `RUT` / `ej RUT` chip on each product row (next to the `min N st` chip) and a `RUT` button in the category header (next to the eye).
+- `lib/rut.ts` is the single source of truth: `RUT_DISCOUNT_PERCENT`, `rutRefundKr`, `rutNetKr`, plus `RUT_ELIGIBLE_DEFAULT` and `normalizeRutEligible`. **Absent means eligible** — everything predates the flag, so a missing value has to keep meaning "RUT applies" or the deduction would silently vanish from every existing product.
+- Stored as `rutEligible` on the StrukenTvatt doc, and on the `service_categories` doc.
+- **The category toggle is a bulk write, not an inheritance.** `POST /api/admin/service-categories/rut` sets the category flag *and* batch-writes `rutEligible` over every product in it. Only the product's own flag is ever read when pricing — that is what lets a single item be flipped back afterwards without the category overruling it. A category whose items disagree shows as **`RUT delvis`**; clicking it then turns them all on. (Contrast `requiresInput`/`inputDisabled`, which *is* a real inherit-and-override pair.)
+- **Mattvätt is the exception**: priced from `settings/mattvatt` with no catalogue products, so its category flag is the whole truth. Its header toggle writes via the ordinary `PUT /api/admin/service-categories` and it can never read "delvis".
+- A **new product inherits its category's current flag** (`handleAdd` in `StrukenTvattEditor`) — otherwise adding a garment to a RUT-off category would quietly put RUT back on it.
+- Pricing: `computeCartTotals` (`lib/discount.ts`) returns **`rutEligibleTotalKr`** next to `totalKr`, accumulated from the *discounted* line totals, and RUT is `rutRefundKr(rutEligibleTotalKr)`. Item and first-time discounts land before RUT; the delivery fee is never in it. Mirrored in `/order`, `/kassa` and re-derived from the catalogue in `create-cart-payment`, which is what actually decides the charge.
+- **Ticking RUT never gets undone by the basket.** A cart holding only ineligible items keeps the box ticked and simply deducts nothing, so the deduction reappears by itself once a qualifying item is added — the customer may well go back for one. `/order` shows it by leaving those tiles at full price; `/kassa` says so in a line under the checkbox.
+- The iOS app still applies RUT to the whole basket — see `migration.md` #6.
 
 ## Booking time windows
 Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (`app/admin/(dashboard)/settings/TimeSlotsPanel.tsx`). Pickup and delivery keep **separate** lists; each card has a mirror button that copies its list over the other one.

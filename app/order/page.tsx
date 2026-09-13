@@ -8,7 +8,7 @@ import {
 } from '@tabler/icons-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
-import { rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { normalizeRutEligible, rutNetKr, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { getProductIcon } from '@/lib/productIcons';
 import {
   cartLineKey, categoryDocId, compareCategories, inputLabelFor, inputPlaceholderFor,
@@ -35,7 +35,7 @@ type CatId         = string;
 // case), or per kilo / per m², where `price` is a rate and the customer picks an
 // amount on a slider — the same shape mattvätt has always had, per product.
 // `minQty` is the fewest of the item that may be booked at once (1 = no limit).
-type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string; unit?: string; minUnits?: number; maxUnits?: number; minQty?: number };
+type StrukenProduct = { id: string; name: string; price: number; category: string; order: number; discountPercent?: number; icon?: string; warningIds?: string[]; inputDisabled?: boolean; inputPlaceholder?: string; unit?: string; minUnits?: number; maxUnits?: number; minQty?: number; rutEligible?: boolean };
 // `key` identifies the line, `id` identifies the product: one garment ordered
 // twice with different notes ("korta 2 cm", "korta 5 cm") is two lines that
 // still price from the same catalogue entry.
@@ -282,6 +282,22 @@ export default function HomePage() {
       ? mattvattLinePct(discountSettings.mattvatt, id)
       : (discountById[id] ?? 0);
 
+  // Which lines RUT-avdrag may be deducted from. The admin sets it per catalogue
+  // item under Tjänster; mattvätt has no catalogue products, so it answers from
+  // its category instead. Anything unknown stays eligible — that is how every
+  // line behaved before the flag existed.
+  const rutEligibleById = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const list of Object.values(strukenCatalog)) {
+      for (const p of list) map[p.id] = normalizeRutEligible(p.rutEligible);
+    }
+    return map;
+  }, [strukenCatalog]);
+  const mattvattRutEligible =
+    categoryMeta.find(m => m.name === MATTVATT_CATEGORY)?.rutEligible !== false;
+  const rutEligibleFor = (id: string) =>
+    id.startsWith('matta-') ? mattvattRutEligible : (rutEligibleById[id] ?? true);
+
   // Fewest of each catalogue product that may be booked at once. Mattvätt lines
   // and the legacy services are not in the catalogue, so they read back as 1.
   const minQtyById = useMemo(() => {
@@ -335,8 +351,8 @@ export default function HomePage() {
     router.push(`/kassa?cart=${encodeURIComponent(JSON.stringify(items))}${rutParam}`);
   }
 
-  const { subtotalKr, totalKr: cartTotal, savingsKr } = computeCartTotals(
-    cart.map(i => ({ id: i.id, price: i.price, qty: i.quantity })),
+  const { subtotalKr, totalKr: cartTotal, savingsKr, rutEligibleTotalKr } = computeCartTotals(
+    cart.map(i => ({ id: i.id, price: i.price, qty: i.quantity, rutEligible: rutEligibleFor(i.id) })),
     perItemPct,
     { firstTimeDiscountPercent: discountSettings.firstTimeDiscountPercent, multipleDiscountsAllowed: discountSettings.multipleDiscountsAllowed },
     isFirstTime,
@@ -346,8 +362,11 @@ export default function HomePage() {
     ? deliverySettings.deliveryFeeKr
     : 0;
   // RUT-avdrag is deducted directly (items only, never delivery), so the total
-  // reflects the discount immediately as soon as a product is added.
-  const rutDiscountKr = rutAvdrag ? rutRefundKr(cartTotal) : 0;
+  // reflects the discount immediately as soon as a product is added — but only
+  // from the lines the admin marked RUT-eligible. A basket of nothing but
+  // ineligible items deducts nothing while the checkbox stays ticked, so adding
+  // a qualifying item later brings the deduction back on its own.
+  const rutDiscountKr = rutAvdrag ? rutRefundKr(rutEligibleTotalKr) : 0;
   const grandTotalKr = cartTotal - rutDiscountKr + deliveryFeeKr;
 
   // 0 kr test items are filtered out at the source rather than at render, so a
@@ -420,7 +439,7 @@ export default function HomePage() {
       id,
       name:  mattaLineName(mattaType, mattaSqm, mattvatt),
       basePrice,
-      shownPrice: rutAvdrag ? rutNetKr(netPrice) : netPrice,
+      shownPrice: rutAvdrag && mattvattRutEligible ? rutNetKr(netPrice) : netPrice,
       qty: cartQty(id),
     };
   })();
@@ -532,7 +551,7 @@ export default function HomePage() {
     const activate = () => (needsPanel ? onOpenInput?.() : addToCart({ id, name, price, type }));
     // Item-level discount applies to the displayed price; RUT preview (refund) layers on top.
     const itemPrice = discountedUnitPrice(price, perItemPct(id), 0, discountSettings.multipleDiscountsAllowed);
-    const shownPrice = rutAvdrag ? rutNetKr(itemPrice) : itemPrice;
+    const shownPrice = rutAvdrag && rutEligibleFor(id) ? rutNetKr(itemPrice) : itemPrice;
     const showStrike = shownPrice !== price;
     return (
       <div
@@ -960,7 +979,7 @@ export default function HomePage() {
                           {(() => {
                             const base = panelBasePrice(inputTarget, inputAmount);
                             const net = discountedUnitPrice(base, perItemPct(inputTarget.id), 0, discountSettings.multipleDiscountsAllowed);
-                            return rutAvdrag ? rutNetKr(net) : net;
+                            return rutAvdrag && rutEligibleFor(inputTarget.id) ? rutNetKr(net) : net;
                           })()} kr
                         </span>
                         <button type="button" className="of-input-add" disabled={inputTarget.needsNote && !inputNote.trim()} onClick={confirmInput}>

@@ -26,6 +26,26 @@ export function rutRefundKr(totalKr: number): number {
 // Effective price (kr) after the RUT reduction — used to preview the discounted
 // price on product tiles. Display only; the customer still pays full price up
 // front and the refund is settled afterwards.
+//
+// Only call this for a line that is actually RUT-eligible; see below.
 export function rutNetKr(priceKr: number): number {
   return priceKr - rutRefundKr(priceKr);
+}
+
+// ── Per-line eligibility ─────────────────────────────────────────────────────
+// RUT is a household-service deduction, so not everything a laundry sells
+// qualifies. The admin marks eligibility per catalogue item (and per category,
+// which is a bulk write over its items) under Tjänster.
+//
+// Eligibility is stored only when it is turned *off*: everything written before
+// this flag existed had RUT applied to it, so an absent value has to keep
+// meaning "eligible" or the deduction would silently vanish from every existing
+// product the first time this ships.
+
+/** What an item with no stored flag means — RUT applies, as it always did. */
+export const RUT_ELIGIBLE_DEFAULT = true;
+
+/** Lenient read: only an explicit `false` takes an item out of RUT. */
+export function normalizeRutEligible(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : RUT_ELIGIBLE_DEFAULT;
 }

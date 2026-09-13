@@ -5,7 +5,7 @@ import { db, auth } from '@/lib/firebase-admin';
 import { isAdminUid } from '@/lib/admin-auth';
 import { orderNumber, sendStatusEmail } from '@/lib/order-status-email';
 import { sendStatusSms } from '@/lib/order-status-sms';
-import { formatPersonnummer, isValidPersonnummer, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { formatPersonnummer, isValidPersonnummer, normalizeRutEligible, rutRefundKr, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
 import { isFirstTimeCustomer } from '@/lib/first-time';
@@ -146,6 +146,12 @@ export async function POST(request: NextRequest) {
     categoriesSnap.docs.filter(d => d.data().hidden === true).map(d => d.data().name as string),
   );
 
+  // RUT eligibility per category. Only consulted for Mattvätt, which is priced
+  // from settings and has no catalogue products to carry the flag themselves.
+  const categoryRutEligible = new Map<string, boolean>(
+    categoriesSnap.docs.map(d => [d.data().name as string, d.data().rutEligible !== false]),
+  );
+
   // Mattvätt: kr per m² + the allowed size range. The client's chosen area is
   // clamped back into that range here, so a hand-edited cart link cannot buy a
   // 100 m² rug at the small-rug price.
@@ -165,6 +171,8 @@ export async function POST(request: NextRequest) {
         category: (data.category as string) ?? '',
         pricing:  normalizePricing(data),
         minQty:   normalizeMinQty(data.minQty),
+        // Absent means eligible — every item predates the flag.
+        rutEligible: normalizeRutEligible(data.rutEligible),
       }];
     })
   );
@@ -236,6 +244,10 @@ export async function POST(request: NextRequest) {
 
   let totalOre = 0;
   let originalOre = 0;
+  // The share of `totalOre` RUT may be taken from. Accumulated line by line
+  // because eligibility is per item — see `lib/rut.ts`. Never trusted from the
+  // client: the catalogue decides, the same way it decides the price.
+  let rutEligibleOre = 0;
   const validatedItems: (CartItem & { validatedPrice: number; discountPercent: number; discountedPrice: number })[] = [];
 
   for (const item of items) {
@@ -247,8 +259,14 @@ export async function POST(request: NextRequest) {
     // calculated from — never to what the client sent.
     let measuredAmount: number | undefined;
 
+    // Whether RUT applies to this line. Resolved per branch below: a catalogue
+    // product carries its own flag, Mattvätt reads its category's, and anything
+    // with neither stays eligible, which is what it was before the flag existed.
+    let lineRutEligible = true;
+
     if (item.type === 'mattvätt') {
       if (hiddenCategories.has(MATTVATT_CATEGORY)) { unavailable.push(item.name); continue; }
+      lineRutEligible = categoryRutEligible.get(MATTVATT_CATEGORY) !== false;
       // Area-based line (`matta-normal-3.5`) → kr per m² × m², both from settings.
       // Older clients fall back to the fixed sizes, then to the legacy
       // "Matta X m²" name (kvm × 90).
@@ -268,6 +286,7 @@ export async function POST(request: NextRequest) {
     } else if (item.type === 'struken') {
       const product = strukenById[item.id];
       if (product && hiddenCategories.has(product.category)) { unavailable.push(product.name || item.name); continue; }
+      if (product) lineRutEligible = product.rutEligible;
       if (product && item.qty < product.minQty) {
         belowMinimum.push(`${product.name || item.name} (minst ${product.minQty} st)`);
         continue;
@@ -299,8 +318,10 @@ export async function POST(request: NextRequest) {
     const itemPct = itemDiscountPct(item);
     const unitKr  = discountedUnitPrice(priceKr, itemPct, firstTimePct, discounts.multipleDiscountsAllowed);
 
+    const lineOre = unitKr * 100 * item.qty;
     originalOre += priceKr * 100 * item.qty;
-    totalOre    += unitKr * 100 * item.qty;
+    totalOre    += lineOre;
+    if (lineRutEligible) rutEligibleOre += lineOre;
     // The client's own `amount` is dropped rather than merged: only the figure
     // the price was calculated from belongs on the order, and a stray one on a
     // non-measured line would be an undefined field Firestore refuses to write.
@@ -379,9 +400,14 @@ export async function POST(request: NextRequest) {
   const discountSavingsOre = originalOre - totalOre;
 
   // ── RUT-Avdrag — deducted directly from the charged amount ───────────────────
-  // Whole-kr deduction on the items portion only (never the delivery fee), mirrored
+  // Whole-kr deduction on the *RUT-eligible* items only — never the delivery fee,
+  // and never a line whose product or category has RUT turned off. Mirrored
   // exactly on the client so the displayed total equals the charged amount.
-  const rutDiscountKr  = rutAvdrag ? rutRefundKr((totalOre - deliveryFeeOre) / 100) : 0;
+  //
+  // A basket with no eligible line deducts nothing while `rutAvdrag` stays true:
+  // the customer keeps the box ticked and the deduction reappears by itself the
+  // moment they add something that qualifies.
+  const rutDiscountKr  = rutAvdrag ? rutRefundKr(rutEligibleOre / 100) : 0;
   const rutDiscountOre = rutDiscountKr * 100;
   totalOre -= rutDiscountOre;
 

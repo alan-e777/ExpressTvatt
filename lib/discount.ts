@@ -77,17 +77,25 @@ export function discountedUnitPrice(
 // Cart-summary totals (kr) for the customer UI. `perItemPct(id)` returns the
 // per-item discount % for a given line id (0 when none).
 export function computeCartTotals(
-  items: { id: string; price: number; qty: number }[],
+  items: { id: string; price: number; qty: number; rutEligible?: boolean }[],
   perItemPct: (id: string) => number,
   settings: Pick<DiscountSettings, 'multipleDiscountsAllowed'> & { firstTimeDiscountPercent: number },
   isFirstTime: boolean,
-): { subtotalKr: number; totalKr: number; savingsKr: number } {
+): { subtotalKr: number; totalKr: number; savingsKr: number; rutEligibleTotalKr: number } {
   const ft = isFirstTime ? settings.firstTimeDiscountPercent : 0;
   let subtotalKr = 0;
   let totalKr = 0;
+  // The share of `totalKr` that RUT may be taken from. RUT is a percentage of
+  // the *discounted* line totals, so it has to be accumulated here alongside
+  // them rather than derived afterwards from a subtotal.
+  let rutEligibleTotalKr = 0;
   for (const i of items) {
+    const lineKr = discountedUnitPrice(i.price, perItemPct(i.id), ft, settings.multipleDiscountsAllowed) * i.qty;
     subtotalKr += i.price * i.qty;
-    totalKr += discountedUnitPrice(i.price, perItemPct(i.id), ft, settings.multipleDiscountsAllowed) * i.qty;
+    totalKr += lineKr;
+    // Only an explicit `false` opts a line out — a caller that knows nothing
+    // about RUT eligibility gets the old behaviour, where everything qualified.
+    if (i.rutEligible !== false) rutEligibleTotalKr += lineKr;
   }
-  return { subtotalKr, totalKr, savingsKr: subtotalKr - totalKr };
+  return { subtotalKr, totalKr, savingsKr: subtotalKr - totalKr, rutEligibleTotalKr };
 }

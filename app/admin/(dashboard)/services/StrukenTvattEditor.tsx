@@ -40,6 +40,12 @@ export type StrukenProduct = {
   maxUnits:         number;
   /** Fewest of this item a customer may book at once. 1 = no minimum. */
   minQty:           number;
+  /**
+   * Whether RUT-avdrag applies to this item. Per product, not inherited: the
+   * category toggle writes this over every item it holds, and a single item can
+   * then be flipped back on its own.
+   */
+  rutEligible:      boolean;
 };
 
 /** Everything about *how* an item is sold, written as one set when it is created. */
@@ -466,6 +472,8 @@ function CategoryCardHeader({
   collapsed,
   onToggleCollapse,
   onDragHandleDown,
+  rutState,
+  onToggleRut,
   onSaveMeta,
   onDelete,
 }: {
@@ -484,6 +492,16 @@ function CategoryCardHeader({
    * the switch anyway would be a control that silently does nothing.
    */
   allowInput?: boolean;
+  /**
+   * RUT across this category's items: every one on, none, or a mix. It is
+   * derived from the products rather than from `meta.rutEligible` because the
+   * category toggle is a bulk write, not an inherited setting — once a single
+   * item is flipped back, the category itself has no one true state.
+   * Mattvätt has no products, so it passes its own flag straight through.
+   */
+  rutState: "all" | "some" | "none";
+  /** Writes `next` over the category flag *and* every product in it. */
+  onToggleRut: (next: boolean) => Promise<void>;
   onSaveMeta: (patch: Partial<CategoryMeta>) => Promise<void>;
   /**
    * Delete the category and everything in it. Absent for mattvätt, which is
@@ -495,6 +513,14 @@ function CategoryCardHeader({
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaForm, setMetaForm]       = useState(meta);
   const [savingMeta, setSavingMeta]   = useState(false);
+  // A category toggle rewrites every product in it, so the button is held
+  // disabled for the round trip rather than letting a double click fan out twice.
+  const [savingRut, setSavingRut]     = useState(false);
+
+  async function toggleRut(next: boolean) {
+    setSavingRut(true);
+    try { await onToggleRut(next); } finally { setSavingRut(false); }
+  }
 
   function openMetaForm() {
     setMetaForm(meta);
@@ -575,6 +601,33 @@ function CategoryCardHeader({
           }}
         >
           {editingMeta ? <IconX size={14} stroke={2} /> : <IconPencil size={14} stroke={1.9} />}
+        </button>
+
+        {/* RUT for the whole category — a bulk write over every item in it.
+            Clicking while the items disagree ("delvis") turns them all on, which
+            is the useful direction: it is how you undo a stray per-item change. */}
+        <button
+          onClick={() => toggleRut(rutState !== "all")}
+          disabled={savingRut}
+          title={
+            rutState === "all"  ? "RUT-avdrag gäller alla tjänster här — klicka för att stänga av för hela kategorin"
+          : rutState === "none" ? "RUT-avdrag är avstängt för hela kategorin — klicka för att slå på"
+          :                       "Vissa tjänster här har RUT-avdrag, andra inte — klicka för att slå på för alla"
+          }
+          aria-label="RUT-avdrag för kategorin"
+          aria-pressed={rutState === "all"}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            height: 28, padding: "0 0.5rem", borderRadius: "7px",
+            cursor: savingRut ? "wait" : "pointer",
+            fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.03em",
+            opacity: savingRut ? 0.5 : 1,
+            background: rutState === "all" ? "#eef6ff" : rutState === "some" ? "#fffbeb" : "transparent",
+            border: `1px solid ${rutState === "all" ? "#bfdbfe" : rutState === "some" ? "#fde68a" : "#eee"}`,
+            color: rutState === "all" ? "#1d4ed8" : rutState === "some" ? "#b45309" : "#bbb",
+          }}
+        >
+          RUT{rutState === "some" ? " delvis" : ""}
         </button>
 
         {/* Hide — the reversible half of removing a category. The products stay
@@ -694,6 +747,18 @@ function CategoryCardHeader({
 
 // ─── Category card ────────────────────────────────────────────────────────────
 
+/**
+ * RUT across a category's items. "some" is a real state, not an error: the
+ * category toggle bulk-writes the per-item flag, so one item flipped afterwards
+ * leaves the category genuinely mixed. An empty category reads as "all", which
+ * is what its first product will inherit.
+ */
+function categoryRutState(items: StrukenProduct[]): "all" | "some" | "none" {
+  if (items.length === 0) return "all";
+  const on = items.filter(i => i.rutEligible).length;
+  return on === items.length ? "all" : on === 0 ? "none" : "some";
+}
+
 function CategoryCard({
   category,
   meta,
@@ -706,6 +771,8 @@ function CategoryCard({
   onUpdatePrice,
   onUpdateDiscount,
   onUpdateMinQty,
+  onUpdateRut,
+  onToggleCategoryRut,
   onUpdateIcon,
   onUpdateName,
   onUpdateInput,
@@ -727,6 +794,10 @@ function CategoryCard({
   onUpdatePrice:    (id: string, price: number) => Promise<void>;
   onUpdateDiscount: (id: string, discountPercent: number) => Promise<void>;
   onUpdateMinQty:   (id: string, minQty: number) => Promise<void>;
+  /** Flips RUT on one item. The category toggle writes the same field in bulk. */
+  onUpdateRut:      (id: string, rutEligible: boolean) => Promise<void>;
+  /** Writes RUT over the category flag and every product in it. */
+  onToggleCategoryRut: (next: boolean) => Promise<void>;
   onUpdateIcon:     (id: string, icon: string) => Promise<void>;
   onUpdateName:     (id: string, name: string) => Promise<void>;
   onUpdateInput:    (id: string, patch: { inputDisabled?: boolean; inputPlaceholder?: string }) => Promise<void>;
@@ -825,6 +896,7 @@ function CategoryCard({
       <CategoryCardHeader
         meta={meta} count={items.length} unit="plagg" onSaveMeta={onSaveMeta} onDelete={onDeleteCategory}
         collapsed={collapsed} onToggleCollapse={onToggleCollapse} onDragHandleDown={onDragHandleDown}
+        rutState={categoryRutState(items)} onToggleRut={onToggleCategoryRut}
       />
       {!collapsed && (<>
 
@@ -957,6 +1029,25 @@ function CategoryCard({
                 {hasMinQty(item.minQty) ? `min ${normalizeMinQty(item.minQty)} st` : "min 1"}
               </button>
             )}
+
+            {/* RUT for this one item. Independent of the category toggle, which
+                only bulk-writes this same field — so flipping one item here does
+                not fight the category, it just leaves it showing "delvis". */}
+            <button
+              title={item.rutEligible
+                ? "RUT-avdrag gäller denna tjänst — klicka för att stänga av"
+                : "RUT-avdrag gäller inte denna tjänst — klicka för att slå på"}
+              aria-label={`RUT-avdrag för ${item.name}`}
+              aria-pressed={item.rutEligible}
+              onClick={() => onUpdateRut(item.id, !item.rutEligible)}
+              style={{
+                background: item.rutEligible ? "#eef6ff" : "#fafafa",
+                border: "none", borderRadius: "4px", padding: "0.2rem 0.5rem", fontSize: "0.75rem",
+                color: item.rutEligible ? "#1d4ed8" : "#bbb", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+              }}
+            >
+              {item.rutEligible ? "RUT" : "ej RUT"}
+            </button>
 
             {/* Pricing unit — styckpris, per kg or per m² (with its slider range) */}
             <UnitSelectButton
@@ -1142,6 +1233,10 @@ function MattvattCard({
       <CategoryCardHeader
         meta={meta} count={MATTA_TYPES.length} unit="mattyper" allowInput={false} onSaveMeta={onSaveMeta}
         collapsed={collapsed} onToggleCollapse={onToggleCollapse} onDragHandleDown={onDragHandleDown}
+        // Mattvätt is priced from settings and has no catalogue products, so its
+        // own flag is the only state there is — never "delvis".
+        rutState={meta.rutEligible ? "all" : "none"}
+        onToggleRut={next => onSaveMeta({ rutEligible: next })}
       />
       {!collapsed && (<>
 
@@ -1373,16 +1468,21 @@ export default function StrukenTvattEditor({
     category: string, name: string, price: number, discountPercent: number, icon: string,
     ordering: Ordering = { unit: DEFAULT_UNIT, minUnits: 1, maxUnits: 1, minQty: NO_MIN_QTY },
   ) {
+    // A new garment inherits the category's RUT setting. Defaulting it to "on"
+    // instead would quietly put RUT back on an item in a category the admin had
+    // switched off — the one place the per-item flag should not win.
+    const rutEligible = metaFor(category).rutEligible;
+
     const res = await fetch("/api/admin/struken-tvatt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price, category, discountPercent, icon, ...ordering }),
+      body: JSON.stringify({ name, price, category, discountPercent, icon, rutEligible, ...ordering }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? "Failed");
 
     const maxOrder = products.filter(p => p.category === category).reduce((m, p) => Math.max(m, p.order), 0);
-    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "", ...ordering }]);
+    setProducts(prev => [...prev, { id: json.id, name, price, category, order: maxOrder + 1, discountPercent, icon, warningIds: [], inputDisabled: false, inputPlaceholder: "", rutEligible, ...ordering }]);
   }
 
   /**
@@ -1438,6 +1538,43 @@ export default function StrukenTvattEditor({
     });
     if (!res.ok) { alert("Kunde inte spara rabatt. Försök igen."); return; }
     setProducts(prev => prev.map(p => p.id === id ? { ...p, discountPercent } : p));
+  }
+
+  /** RUT on one item — optimistic, rolled back on failure like the edits above. */
+  async function handleUpdateRut(id: string, rutEligible: boolean) {
+    const previous = products.find(p => p.id === id)?.rutEligible ?? true;
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, rutEligible } : p));
+    const res = await fetch(`/api/admin/struken-tvatt/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rutEligible }),
+    });
+    if (!res.ok) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, rutEligible: previous } : p));
+      alert("Kunde inte spara RUT-inställningen. Försök igen.");
+    }
+  }
+
+  /**
+   * RUT for a whole category: its own flag plus every product in it.
+   *
+   * Awaited rather than optimistic — this one rewrites the entire category, so a
+   * silent rollback of a dozen rows would be far more confusing than a moment's
+   * wait. The server does the fan-out in one batched call.
+   */
+  async function handleToggleCategoryRut(category: string, rutEligible: boolean) {
+    const res = await fetch("/api/admin/service-categories/rut", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: category, rutEligible }),
+    });
+    if (!res.ok) { alert("Kunde inte spara RUT-inställningen för kategorin. Försök igen."); return; }
+    setProducts(prev => prev.map(p => p.category === category ? { ...p, rutEligible } : p));
+    setCategoryMeta(prev => {
+      const next = prev.filter(m => m.name !== category);
+      const existing = prev.find(m => m.name === category);
+      return [...next, { ...resolveCategoryMeta(category, existing), rutEligible }];
+    });
   }
 
   /** Minsta antal — optimistic, rolled back on failure like the other inline edits. */
@@ -1677,6 +1814,8 @@ export default function StrukenTvattEditor({
                   onUpdatePrice={handleUpdatePrice}
                   onUpdateDiscount={handleUpdateDiscount}
                   onUpdateMinQty={handleUpdateMinQty}
+                  onUpdateRut={handleUpdateRut}
+                  onToggleCategoryRut={next => handleToggleCategoryRut(cat, next)}
                   onUpdateIcon={handleUpdateIcon}
                   onUpdateName={handleUpdateName}
                   onUpdateInput={handleUpdateInput}

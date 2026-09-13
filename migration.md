@@ -98,7 +98,26 @@ Order the open list by how badly it bites, worst first.
   never did, for either client. Closing this properly would mean storing the picked
   coordinates on the order and testing them server-side at checkout.
 
-### 6. Minsta antal per vara is not enforced in the app
+### 6. RUT-avdrag is per item on the web, all-or-nothing in the app
+- **Web:** RUT eligibility is set per catalogue item (and per category, which bulk-writes
+  its items) under Tjänster — `rutEligible` on the StrukenTvatt doc, mirrored on the
+  `service_categories` doc for Mattvätt, which has no products. `computeCartTotals` returns
+  a `rutEligibleTotalKr` alongside the total, and RUT is 50% of **that** portion only.
+  `create-cart-payment` re-derives eligibility from the catalogue and charges accordingly.
+- **App:** `skraddare-app/lib/rut.ts` and `lib/discount.ts` are hand-copied mirrors that
+  predate the flag. `HomeScreen`/`CheckoutScreen` compute `rutRefundKr(totalKr)` over the
+  **whole** basket, and the app never reads `rutEligible` from `/api/struken-tvatt`.
+- **Customer hits:** a basket holding anything the admin marked as not RUT-eligible shows a
+  **larger deduction in the app than the server actually applies** — the customer is quoted
+  a lower total than they are charged. Silent, and the app's own summary is the thing that
+  is wrong. It only bites once the owner turns RUT off somewhere; until then both sides
+  agree, because absent means eligible.
+- **Fix:** copy the `rutEligibleTotalKr` half of `lib/discount.ts` and the
+  `normalizeRutEligible` half of `lib/rut.ts` into the app's mirrors, read `rutEligible`
+  off the catalogue in `HomeScreen`, and pass it per line into `computeCartTotals`. Mattvätt
+  needs the category flag from `/api/service-categories`, which the app does not fetch yet.
+
+### 7. Minsta antal per vara is not enforced in the app
 - **Web:** a catalogue item can carry a `minQty` — the fewest of it the shop takes at
   once, set per item under Tjänster. `/order` shows a "Minst 5 st" badge, the first "+"
   adds the whole minimum, and "−" takes the line out rather than leaving it short, so a
@@ -113,13 +132,13 @@ Order the open list by how badly it bites, worst first.
   it on the product row, and mirror the two cart rules from `lib/minOrderQty.ts` —
   `addStep` on "+" and `qtyAfterRemove` on "−".
 
-### 7. Admin-blocked dates are not greyed out in the app
+### 8. Admin-blocked dates are not greyed out in the app
 - **Web:** `components/DatePicker.tsx` fetches `/api/availability` and disables blocked days.
 - **App:** `components/DatePickerModal.tsx` offers every date.
 - **Customer hits:** picks a blocked day, fills in the whole form, gets rejected at payment.
 - **Fix:** same fetch in `DatePickerModal` (the endpoint is public and needs no auth).
 
-### 8. No 0 kr test-order path in the app
+### 9. No 0 kr test-order path in the app
 - **Web:** an all-0 kr basket skips Stripe entirely and the order is written already paid.
 - **App:** `CartPaymentScreen` waits for a `clientSecret` and keeps the pay button disabled
   when the server returns `null` for one.
@@ -127,26 +146,26 @@ Order the open list by how badly it bites, worst first.
 - **Fix:** when the response has no `clientSecret` but has an `orderId`, jump straight to the
   confirmation screen.
 
-### 9. Shared logic is duplicated, not imported
+### 10. Shared logic is duplicated, not imported
 `skraddare-app/lib/discount.ts`, `lib/rut.ts` and `lib/timeslots.ts` are hand-copied mirrors
 of the website files of the same name (RN cannot import across the Next app). **Any change to
 a web copy must be mirrored into the app copy in the same commit** or the app's price preview
 drifts from what the server charges. Same story for `lib/productIcons.ts`.
 
-### 10. Dead legacy screens still in the tree
+### 11. Dead legacy screens still in the tree
 `BookScreen.tsx`, `PaymentScreen.tsx`, `ProductsScreen.tsx` and `StrukenTvattScreen.tsx` are
 not registered in `navigation/RootNavigator.tsx` — leftovers from the single-service flow that
 posted an exact time ("14:00") to `/api/create-payment`. The website dropped that flow.
 - **Fix:** delete them (and `lib/api.ts`), then decide whether `/api/create-payment` still has
   any caller. Until then, do not "fix" those screens — they are not shipping.
 
-### 11. No privacy-policy link in the app
+### 12. No privacy-policy link in the app
 - **Web:** `/integritetspolicy`, driven by the GDPR settings the admin edits.
 - **App:** `ProfileScreen` links to nothing.
 - **Customer hits:** nothing — but App Store review requires the link.
 - **Fix:** link out to the hosted policy from Profil.
 
-### 12. First-time discount is derived differently
+### 13. First-time discount is derived differently
 - **Web:** `/api/first-time-eligibility` (verifies the ID token server-side).
 - **App:** reads `customers/{uid}.hasPlacedOrder` straight from Firestore.
 - **Customer hits:** nothing today — the server decides the real discount either way, this is

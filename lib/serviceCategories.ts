@@ -41,6 +41,16 @@ export type CategoryMeta = {
   inputLabel:       string;
   /** Default placeholder for the field; a product may override it. */
   inputPlaceholder: string;
+  /**
+   * Whether RUT-avdrag applies to this category.
+   *
+   * Unlike `requiresInput`, this is **not** an inherited setting the products
+   * read: each product carries its own `rutEligible`, and toggling the category
+   * writes the new value over every product in it. This field is what the admin
+   * toggle last wrote, and it is the *only* source of truth for Mattvätt, which
+   * is priced from settings and has no catalogue products to carry a flag.
+   */
+  rutEligible:      boolean;
 };
 
 /** The per-product half of the input settings above. */
@@ -129,6 +139,8 @@ export function resolveCategoryMeta(name: string, stored?: Partial<CategoryMeta>
     requiresInput:    stored?.requiresInput ?? false,
     inputLabel:       stored?.inputLabel ?? '',
     inputPlaceholder: stored?.inputPlaceholder ?? '',
+    // Absent means eligible: RUT applied to everything before this flag existed.
+    rutEligible:      stored?.rutEligible ?? true,
   };
 }
 
