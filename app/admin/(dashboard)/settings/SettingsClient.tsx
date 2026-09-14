@@ -193,6 +193,16 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   const [areaSaveError, setAreaSaveError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
+  // ── What is actually stored right now ─────────────────────────────────────
+  // The save bar appears by comparing the form against these, so they have to be
+  // the *loaded* values and nothing else. They stay null until a fetch succeeds,
+  // and nothing can be saved while they are null — otherwise a failed load would
+  // leave the page holding its built-in defaults, call that "changed", and offer
+  // to write a default 5 km circle straight over the admin's real area.
+  const [savedSettings,  setSavedSettings]  = useState<DriverSettings | null>(null);
+  const [savedDiscounts, setSavedDiscounts] = useState<DiscountSettings | null>(null);
+  const [loadFailed,     setLoadFailed]     = useState(false);
+
   // ── Service-area editor ───────────────────────────────────────────────────
   // Off by default: the shape is only draggable once the admin says so, so a
   // stray click on the map cannot silently redraw where the company delivers.
@@ -232,16 +242,24 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   useEffect(() => {
     fetch("/api/admin/settings")
       .then(r => r.json())
-      .then((data: DriverSettings) => { setSettings(data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((data: DriverSettings) => {
+        setSettings(data);
+        setSavedSettings(data);   // the baseline "no changes" is measured from
+        setLoading(false);
+      })
+      .catch(() => { setLoadFailed(true); setLoading(false); });
   }, []);
 
   // Load discount settings
   useEffect(() => {
     fetch("/api/admin/discounts")
       .then(r => r.json())
-      .then((data: DiscountSettings) => setDiscounts({ ...DISCOUNT_DEFAULTS, ...data, mattvatt: { ...DISCOUNT_DEFAULTS.mattvatt, ...(data.mattvatt ?? {}) } }))
-      .catch(() => {});
+      .then((data: DiscountSettings) => {
+        const loaded = { ...DISCOUNT_DEFAULTS, ...data, mattvatt: { ...DISCOUNT_DEFAULTS.mattvatt, ...(data.mattvatt ?? {}) } };
+        setDiscounts(loaded);
+        setSavedDiscounts(loaded);
+      })
+      .catch(() => setLoadFailed(true));
   }, []);
 
   // Load mattvätt pricing (kr per m² + the size range the slider offers)
@@ -445,8 +463,22 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   const areaError = validatePolygon(polygon);
   const crossing  = polygon.length >= MIN_POINTS ? findSelfIntersection(polygon) : null;
 
+  // ── Unsaved changes ───────────────────────────────────────────────────────
+  // Measured against what was loaded, never against the built-in defaults. With
+  // no baseline (a failed load) nothing counts as changed, so the save bar can
+  // never offer to write defaults over a real configuration.
+  const dirty =
+    (savedSettings  !== null && JSON.stringify(settings)  !== JSON.stringify(savedSettings)) ||
+    (savedDiscounts !== null && JSON.stringify(discounts) !== JSON.stringify(savedDiscounts));
+
   async function save() {
     if (areaError) { setAreaSaveError(areaError); return; }
+    if (savedSettings === null) {
+      // Nothing was ever loaded, so there is nothing safe to compare against —
+      // saving here would write this page's defaults over the stored area.
+      setAreaSaveError("Inställningarna kunde inte läsas in. Ladda om sidan innan du sparar.");
+      return;
+    }
     setAreaSaveError(null);
     setSaving(true);
     try {
@@ -469,11 +501,26 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         setAreaSaveError(msg?.error ?? "Tjänsteområdet kunde inte sparas.");
         return;
       }
+      // Everything on screen is now what is stored, so the bar goes away — and
+      // finishing a save is also what leaves the drawing mode. There is no
+      // separate "done" step to forget.
+      setSavedSettings(settings);
+      setSavedDiscounts(discounts);
+      setEditingArea(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Throw away every unsaved change and put the stored settings back on screen. */
+  function discardChanges() {
+    if (savedSettings)  setSettings(savedSettings);
+    if (savedDiscounts) setDiscounts(savedDiscounts);
+    setAreaSaveError(null);
+    setEditingArea(false);
+    if (savedSettings) fitToPolygon(savedSettings.serviceArea.polygon);
   }
 
   if (loading) {
@@ -488,7 +535,11 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   // column follow along, so nothing is left stranded next to an empty result.
   const shows = (section: SectionKey) => matchesQuery(query, `${SECTION_TERMS[section]} ${section}`);
   const noMatches       = (Object.keys(SECTION_TERMS) as SectionKey[]).every(k => !shows(k));
-  const showsSaveButton = (["driver", "area", "delivery", "discounts"] as SectionKey[]).some(shows);
+  // Whether the save bar should say which section is waiting. The bar itself is
+  // never hidden by the search: a change made before typing in the search box
+  // must not be able to scroll out of reach behind a filter.
+  const pendingAreaEdit = editingArea || (savedSettings !== null &&
+    JSON.stringify(settings.serviceArea) !== JSON.stringify(savedSettings.serviceArea));
   const showsRightColumn = shows("map") || shows("wishlist");
 
   return (
@@ -575,20 +626,35 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               redigering och klicka på kartan för att rita formen.
             </p>
 
-            {/* Edit toggle — the shape is locked until this is on */}
-            <button
-              type="button"
-              onClick={() => setEditingArea(v => !v)}
-              style={{
-                width: "100%", padding: "0.6rem 0.9rem", marginBottom: "0.85rem",
-                background: editingArea ? "#2f6b40" : "#fff",
-                color: editingArea ? "#fff" : "#1a1a1a",
-                border: `1px solid ${editingArea ? "#2f6b40" : "#e0e0e0"}`,
-                borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              {editingArea ? "✓ Klar med redigering" : "✎ Redigera område"}
-            </button>
+            {/* Starts drawing. There is deliberately no "done" button here — the
+                green Spara bar is the only way out, so the one thing that ends
+                the edit is also the one thing that stores it. A tester who was
+                given both buttons finished with the wrong one and lost the shape. */}
+            {editingArea ? (
+              <p style={{
+                padding: "0.6rem 0.9rem", marginBottom: "0.85rem", margin: "0 0 0.85rem",
+                background: "#2f6b40", color: "#fff", borderRadius: "8px",
+                fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.5,
+              }}>
+                Du ritar området nu
+                <span style={{ display: "block", fontWeight: 400, fontSize: "0.76rem", opacity: 0.9, marginTop: "0.15rem" }}>
+                  Tryck på den gröna <strong>Spara</strong>-knappen längst ner när du är klar.
+                </span>
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingArea(true)}
+                style={{
+                  width: "100%", padding: "0.6rem 0.9rem", marginBottom: "0.85rem",
+                  background: "#fff", color: "#1a1a1a",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                ✎ Redigera område
+              </button>
+            )}
 
             {editingArea && (
               <div style={{
@@ -860,37 +926,8 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
           </Filterable>
 
           {/* Save button */}
-          {showsSaveButton && areaSaveError && (
-            <p style={{
-              fontSize: "0.78rem", color: "#b91c1c", background: "#fef2f2",
-              border: "1px solid #fecaca", borderRadius: "8px",
-              padding: "0.6rem 0.75rem", margin: 0,
-            }}>
-              Inget sparades — {areaSaveError}
-            </p>
-          )}
-
-          {showsSaveButton && (
-          <button
-            onClick={save}
-            disabled={saving || !!areaError}
-            title={areaError ?? undefined}
-            style={{
-              padding: "0.75rem 1.25rem",
-              background: saved ? "#f0fdf4" : "#1a1a1a",
-              color: saved ? "#15803d" : "#fff",
-              border: saved ? "1px solid #bbf7d0" : "none",
-              borderRadius: "8px",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              cursor: saving || areaError ? "not-allowed" : "pointer",
-              opacity: saving || areaError ? 0.6 : 1,
-              transition: "background 0.2s, color 0.2s",
-            }}
-          >
-            {saving ? "Sparar…" : saved ? "✓ Sparat" : "Spara inställningar"}
-          </button>
-          )}
+          {/* The save button used to live here. It is now the floating bar at the
+              bottom of the page, so it cannot be scrolled past or missed. */}
         </div>
 
         {/* ── Right: map, with the wishlist stacked under it ────────────────── */}
@@ -929,6 +966,86 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         </Filterable>
         </div>
       </div>
+
+      {/* ── Save bar ──────────────────────────────────────────────────────────
+          One button, always in the same place, that appears the moment anything
+          changes. It replaces both the old bottom "Spara inställningar" and the
+          "Klar med redigering" toggle — two controls that looked equally final,
+          which is how a shape got finished without ever being stored.
+
+          Bottom-left and narrow, so it sits beside the page rather than over it,
+          and it leaves room under the content below so nothing is covered. */}
+      {(dirty || editingArea || loadFailed) && (
+        <div
+          role="status"
+          style={{
+            position: "fixed", left: "1rem", bottom: "1rem", zIndex: 60,
+            maxWidth: "min(420px, calc(100vw - 2rem))",
+            display: "flex", alignItems: "center", gap: "0.75rem",
+            padding: "0.7rem 0.8rem 0.7rem 1rem",
+            background: "#fff",
+            border: `1px solid ${loadFailed || areaError ? "#fecaca" : "#d8e9dc"}`,
+            borderRadius: "12px",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.16)",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 700, color: loadFailed || areaError ? "#b91c1c" : "#1a1a1a" }}>
+              {loadFailed      ? "Kunde inte läsa inställningarna"
+             : areaError       ? "Området går inte att spara än"
+             : dirty           ? (pendingAreaEdit ? "Tjänsteområdet är inte sparat" : "Du har ändringar som inte är sparade")
+             :                   "Du ritar området"}
+            </p>
+            <p style={{ margin: "0.1rem 0 0", fontSize: "0.72rem", color: "#888", lineHeight: 1.45 }}>
+              {loadFailed      ? "Ladda om sidan innan du ändrar något — annars kan dina sparade inställningar skrivas över."
+             : areaError       ? areaError
+             : areaSaveError   ? areaSaveError
+             : dirty           ? "Tryck på Spara för att spara dem."
+             :                   "Tryck på Spara när du är klar."}
+            </p>
+          </div>
+
+          {!loadFailed && (
+            <>
+              {dirty && (
+                <button
+                  type="button"
+                  onClick={discardChanges}
+                  disabled={saving}
+                  title="Ångra allt du ändrat sedan senaste sparningen"
+                  style={{
+                    flexShrink: 0, padding: "0.5rem 0.7rem",
+                    background: "transparent", border: "none",
+                    color: "#888", fontSize: "0.78rem", fontWeight: 600,
+                    cursor: saving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Ångra
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || !!areaError}
+                style={{
+                  flexShrink: 0, padding: "0.6rem 1.2rem",
+                  background: saved ? "#f0fdf4" : "#2f6b40",
+                  color: saved ? "#15803d" : "#fff",
+                  border: saved ? "1px solid #bbf7d0" : "none",
+                  borderRadius: "9px", fontSize: "0.875rem", fontWeight: 700,
+                  cursor: saving || areaError ? "not-allowed" : "pointer",
+                  opacity: saving || areaError ? 0.5 : 1,
+                }}
+              >
+                {saving ? "Sparar…" : saved ? "✓ Sparat" : "Spara"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Keeps the last section clear of the fixed bar above. */}
+      {(dirty || editingArea || loadFailed) && <div style={{ height: "5.5rem", flexShrink: 0 }} aria-hidden />}
     </div>
   );
 }
