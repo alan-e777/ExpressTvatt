@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ClientLayout from '@/components/ClientLayout';
+import TrackingPixel from '@/components/TrackingPixel';
 
 export const metadata: Metadata = {
   title: 'Express Tvätt',
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="sv">
       <body>
+        <TrackingPixel />
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

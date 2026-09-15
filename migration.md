@@ -173,6 +173,16 @@ posted an exact time ("14:00") to `/api/create-payment`. The website dropped tha
 
 ---
 
+### 14. Ads tracking pixel (Trlution `tlq`) is web only
+- **Web:** `components/TrackingPixel.tsx` loads the ads team's `tlq` pixel (`LS-27278812-1`) on every
+  public page from `app/layout.tsx`, and re-fires `PageView` on client-side route changes. Admin and
+  driver are excluded.
+- **App:** nothing — the vendor snippet is browser JavaScript and has no React Native SDK in the tree.
+- **Customer hits:** none; this only affects the ads team's attribution. Ask them whether app installs /
+  in-app bookings need a mobile equivalent before launch (2026-09-15).
+
+---
+
 ## Recently closed
 
 - **2026-08-30 — Bookable time windows.** The admin can now edit the pickup and delivery
