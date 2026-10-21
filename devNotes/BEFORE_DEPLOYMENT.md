@@ -313,6 +313,36 @@ rather than budgeting against $200.
 
 ---
 
+### 🔴 THE GOOGLE ADS TAG NEEDS A COOKIE BANNER — THERE ISN'T ONE
+
+`components/TrackingPixel.tsx` loads the ads team's Google tag (gtag.js,
+`AW-18517355089`) on every public page. gtag.js writes its own cookies
+(`_gcl_*` for ad-click attribution, and `_ga` if a GA4 property is linked), and
+those are **advertising** cookies, not strictly necessary ones. Under ePrivacy /
+the Swedish implementation they require **prior** consent — the tag may not load
+until the visitor has said yes.
+
+The site has no consent banner, and the privacy policy still says the site runs
+no trackers (it was drafted before the tag existed — see
+`devNotes/PRIVACY_POLICY_NOTES.md`, which is now annotated).
+
+**What has to happen before launch:**
+
+1. A consent banner that blocks the tag by default. `TrackingPixel` already
+   gates on the pathname and returns `null` for untracked routes; the same
+   switch takes a consent flag — gate the two `<Script>` tags on it and the tag
+   never loads without a yes. Do not load gtag.js first and `denied` it after.
+2. Update the privacy policy: list the cookies, name **Google Ireland Ltd** as
+   an advertising processor, and state the legal basis as consent (not
+   legitimate interest).
+3. Decide with the ads team whether Consent Mode v2 (`gtag('consent', 'default',
+   …)` with `ad_storage: 'denied'`) is wanted, since Google Ads now requires it
+   for EEA traffic to model conversions at all.
+
+Until then the tag is collecting data the site has no lawful basis for.
+
+---
+
 ## 🟡 Important — fix within first week of launch
 
 ---

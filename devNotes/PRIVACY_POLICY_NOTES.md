@@ -35,11 +35,15 @@ and Skatteverket for RUT reporting. All are referenced in code or `package.json`
   the Firestore Admin API, not assumed. The policy can therefore state EU residency for the
   databases rather than falling back to the generic "may be transferred outside the EU/EEA".
   The transfer clause is retained only for Stripe/Vercel support and processing.
-- **No analytics, no advertising pixels, no third-party trackers.** Verified by grep across
-  `app/`, `components/`, `lib/` — no `gtag`, GTM, Meta pixel, Vercel Analytics or `next/script`
-  usage. The only cookie is `admin-session` (httpOnly, admin interface only), plus Firebase
-  auth state in browser storage. Both are strictly necessary, so no consent banner is required.
-  **If any analytics is added later, the cookie section and a consent banner become mandatory.**
+- **No analytics, no advertising pixels, no third-party trackers.** True when the policy was
+  drafted; **no longer true, and the policy has not caught up.** `components/TrackingPixel.tsx`
+  now loads the ads team's Google tag (gtag.js, `AW-18517355089`) on every public page — see
+  `migration.md` #14. gtag.js sets its own cookies (`_gcl_*`, and `_ga` if Analytics is linked)
+  and they are **not** strictly necessary, so the conditional in the original finding has
+  fired: **the cookie section must list them, Google Ireland/LLC must be named as a processor
+  for advertising, and a consent banner is now mandatory before launch.** The only first-party
+  cookie is still `admin-session` (httpOnly, admin interface only), plus Firebase auth state in
+  browser storage.
 - **No automated decision-making or profiling** exists in the code, so the policy states none.
 - **No deletion job, TTL or retention enforcement exists anywhere.** Retention periods in the
   policy are therefore statements of intent, not of enforced behaviour (see risk below).

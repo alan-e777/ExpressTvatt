@@ -173,13 +173,15 @@ posted an exact time ("14:00") to `/api/create-payment`. The website dropped tha
 
 ---
 
-### 14. Ads tracking pixel (Trlution `tlq`) is web only
-- **Web:** `components/TrackingPixel.tsx` loads the ads team's `tlq` pixel (`LS-27278812-1`) on every
-  public page from `app/layout.tsx`, and re-fires `PageView` on client-side route changes. Admin and
-  driver are excluded.
-- **App:** nothing — the vendor snippet is browser JavaScript and has no React Native SDK in the tree.
+### 14. Ads tracking (Google tag / gtag.js) is web only
+- **Web:** `components/TrackingPixel.tsx` loads the ads team's Google tag (`AW-18517355089`) on every
+  public page from `app/layout.tsx`, and re-runs `gtag('config', …, { page_path })` on client-side route
+  changes. Admin and driver are excluded. This replaced the Trlution `tlq` pixel (`LS-27278812-1`), which
+  never reported anything — nothing of it is left in the tree (2026-10-21).
+- **App:** nothing — gtag.js is browser JavaScript. Google Ads' mobile equivalent is the Firebase SDK
+  (`@react-native-firebase/analytics` + the Ads/Firebase link), which is not in the app's tree.
 - **Customer hits:** none; this only affects the ads team's attribution. Ask them whether app installs /
-  in-app bookings need a mobile equivalent before launch (2026-09-15).
+  in-app bookings need the Firebase measurement path wired up before launch.
 
 ---
 
