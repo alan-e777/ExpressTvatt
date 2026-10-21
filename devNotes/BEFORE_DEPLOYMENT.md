@@ -313,33 +313,37 @@ rather than budgeting against $200.
 
 ---
 
-### 🔴 THE GOOGLE ADS TAG NEEDS A COOKIE BANNER — THERE ISN'T ONE
+### ~~THE GOOGLE ADS TAG NEEDS A COOKIE BANNER~~ ✅ Done (2026-10-21)
 
-`components/TrackingPixel.tsx` loads the ads team's Google tag (gtag.js,
-`AW-18517355089`) on every public page. gtag.js writes its own cookies
-(`_gcl_*` for ad-click attribution, and `_ga` if a GA4 property is linked), and
-those are **advertising** cookies, not strictly necessary ones. Under ePrivacy /
-the Swedish implementation they require **prior** consent — the tag may not load
-until the visitor has said yes.
+The banner is built and the policy is updated. What shipped:
 
-The site has no consent banner, and the privacy policy still says the site runs
-no trackers (it was drafted before the tag existed — see
-`devNotes/PRIVACY_POLICY_NOTES.md`, which is now annotated).
+- `lib/consent.ts` — the decision, versioned (`consent.ads.v1`) in `localStorage`.
+  **No decision and unreadable storage both behave as "denied"**, so a visitor who
+  ignores the banner is never tracked, and a blocked `localStorage` fails closed.
+- `components/CookieBanner.tsx` — the prompt. Both buttons are deliberately the
+  same size, and there is no X: refusing has to be as easy as accepting, and a
+  close button is a third answer visitors read as consent. **Do not "improve"
+  either of those.**
+- `components/TrackingPixel.tsx` — gtag.js is not loaded at all until consent,
+  and declares Consent Mode v2 signals when it is.
+- `components/ConsentReset.tsx` — withdrawal, in the privacy policy's cookie
+  section. Forgetting the decision re-opens the banner; taking consent back also
+  deletes the `_gcl_*` cookies and pushes `consent: update` denied.
+- `app/integritetspolicy/page.tsx` — section 8 rewritten (SV + EN): the cookies
+  are named, consent is stated as the basis, Google Ireland Ltd is listed as a
+  processor in both processor lists.
 
-**What has to happen before launch:**
+**One decision is still the owner's**, and it is a trade, not a bug:
 
-1. A consent banner that blocks the tag by default. `TrackingPixel` already
-   gates on the pathname and returns `null` for untracked routes; the same
-   switch takes a consent flag — gate the two `<Script>` tags on it and the tag
-   never loads without a yes. Do not load gtag.js first and `denied` it after.
-2. Update the privacy policy: list the cookies, name **Google Ireland Ltd** as
-   an advertising processor, and state the legal basis as consent (not
-   legitimate interest).
-3. Decide with the ads team whether Consent Mode v2 (`gtag('consent', 'default',
-   …)` with `ad_storage: 'denied'`) is wanted, since Google Ads now requires it
-   for EEA traffic to model conversions at all.
+> We do **not** load gtag.js for visitors who refuse or ignore the banner.
+> Google's own recommendation is to load it up front with `ad_storage: 'denied'`
+> so it can *model* the conversions it cannot measure. That sends the visitor's
+> IP to Google before they have agreed to anything, which is why it is not the
+> default here. **Ask the ads team whether they want modelled conversions badly
+> enough to take that reading instead** — if so, the change is in the comment at
+> the top of `TrackingPixel.tsx`, and the policy wording has to change with it.
 
-Until then the tag is collecting data the site has no lawful basis for.
+Still worth a lawyer's eye before launch; this is a careful reading, not advice.
 
 ---
 

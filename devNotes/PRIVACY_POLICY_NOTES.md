@@ -40,10 +40,13 @@ and Skatteverket for RUT reporting. All are referenced in code or `package.json`
   now loads the ads team's Google tag (gtag.js, `AW-18517355089`) on every public page — see
   `migration.md` #14. gtag.js sets its own cookies (`_gcl_*`, and `_ga` if Analytics is linked)
   and they are **not** strictly necessary, so the conditional in the original finding has
-  fired: **the cookie section must list them, Google Ireland/LLC must be named as a processor
-  for advertising, and a consent banner is now mandatory before launch.** The only first-party
-  cookie is still `admin-session` (httpOnly, admin interface only), plus Firebase auth state in
-  browser storage.
+  fired. **All three have since been done (2026-10-21)**: section 8 of the policy names the
+  cookies and states consent as the basis, Google Ireland Limited is in both processor lists,
+  and the tag does not load at all until the visitor accepts (`components/CookieBanner.tsx`,
+  `lib/consent.ts`). The only first-party cookie before consent is still `admin-session`
+  (httpOnly, admin interface only), plus Firebase auth state in browser storage — both
+  strictly necessary. **If another tag is ever added, bump `CONSENT_VERSION` so every visitor
+  is asked again; consent is per purpose, and the stored yes does not carry over.**
 - **No automated decision-making or profiling** exists in the code, so the policy states none.
 - **No deletion job, TTL or retention enforcement exists anywhere.** Retention periods in the
   policy are therefore statements of intent, not of enforced behaviour (see risk below).

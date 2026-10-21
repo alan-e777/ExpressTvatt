@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ClientLayout from '@/components/ClientLayout';
 import TrackingPixel from '@/components/TrackingPixel';
+import CookieBanner from '@/components/CookieBanner';
 
 export const metadata: Metadata = {
   title: 'Express Tvätt',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="sv">
       <body>
         <TrackingPixel />
+        <CookieBanner />
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/firebase-admin";
 import { withGdprDefaults, type GdprSettings } from "@/lib/gdpr";
+import ConsentReset from "@/components/ConsentReset";
 
 export const metadata: Metadata = {
   title: "Integritetspolicy — Express Tvätt",
@@ -78,6 +79,7 @@ export default async function PrivacyPolicyPage() {
             <li><strong>Vercel</strong> — webbhotell och driftloggar.</li>
             <li><strong>Resend</strong> — utskick av transaktionsmejl.</li>
             <li><strong>46elks</strong> — utskick av SMS om orderstatus.</li>
+            <li><strong>Google Ireland Limited</strong> — annonsmätning via Google Ads-taggen, endast om du samtyckt (se avsnitt 8).</li>
             <li><strong>Google Maps Platform</strong> — adressförslag. Det du skriver i adressfältet skickas till Google för att ge förslag.</li>
             <li><strong>Expo</strong> — push-aviseringar till mobilappen.</li>
             <li><strong>Skatteverket</strong> — vid RUT-avdrag lämnas personnummer och underlag till Skatteverket enligt lag.</li>
@@ -123,12 +125,22 @@ export default async function PrivacyPolicyPage() {
 
           <h2>8. Cookies och liknande tekniker</h2>
           <p>
-            Vi använder inga cookies för analys, marknadsföring eller spårning, och vi har inga
-            tredjepartspixlar på webbplatsen. Vi använder en nödvändig cookie för inloggning i vårt
-            interna administrationsgränssnitt. Vår webbplats och app använder även teknisk lagring i
-            din webbläsare för att hålla dig inloggad. Dessa är nödvändiga för att tjänsten ska
-            fungera och kräver inte samtycke.
+            <strong>Nödvändiga cookies.</strong> Vi använder en nödvändig cookie för inloggning i
+            vårt interna administrationsgränssnitt. Vår webbplats och app använder även teknisk
+            lagring i din webbläsare för att hålla dig inloggad. Dessa är nödvändiga för att
+            tjänsten ska fungera och kräver inte samtycke.
           </p>
+          <p>
+            <strong>Cookies för annonsmätning.</strong> Om du samtycker läser vi in Google
+            Ads-taggen (gtag.js), som sätter cookies i din webbläsare för att mäta och anpassa
+            annonser — främst <em>_gcl_*</em>, som kopplar ett annonsklick till ett senare köp.
+            Dessa är inte nödvändiga för tjänsten, och den rättsliga grunden är därför ditt
+            <strong> samtycke</strong>. Inget läses in och inget sätts innan du har samtyckt, och
+            du kan ta tillbaka ditt samtycke när som helst — vi raderar då cookies som satts.
+            Uppgifterna behandlas av <strong>Google Ireland Limited</strong> som vårt
+            personuppgiftsbiträde för annonsändamål.
+          </p>
+          <ConsentReset />
 
           <h2>9. Säkerhet</h2>
           <p>
@@ -203,6 +215,7 @@ export default async function PrivacyPolicyPage() {
             <li><strong>Vercel</strong> — hosting and operational logs.</li>
             <li><strong>Resend</strong> — transactional email.</li>
             <li><strong>46elks</strong> — order-status SMS.</li>
+            <li><strong>Google Ireland Limited</strong> — advertising measurement via the Google Ads tag, only if you have consented (see section 8).</li>
             <li><strong>Google Maps Platform</strong> — address autocomplete; what you type into the address field is sent to Google to return suggestions.</li>
             <li><strong>Expo</strong> — mobile push notifications.</li>
             <li><strong>Skatteverket</strong> — where RUT is used, your personnummer and supporting data are provided to the Swedish Tax Agency as required by law.</li>
@@ -242,11 +255,20 @@ export default async function PrivacyPolicyPage() {
 
           <h2>8. Cookies</h2>
           <p>
-            We use no analytics, advertising or tracking cookies, and no third-party pixels. We use one
-            strictly necessary cookie for logging in to our internal admin interface, and technical
-            browser storage to keep you signed in. These are required for the service to function and
-            do not require consent.
+            <strong>Strictly necessary cookies.</strong> We use one strictly necessary cookie for
+            logging in to our internal admin interface, and technical browser storage to keep you
+            signed in. These are required for the service to function and do not require consent.
           </p>
+          <p>
+            <strong>Advertising cookies.</strong> If you consent, we load the Google Ads tag
+            (gtag.js), which sets cookies in your browser to measure and personalise advertising —
+            principally <em>_gcl_*</em>, which links an ad click to a later purchase. These are not
+            necessary for the service, so the legal basis is your <strong>consent</strong>. Nothing
+            is loaded and nothing is stored before you have consented, and you may withdraw at any
+            time, at which point we delete the cookies that were set. The data is processed by{" "}
+            <strong>Google Ireland Limited</strong> as our processor for advertising purposes.
+          </p>
+          <ConsentReset />
 
           <h2>9. Security</h2>
           <p>

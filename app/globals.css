@@ -3836,3 +3836,146 @@ input, textarea, select { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .site-shell .of-confetti { display: none; }
 }
+
+/* ── Cookie consent bar ───────────────────────────────────────────────────
+   Low-key by design: a small card in the bottom-left corner, no scrim, page
+   fully usable behind it. Typography is Inter rather than the landing page's
+   Poppins on purpose — it should read as browser chrome, not as part of the
+   brand.
+
+   It renders outside `.site-shell` (straight in the root layout), so none of
+   the `.site-shell *` overrides reach it and every value here is explicit.
+
+   The two buttons are deliberately identical in size and weight. Refusing must
+   be as easy as accepting; do not make "Tillåt" bigger or "Avvisa" a link.    */
+.consent-bar {
+  position: fixed;
+  z-index: 180; /* over the /order cart bar (160), under its bottom sheet (171) */
+  left: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  width: calc(100vw - 32px);
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 28px rgba(8, 63, 65, 0.14);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  /* Slides up into place; `--in` is added a beat after mount. */
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.consent-bar--in {
+  opacity: 1;
+  transform: translateY(0);
+}
+.consent-bar-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #475569;
+}
+.consent-bar-link {
+  color: var(--forest-mid);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.consent-bar-actions {
+  display: flex;
+  gap: 8px;
+}
+.consent-bar-btn {
+  flex: 1; /* equal width — see the note above */
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  color: #0F172A;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.consent-bar-btn:hover {
+  background: #F5F7F7;
+}
+.consent-bar-btn--yes {
+  border-color: rgba(8, 63, 65, 0.22);
+  background: rgba(8, 63, 65, 0.05);
+  color: var(--forest-dark);
+}
+.consent-bar-btn--yes:hover {
+  background: rgba(8, 63, 65, 0.1);
+}
+.consent-bar-btn:focus-visible {
+  outline: 2px solid var(--forest-mid);
+  outline-offset: 2px;
+}
+
+/* Wide enough for one line: text and buttons share a row. */
+@media (min-width: 560px) {
+  .consent-bar {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    max-width: 560px;
+    padding: 12px 14px;
+  }
+  .consent-bar-actions {
+    flex-shrink: 0;
+  }
+  .consent-bar-btn {
+    flex: 0 0 auto;
+    min-width: 76px;
+    padding: 0 14px;
+  }
+}
+
+/* `/order` and `/kassa` keep a fixed cart bar at the bottom; lift it out from
+   under the banner while a decision is pending. */
+body.has-consent-banner .site-shell .of-bar {
+  /* Clears the banner's full height (16px inset + card) plus a gap. The card
+     wraps to two rows below 560px, so the stacked value is the taller one. */
+  bottom: 128px;
+}
+@media (min-width: 560px) {
+  body.has-consent-banner .site-shell .of-bar {
+    bottom: 92px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consent-bar {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ── "Ändra ditt val" — consent withdrawal, in the privacy policy ───────── */
+.consent-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: #0F172A;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.consent-reset:hover {
+  background: #F5F7F7;
+}
+.consent-reset-state {
+  font-weight: 400;
+  color: #64748B;
+}
