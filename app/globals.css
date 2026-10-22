@@ -3864,9 +3864,9 @@ input, textarea, select { font-family: inherit; }
      letterforms — on a phone the trust bar underneath the hero came through
      the buttons. Fading the *background* and blurring what is behind it gives
      the same recessive feel while the text stays at full strength. */
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 16px rgba(8, 63, 65, 0.08);
@@ -3900,14 +3900,20 @@ input, textarea, select { font-family: inherit; }
     background: rgba(255, 255, 255, 0.95);
   }
 }
+/* Ink, not grey. The panel sits at 55%, so over the dark hero the text is
+   compositing onto roughly rgb(143,169,170) rather than onto white — the old
+   #475569 fell to about 3:1 there, under the 4.5:1 AA floor for text this
+   small. #1e293b brings it back to ~5.9:1 while the *panel* stays faint,
+   which is the look this is after. If the background is ever made fainter
+   still, darken these two again rather than leaving them. */
 .consent-bar-text {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #475569;
+  color: #1e293b;
 }
 .consent-bar-link {
-  color: var(--forest-mid);
+  color: var(--forest-dark);
   text-decoration: underline;
   text-underline-offset: 2px;
   white-space: nowrap;
