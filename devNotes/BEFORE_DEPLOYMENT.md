@@ -333,15 +333,33 @@ The banner is built and the policy is updated. What shipped:
   are named, consent is stated as the basis, Google Ireland Ltd is listed as a
   processor in both processor lists.
 
-**One decision is still the owner's**, and it is a trade, not a bug:
+**That decision was revisited on 2026-10-22 and went the other way.** The tag now
+loads on every page under **Consent Mode v2**, starting with every ad signal
+denied and flipping to granted only when the visitor accepts. Two things settled
+it:
 
-> We do **not** load gtag.js for visitors who refuse or ignore the banner.
-> Google's own recommendation is to load it up front with `ad_storage: 'denied'`
-> so it can *model* the conversions it cannot measure. That sends the visitor's
-> IP to Google before they have agreed to anything, which is why it is not the
-> default here. **Ask the ads team whether they want modelled conversions badly
-> enough to take that reading instead** — if so, the change is in the comment at
-> the top of `TrackingPixel.tsx`, and the policy wording has to change with it.
+- Google's own "Installera en Google-tagg" check loads the page without
+  answering the banner, so it never saw the tag and reported expresstvatt.se as
+  untagged. That is what the ads team was looking at.
+- The strict version gave up modelled conversions for every visitor who refuses
+  or ignores the banner, which is most of them.
+
+A third argument was made at the time and expired within the day, recorded here
+so it is not re-derived: the strict gate was called pointless because
+`app/globals.css` pulled Poppins and Inter from fonts.googleapis.com on every
+page load, so Google had the visitor's IP regardless (verified on production).
+The fonts were self-hosted the same afternoon, so **gtag.js is now the only
+thing on the site that contacts Google before consent.**
+
+What did **not** change: nothing is stored on the device before consent. Denied
+Consent Mode writes no cookies and no identifiers; it sends cookieless pings
+that let Google model what it cannot measure. The ePrivacy storage rule — the
+one with teeth — is still satisfied, and the banner still governs it.
+
+**That makes this the one remaining pre-consent third-party call.** It was still
+the right call on the two grounds above, and nothing is stored before consent —
+but if you ever want the strictest posture the site can take, this is the single
+thing left to change, and `TrackingPixel.tsx` says so at the top.
 
 Still worth a lawyer's eye before launch; this is a careful reading, not advice.
 

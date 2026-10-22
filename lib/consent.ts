@@ -26,7 +26,14 @@ import { useEffect, useState } from 'react';
 export type AdConsent = 'granted' | 'denied';
 
 export const CONSENT_VERSION = 1;
-const STORAGE_KEY = `consent.ads.v${CONSENT_VERSION}`;
+/**
+ * Exported because `TrackingPixel`'s inline bootstrap has to read this key
+ * synchronously, before React has run, to decide what consent state gtag.js
+ * starts in. That snippet is a string, so it cannot call `readAdConsent()` —
+ * interpolating the key is what keeps the two from drifting apart.
+ */
+export const CONSENT_STORAGE_KEY = `consent.ads.v${CONSENT_VERSION}`;
+const STORAGE_KEY = CONSENT_STORAGE_KEY;
 
 /** Fired on `window` whenever the decision changes, so the tag can react without a reload. */
 export const CONSENT_EVENT = 'expresstvatt:adconsent';

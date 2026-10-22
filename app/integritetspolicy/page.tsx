@@ -135,8 +135,11 @@ export default async function PrivacyPolicyPage() {
             Ads-taggen (gtag.js), som sätter cookies i din webbläsare för att mäta och anpassa
             annonser — främst <em>_gcl_*</em>, som kopplar ett annonsklick till ett senare köp.
             Dessa är inte nödvändiga för tjänsten, och den rättsliga grunden är därför ditt
-            <strong> samtycke</strong>. Inget läses in och inget sätts innan du har samtyckt, och
-            du kan ta tillbaka ditt samtycke när som helst — vi raderar då cookies som satts.
+            <strong> samtycke</strong>. <strong>Inga cookies sätts och inga identifierare lagras
+            innan du har samtyckt</strong> — taggen läses in i ett läge där lagring är avstängd
+            (Googles &rdquo;Consent Mode&rdquo;) och skickar då endast anonym statistik utan
+            cookies. Du kan ta tillbaka ditt samtycke när som helst, och vi raderar då de cookies
+            som satts.
             Uppgifterna behandlas av <strong>Google Ireland Limited</strong> som vårt
             personuppgiftsbiträde för annonsändamål.
           </p>
@@ -263,9 +266,11 @@ export default async function PrivacyPolicyPage() {
             <strong>Advertising cookies.</strong> If you consent, we load the Google Ads tag
             (gtag.js), which sets cookies in your browser to measure and personalise advertising —
             principally <em>_gcl_*</em>, which links an ad click to a later purchase. These are not
-            necessary for the service, so the legal basis is your <strong>consent</strong>. Nothing
-            is loaded and nothing is stored before you have consented, and you may withdraw at any
-            time, at which point we delete the cookies that were set. The data is processed by{" "}
+            necessary for the service, so the legal basis is your <strong>consent</strong>.
+            <strong>No cookies are set and no identifiers are stored before you have
+            consented</strong> — the tag loads with storage switched off (Google&rsquo;s Consent
+            Mode), in which state it sends only cookieless, aggregate signals. You may withdraw at
+            any time, at which point we delete the cookies that were set. The data is processed by{" "}
             <strong>Google Ireland Limited</strong> as our processor for advertising purposes.
           </p>
           <ConsentReset />

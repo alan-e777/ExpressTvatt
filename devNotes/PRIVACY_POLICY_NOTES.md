@@ -42,8 +42,14 @@ and Skatteverket for RUT reporting. All are referenced in code or `package.json`
   and they are **not** strictly necessary, so the conditional in the original finding has
   fired. **All three have since been done (2026-10-21)**: section 8 of the policy names the
   cookies and states consent as the basis, Google Ireland Limited is in both processor lists,
-  and the tag does not load at all until the visitor accepts (`components/CookieBanner.tsx`,
-  `lib/consent.ts`). The only first-party cookie before consent is still `admin-session`
+  and no cookie or identifier is stored until the visitor accepts (`components/CookieBanner.tsx`,
+  `lib/consent.ts`). **Since 2026-10-22 the tag itself does load on every page**, under Consent
+  Mode v2 with every ad signal denied until consent — storage stays off, which is what the
+  ePrivacy rule is about, and the policy's section 8 says so in both languages. The related finding this turned up —
+  that `app/globals.css` pulled Poppins and Inter from fonts.googleapis.com on every page load,
+  contacting Google before consent regardless of the tag — **was fixed the same day** by moving
+  both families to `next/font/google`, which serves them from our own origin. gtag.js under
+  denied Consent Mode is therefore the only pre-consent third-party call left on the site. The only first-party cookie before consent is still `admin-session`
   (httpOnly, admin interface only), plus Firebase auth state in browser storage — both
   strictly necessary. **If another tag is ever added, bump `CONSENT_VERSION` so every visitor
   is asked again; consent is per purpose, and the stored yes does not carry over.**

@@ -178,8 +178,9 @@ posted an exact time ("14:00") to `/api/create-payment`. The website dropped tha
   public page from `app/layout.tsx`, and re-runs `gtag('config', …, { page_path })` on client-side route
   changes. Admin and driver are excluded. This replaced the Trlution `tlq` pixel (`LS-27278812-1`), which
   never reported anything — nothing of it is left in the tree (2026-10-21).
-  The tag is gated on consent: `lib/consent.ts` + `components/CookieBanner.tsx`, with withdrawal
-  (`components/ConsentReset.tsx`) in the privacy policy's cookie section (2026-10-21).
+  Consent is handled with Consent Mode v2: `lib/consent.ts` + `components/CookieBanner.tsx`, with
+  withdrawal (`components/ConsentReset.tsx`) in the privacy policy's cookie section. The tag loads
+  for everyone but stores nothing until the visitor accepts (2026-10-22).
 - **App:** nothing — gtag.js is browser JavaScript. Google Ads' mobile equivalent is the Firebase SDK
   (`@react-native-firebase/analytics` + the Ads/Firebase link), which is not in the app's tree.
 - **Customer hits:** none; this only affects the ads team's attribution. Ask them whether app installs /

@@ -3,25 +3,42 @@
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { useAdConsent } from '@/lib/consent';
+import { CONSENT_STORAGE_KEY, useAdConsent } from '@/lib/consent';
 
 /**
- * Google tag (gtag.js) for the ads team's Google Ads account — loaded on every
- * public page from the root layout, once the visitor has consented. It replaced
- * the Trlution `tlq` pixel, which never reported anything.
+ * Google tag (gtag.js) for the ads team's Google Ads account, loaded on every
+ * public page from the root layout. It replaced the Trlution `tlq` pixel,
+ * which never reported anything.
  *
- * Four things differ from the raw <script> tags they handed over:
- *  - **Nothing loads until consent is granted.** gtag.js writes advertising
- *    cookies, so it may not run before the visitor says yes. Note what this
- *    rules out: loading gtag.js up front with `ad_storage: 'denied'` and
- *    flipping it afterwards. That is Google's own recommendation and it buys
- *    conversion modelling, but it still sends a request carrying the visitor's
- *    IP to Google before they have agreed to anything. Not loading at all is
- *    the defensible reading; the cost is no modelled conversions for visitors
- *    who refuse. If the ads team wants that trade the other way round, it is a
- *    deliberate decision for the owner to make, not a default to drift into.
- *  - Both halves go through next/script, so the loader lands in <head> once and
- *    React never re-injects it.
+ * **Consent Mode v2.** The tag loads for everyone, but it starts with every ad
+ * signal denied and only flips to granted once the visitor accepts. Denied is
+ * not cosmetic: gtag.js writes no cookies and no identifiers in that state, it
+ * sends cookieless pings that let Google model the conversions it cannot
+ * measure. So the ePrivacy rule that matters — nothing stored on the device
+ * before consent — still holds, and the banner still governs it.
+ *
+ * This replaced a stricter arrangement that loaded nothing at all until the
+ * visitor accepted. What settled it: Google's "Installera en Google-tagg"
+ * check loads the page without answering the banner, so it never saw the tag
+ * and reported the site as untagged — which is what the ads team was looking
+ * at — and the strict version also gave up modelled conversions for everyone
+ * who refuses or ignores the banner.
+ *
+ * A second argument was made at the time and has since expired, which is worth
+ * recording so nobody re-derives it: the strict gate was said to be pointless
+ * because `globals.css` pulled Poppins and Inter from fonts.googleapis.com on
+ * every page load, so Google received the visitor's IP regardless. True then;
+ * the fonts were self-hosted the same day (see `app/layout.tsx`). **gtag.js is
+ * now the only thing on the site that contacts Google before consent.** The
+ * decision was taken deliberately anyway, on the two grounds above and on the
+ * fact that denied Consent Mode stores nothing — but if the strictest posture
+ * is ever wanted, this is the file to revisit.
+ *
+ * Three other things differ from the raw snippet the ads team handed over:
+ *  - Both halves go through next/script, so they land once and React never
+ *    re-injects them. The bootstrap is rendered *before* the loader: gtag.js
+ *    replays whatever is already in `dataLayer` when it starts, so the consent
+ *    default has to be queued first or it would arrive after the first ping.
  *  - `gtag('js')` / `gtag('config')` sit behind a `window` flag. In dev, Fast
  *    Refresh remounts this component (and re-evaluates the module, so a ref or
  *    a module-level variable would not survive); a plain re-run would push a
@@ -36,24 +53,33 @@ import { useAdConsent } from '@/lib/consent';
 
 const GOOGLE_ADS_ID = 'AW-18517355089';
 
-// Vendor snippet, with the measurement id lifted into a constant, Consent Mode
-// v2 signals added (Google Ads needs them to count EEA traffic at all) and the
-// one-shot calls guarded. `gtag` itself is (re)defined unconditionally: it has
-// to exist as a global even if the script somehow runs twice.
-//
-// This only ever runs after a yes, so the defaults it declares are 'granted'.
-// `analytics_storage` stays denied — there is no Analytics property here, and a
-// signal we have not asked the visitor about is not ours to grant.
+/**
+ * The bootstrap reads the stored decision itself rather than waiting for
+ * React. A returning visitor who already accepted is therefore granted from
+ * the very first command, with no denied-then-granted flip-flop — and, more
+ * importantly, no ordering race: an `update` pushed from an effect could
+ * otherwise land *before* this `default` and be overwritten by it.
+ *
+ * `wait_for_update` holds the first ping briefly so a decision arriving a tick
+ * later still counts. The parse mirrors `readAdConsent()`; anything it cannot
+ * read falls through to denied, same as everywhere else.
+ */
 const GTAG_BOOTSTRAP = `
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 if (!window.__gtagBooted) {
   window.__gtagBooted = true;
+  var granted = 'denied';
+  try {
+    var stored = JSON.parse(window.localStorage.getItem('${CONSENT_STORAGE_KEY}') || 'null');
+    if (stored && stored.ads === 'granted') granted = 'granted';
+  } catch (e) {}
   gtag('consent', 'default', {
-    ad_storage: 'granted',
-    ad_user_data: 'granted',
-    ad_personalization: 'granted',
-    analytics_storage: 'denied'
+    ad_storage: granted,
+    ad_user_data: granted,
+    ad_personalization: granted,
+    analytics_storage: 'denied',
+    wait_for_update: 500
   });
   gtag('js', new Date());
   gtag('config', '${GOOGLE_ADS_ID}');
@@ -77,11 +103,24 @@ function isTracked(pathname: string | null): boolean {
 export default function TrackingPixel() {
   const pathname = usePathname();
   const consent = useAdConsent();
-  // `undefined` (not yet read) and `null` (not yet answered) both mean no.
-  const active = consent === 'granted' && isTracked(pathname);
+  const tracked = isTracked(pathname);
+
+  // Mirror the decision into gtag whenever it changes in this page session —
+  // the banner being answered, or consent withdrawn from the privacy policy.
+  // `undefined` means storage has not been read yet, and the bootstrap has
+  // already covered that case, so there is nothing to say.
+  useEffect(() => {
+    if (!tracked || consent === undefined) return;
+    const value = consent === 'granted' ? 'granted' : 'denied';
+    window.gtag?.('consent', 'update', {
+      ad_storage: value,
+      ad_user_data: value,
+      ad_personalization: value,
+    });
+  }, [consent, tracked]);
 
   useEffect(() => {
-    if (!active || !pathname) return;
+    if (!tracked || !pathname) return;
     // The bootstrap already sent the first page_view for the entry path; only
     // real route changes after that need one. Kept on `window` for the same
     // reason as __gtagBooted — a remount must not count as a navigation.
@@ -94,34 +133,21 @@ export default function TrackingPixel() {
     window.gtag?.('config', GOOGLE_ADS_ID, {
       page_path: pathname + window.location.search,
     });
-  }, [pathname, active]);
+  }, [pathname, tracked]);
 
-  // Withdrawal mid-visit. The script cannot be unloaded from a page that
-  // already has it, so tell it to stop storing; `resetAdConsent` has meanwhile
-  // deleted the cookies it set. Both halves are needed — one stops new writes,
-  // the other removes the old ones.
-  useEffect(() => {
-    if (consent !== 'granted' && window.__gtagBooted) {
-      window.gtag?.('consent', 'update', {
-        ad_storage: 'denied',
-        ad_user_data: 'denied',
-        ad_personalization: 'denied',
-      });
-    }
-  }, [consent]);
-
-  if (!active) return null;
+  if (!tracked) return null;
 
   return (
     <>
+      {/* Order matters — see the note on GTAG_BOOTSTRAP. */}
+      <Script id="gtag-init" strategy="afterInteractive">
+        {GTAG_BOOTSTRAP}
+      </Script>
       <Script
         id="gtag-js"
         src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ADS_ID}`}
         strategy="afterInteractive"
       />
-      <Script id="gtag-init" strategy="afterInteractive">
-        {GTAG_BOOTSTRAP}
-      </Script>
     </>
   );
 }
