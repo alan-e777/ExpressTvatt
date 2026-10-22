@@ -4,9 +4,20 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 
+/**
+ * Mirrors the order document, which is what the snapshot below hands back.
+ *
+ * Note what is *not* here: the customer's email. It lives on `customers/{uid}`,
+ * not on the order, so it needs a join — `/admin/orders` does one server-side.
+ * This board reads the collection straight from the client, so it has the name
+ * (every order-creating route writes `customerName` onto the order) and the
+ * address, and nothing else identifying. The field used to be declared as
+ * `customerEmail` and was therefore always undefined, which is why these cards
+ * only ever showed an address.
+ */
 type Order = {
   id: string;
-  customerEmail: string | null;
+  customerName: string;
   address: string;
   serviceName: string;
   status: string;
@@ -73,7 +84,9 @@ export default function DashboardOrdersClient() {
                     —
                   </p>
                 ) : (
-                  colOrders.map(order => (
+                  colOrders.map(order => {
+                    const name = (order.customerName ?? "").trim();
+                    return (
                     <div key={order.id} style={{
                       background: "#fafafa",
                       border: "1px solid #f0f0f0",
@@ -82,13 +95,19 @@ export default function DashboardOrdersClient() {
                       flexShrink: 0,
                     }}>
                       <p style={{ fontSize: "0.73rem", fontWeight: 600, color: "#1a1a1a", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {order.serviceName || "—"}
+                        {name || order.serviceName || "—"}
                       </p>
+                      {/* Two lines, not three: the columns are 220px at their
+                          narrowest and a glance board earns its keep by staying
+                          scannable. The service drops to the second line when
+                          there is a name to put first — /admin/orders is where
+                          the full record lives. */}
                       <p style={{ fontSize: "0.66rem", color: "#999", margin: "0.1rem 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {order.customerEmail || order.address || "—"}
+                        {name ? order.serviceName || order.address || "—" : order.address || "—"}
                       </p>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

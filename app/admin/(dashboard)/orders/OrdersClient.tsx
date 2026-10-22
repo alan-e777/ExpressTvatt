@@ -94,6 +94,28 @@ function orderNoFor(o: Order): string {
   return o.paymentIntentId ? `#${o.paymentIntentId.slice(-7).toUpperCase()}` : "—";
 }
 
+/**
+ * The two lines of the Customer cell.
+ *
+ * Every order-creating route writes `customerName` onto the order document
+ * (`create-payment`, `create-cart-payment`, `create-struken-tvatt-payment`), so
+ * the name is there for guest checkouts too — a guest has a name even though it
+ * has no account, which is why "Guest" is a label on the second line and never
+ * replaces the first.
+ *
+ * The identifier stays on the second line rather than being dropped: two
+ * customers can share a name, and the email is what the admin actually pastes
+ * into a search or an email client. Returning `null` for the second line when
+ * there is no name keeps the cell from printing the same string twice.
+ */
+function customerLines(o: Order): { primary: string; secondary: string | null } {
+  const identifier =
+    o.customerEmail ??
+    (o.customerId === "anonymous" ? "Guest" : `${o.customerId.slice(0, 12)}…`);
+  const name = o.customerName.trim();
+  return name ? { primary: name, secondary: identifier } : { primary: identifier, secondary: null };
+}
+
 function formatItemsSummary(items: BasketItem[], serviceName: string): string {
   if (!items || items.length === 0) return serviceName;
   return items.map(item => `${item.name}${item.note ? ` (${item.note})` : ""} ×${item.qty}`).join(", ");
@@ -739,10 +761,14 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                   />
                 </th>
                 <Th>Order #</Th>
+                {/* Customer sits second on purpose. The table is 900px wide and
+                    scrolls sideways on a phone, so a column placed after Amount
+                    is simply not on screen — the name has to be among the first
+                    things visible to be of any use there. */}
+                <Th>Customer</Th>
                 <Th>Date</Th>
                 <Th>Service</Th>
                 <Th>Amount</Th>
-                <Th>Customer</Th>
                 <Th>Status</Th>
                 <Th>Notes</Th>
               </tr>
@@ -753,6 +779,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                 const isExpanded     = expandedNotes === order.id;
                 const hasAdminNotes  = !!order.adminNotes.trim();
                 const isSelected     = selected.has(order.id);
+                const customer       = customerLines(order);
 
                 return (
                   <Fragment key={order.id}>
@@ -779,6 +806,28 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                       <Td style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "#555", whiteSpace: "nowrap" }}>
                         {order.paymentIntentId ? `#${order.paymentIntentId.slice(-7).toUpperCase()}` : "—"}
                       </Td>
+                      <Td style={{ fontSize: "0.8rem", maxWidth: "15rem" }}>
+                        <span style={{ display: "flex", alignItems: "flex-start", gap: "0.35rem" }}>
+                          <span style={{ flexShrink: 0, marginTop: "0.1rem", display: "flex" }}>
+                            {order.platform === "mobile"
+                              ? <IconDeviceMobile size={14} color="#888" />
+                              : <IconDeviceDesktop size={14} color="#888" />
+                            }
+                          </span>
+                          {/* min-width: 0 — without it the ellipsis never kicks in
+                              inside a flex child and a long email widens the table. */}
+                          <span className="admin-customer-lines" style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                            <span style={{ color: "#1a1a1a", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {customer.primary}
+                            </span>
+                            {customer.secondary && (
+                              <span style={{ color: "#aaa", fontSize: "0.72rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {customer.secondary}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </Td>
                       <Td>{order.createdAt ? formatDate(order.createdAt) : "—"}</Td>
                       <Td>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -791,20 +840,6 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                         </span>
                       </Td>
                       <Td style={{ fontWeight: 600 }}>{formatAmount(order.amount)}</Td>
-                      <Td style={{ fontSize: "0.8rem" }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                          {order.platform === "mobile"
-                            ? <IconDeviceMobile size={14} color="#888" />
-                            : <IconDeviceDesktop size={14} color="#888" />
-                          }
-                          {order.customerId === "anonymous"
-                            ? <span style={{ color: "#aaa" }}>Guest</span>
-                            : order.customerEmail
-                              ? <span style={{ color: "#333" }}>{order.customerEmail}</span>
-                              : <span style={{ color: "#aaa", fontFamily: "monospace" }}>{order.customerId.slice(0, 12)}…</span>
-                          }
-                        </span>
-                      </Td>
                       <Td onClick={e => e.stopPropagation()}>
                         <StatusSelect
                           value={order.status}

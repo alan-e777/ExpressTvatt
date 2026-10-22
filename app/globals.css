@@ -3979,3 +3979,18 @@ body.has-consent-banner .site-shell .of-bar {
   font-weight: 400;
   color: #64748B;
 }
+
+
+/* ── Admin orders: the Customer cell's two lines ──────────────────────────
+   The orders table is 900px wide and scrolls sideways inside its card, so on a
+   phone only the first couple of columns are on screen. Capping the name/email
+   lines means they ellipsise while still inside the visible strip instead of
+   running off under the card's edge. */
+.admin-customer-lines {
+  max-width: 13rem;
+}
+@media (max-width: 700px) {
+  .admin-customer-lines {
+    max-width: 8.5rem;
+  }
+}
