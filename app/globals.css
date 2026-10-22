@@ -1,6 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 *,
 *::before,
 *::after {
@@ -63,7 +60,7 @@ html {
 }
 
 body {
-  font-family: 'Poppins', -apple-system, sans-serif;
+  font-family: var(--font-poppins), -apple-system, sans-serif;
   font-weight: 400;
   background: var(--cream);
   color: var(--text-dark);
@@ -152,7 +149,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .header-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 16px;
   color: var(--forest-dark);
@@ -179,7 +176,7 @@ input, textarea, select { font-family: inherit; }
   gap: 6px;
   padding: 7px 14px;
   border-radius: 9999px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 500;
   font-size: 13px;
   color: var(--forest-mid);
@@ -210,7 +207,7 @@ input, textarea, select { font-family: inherit; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 27px;
   letter-spacing: 5px;
@@ -273,7 +270,7 @@ input, textarea, select { font-family: inherit; }
   align-items: center;
   gap: 10px;
   padding: 13px 18px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 14px;
   font-weight: 400;
   color: rgba(183, 220, 215, 0.75);
@@ -331,7 +328,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .home-hero-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 700;
   font-size: clamp(32px, 8.5vw, 46px);
   line-height: 1.12;
@@ -346,7 +343,7 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 9px;
   font-weight: 400;
   letter-spacing: 2px;
@@ -360,7 +357,7 @@ input, textarea, select { font-family: inherit; }
   max-width: 480px;
   padding: 14px;
   text-align: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 12px;
   letter-spacing: 2.5px;
@@ -465,7 +462,7 @@ input, textarea, select { font-family: inherit; }
 
 /* Description text — white color */
 .landing-hero-desc {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.65;
@@ -531,7 +528,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-howitworks-heading {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: clamp(22px, 4vw, 28px);
   font-weight: 600;
   color: #ffffff;
@@ -559,7 +556,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-howitworks-step-num {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 1px;
@@ -588,7 +585,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-howitworks-step-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: #ffffff;
@@ -597,7 +594,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-howitworks-step-desc {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 12px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
@@ -673,7 +670,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .service-anim-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-muted);
@@ -686,7 +683,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .service-anim-sub {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 11px;
   font-weight: 400;
   color: rgba(6, 63, 65, 0.35);
@@ -730,7 +727,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-testimonials-kicker {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 2.5px;
@@ -739,7 +736,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-testimonials-title {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: clamp(22px, 5vw, 30px);
   font-weight: 600;
   color: var(--text-dark);
@@ -754,14 +751,14 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-testimonials-score {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-dark);
 }
 
 .landing-testimonials-count {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   color: var(--text-muted);
 }
@@ -793,7 +790,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-testimonial-text {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 14px;
   font-weight: 400;
   line-height: 1.65;
@@ -814,7 +811,7 @@ input, textarea, select { font-family: inherit; }
   border-radius: 50%;
   background: var(--moss);
   color: var(--forest-dark);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   font-weight: 600;
   display: flex;
@@ -824,14 +821,14 @@ input, textarea, select { font-family: inherit; }
 }
 
 .landing-testimonial-name {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-dark);
 }
 
 .landing-testimonial-location {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 11px;
   color: var(--text-muted);
 }
@@ -885,44 +882,44 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Typography ───────────────────────────────────────────────────────── */
 .h1 {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: clamp(24px, 3vw, 36px);
   color: var(--text-dark);
 }
 .h2 {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: clamp(20px, 2.5vw, 28px);
   color: var(--text-dark);
 }
 .h3 {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 16px;
   color: var(--text-dark);
 }
 .body {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 14px;
   color: var(--text-dark);
   line-height: 22px;
 }
 .body-bold {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 500;
   font-size: 14px;
   color: var(--text-dark);
 }
 .small {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 12px;
   color: var(--text-muted);
 }
 .label {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 10px;
   color: var(--text-muted);
@@ -930,7 +927,7 @@ input, textarea, select { font-family: inherit; }
   text-transform: uppercase;
 }
 .micro {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 300;
   font-size: 9px;
   color: var(--text-muted);
@@ -954,7 +951,7 @@ input, textarea, select { font-family: inherit; }
   background: var(--forest-mid);
   border-radius: var(--radius-md);
   padding: 14px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 14px;
   color: var(--moss);
@@ -975,7 +972,7 @@ input, textarea, select { font-family: inherit; }
   background: transparent;
   border-radius: var(--radius-md);
   padding: 14px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 500;
   font-size: 14px;
   color: var(--forest-dark);
@@ -987,7 +984,7 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Form inputs ──────────────────────────────────────────────────────── */
 .field-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 10px;
   color: var(--text-muted);
@@ -1003,7 +1000,7 @@ input, textarea, select { font-family: inherit; }
   border: none;
   border-radius: var(--radius-md);
   padding: 13px var(--sp-lg);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 15px;
   color: var(--text-dark);
@@ -1021,7 +1018,7 @@ input, textarea, select { font-family: inherit; }
   border-radius: var(--radius-md);
   padding: 13px var(--sp-lg);
   text-align: left;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 15px;
   color: var(--text-muted);
@@ -1052,7 +1049,7 @@ input, textarea, select { font-family: inherit; }
   color: var(--earth);
 }
 .eco-trust-banner span {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-style: italic;
   font-weight: 400;
   font-size: 10px;
@@ -1073,7 +1070,7 @@ input, textarea, select { font-family: inherit; }
 
 /* ── Section label ────────────────────────────────────────────────────── */
 .section-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 10px;
   color: var(--text-muted);
@@ -1097,7 +1094,7 @@ input, textarea, select { font-family: inherit; }
   border-radius: var(--radius-md);
   border: 0.5px solid rgba(14, 92, 91, 0.2);
   background: var(--white);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 500;
   font-size: 11px;
   color: var(--text-dark);
@@ -1163,7 +1160,7 @@ input, textarea, select { font-family: inherit; }
 .service-row-text .body { margin-bottom: 2px; }
 
 .service-price {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 15px;
   color: var(--text-mid);
@@ -1264,14 +1261,14 @@ input, textarea, select { font-family: inherit; }
 }
 
 .order-name {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 500;
   font-size: 13px;
   color: var(--forest-dark);
 }
 
 .order-id {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 300;
   font-size: 9px;
   color: var(--forest-dark);
@@ -1284,7 +1281,7 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid var(--earth);
   border-radius: var(--radius-sharp);
   padding: 4px 8px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 500;
   font-size: 9px;
   color: var(--forest-dark);
@@ -1323,8 +1320,8 @@ input, textarea, select { font-family: inherit; }
 .step-active { background: var(--moss); color: var(--forest-dark); }
 .step-future { background: rgba(183, 220, 215, 0.1); }
 .active-ring { background: rgba(183, 220, 215, 0.2); border-radius: var(--radius-pill); padding: 4px; }
-.step-num { font-family: 'Poppins', sans-serif; font-weight: 500; font-size: 10px; }
-.step-label { flex: 1; text-align: center; font-family: 'Poppins', sans-serif; font-weight: 400; font-size: 9px; }
+.step-num { font-family: var(--font-poppins), sans-serif; font-weight: 500; font-size: 10px; }
+.step-label { flex: 1; text-align: center; font-family: var(--font-poppins), sans-serif; font-weight: 400; font-size: 9px; }
 .step-label-done   { color: rgba(183, 220, 215, 0.7); }
 .step-label-active { color: var(--moss); font-weight: 500; }
 .step-label-future { color: rgba(183, 220, 215, 0.3); }
@@ -1374,7 +1371,7 @@ input, textarea, select { font-family: inherit; }
   flex-shrink: 0;
 }
 .avatar-initials {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 15px;
   color: var(--forest-dark);
@@ -1438,7 +1435,7 @@ input, textarea, select { font-family: inherit; }
   margin-bottom: var(--sp-md);
 }
 .price-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 300;
   font-size: 9px;
   color: var(--moss);
@@ -1448,13 +1445,13 @@ input, textarea, select { font-family: inherit; }
   margin-bottom: 4px;
 }
 .price-value {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 28px;
   color: var(--moss);
 }
 .pickup-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 400;
   font-size: 11px;
   color: var(--moss);
@@ -1496,7 +1493,7 @@ input, textarea, select { font-family: inherit; }
   margin: var(--sp-md) 0;
 }
 .summary-total {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-weight: 600;
   font-size: 16px;
   color: var(--text-dark);
@@ -1723,7 +1720,7 @@ input, textarea, select { font-family: inherit; }
   border: none;
   border-radius: var(--radius-pill);
   padding: 11px var(--sp-lg);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 15px;
   color: var(--text-dark);
   outline: none;
@@ -1791,7 +1788,7 @@ input, textarea, select { font-family: inherit; }
 /* ── Misc ─────────────────────────────────────────────────────────────── */
 .error-msg {
   color: #dc2626;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   text-align: center;
   margin-bottom: var(--sp-sm);
@@ -1845,7 +1842,7 @@ input, textarea, select { font-family: inherit; }
   --sh-2: 0 4px 14px rgba(8,63,65,0.07);
   --sh-3: 0 14px 40px rgba(8,63,65,0.12);
 
-  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-inter), -apple-system, system-ui, sans-serif;
   color: var(--ink);
   background: #fff;
   width: 100%;
@@ -1876,7 +1873,7 @@ input, textarea, select { font-family: inherit; }
   height: 52px;
   padding: 0 26px;
   border-radius: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-inter), sans-serif;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -2737,7 +2734,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* Unify typography to Inter (overrides inline Poppins / DM Sans / Playfair) */
-.site-shell, .site-shell * { font-family: 'Inter', -apple-system, system-ui, sans-serif !important; }
+.site-shell, .site-shell * { font-family: var(--font-inter), -apple-system, system-ui, sans-serif !important; }
 
 /* Headings — tighter, ink, confident */
 .site-shell .h1, .site-shell .h2, .site-shell .h3 {
@@ -3870,7 +3867,7 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 16px rgba(8, 63, 65, 0.08);
-  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-inter), -apple-system, system-ui, sans-serif;
   /* Slides up into place; `--in` is added a beat after mount. */
   opacity: 0;
   transform: translateY(12px);

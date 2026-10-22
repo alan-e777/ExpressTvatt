@@ -50,6 +50,16 @@ and Skatteverket for RUT reporting. All are referenced in code or `package.json`
 - **No automated decision-making or profiling** exists in the code, so the policy states none.
 - **No deletion job, TTL or retention enforcement exists anywhere.** Retention periods in the
   policy are therefore statements of intent, not of enforced behaviour (see risk below).
+- **Fonts no longer reach Google (fixed 2026-10-22).** `app/globals.css` used to open with two
+  `@import url('https://fonts.googleapis.com/css2?...')` lines for Poppins and Inter. Because
+  `globals.css` is imported by `app/layout.tsx`, every page load — public, admin and driver —
+  sent the visitor's IP to Google *before* the cookie banner had been answered, which undercut
+  the whole point of gating the ads tag behind consent. Both families are now declared with
+  `next/font/google` in `app/layout.tsx` and exposed as `--font-poppins` / `--font-inter`:
+  Next downloads the files at build time and serves them from our own origin. Verified with
+  `performance.getEntriesByType('resource')` — zero requests to `fonts.googleapis.com` or
+  `fonts.gstatic.com` on the landing page, `/order` and `/admin`. **Nothing is contacted
+  pre-consent any more**, so the policy may say so plainly.
 
 ## Assumptions made due to incomplete code visibility
 
