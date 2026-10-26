@@ -192,6 +192,19 @@ posted an exact time ("14:00") to `/api/create-payment`. The website dropped tha
 
 ---
 
+### 15. Account deletion exists as a route, but only the app can reach it
+- **Web:** `/profil` has no way to delete an account. The new
+  `POST /api/account/delete` route is live but nothing on the website calls it.
+- **App:** calls it from `ProfileScreen` ("Radera konto"), because App Store guideline
+  5.1.1(v) rejects any app that can create an account but not delete one.
+- **Customer hits:** a web-only customer who asks to be erased has to be handled by hand,
+  while an app customer can do it themselves — the same GDPR right, two different answers.
+- **Fix:** add the same two-step "Radera konto" control to `/profil`. The route already
+  verifies the Firebase ID token, anonymises past orders for bokföringslagen and refuses
+  while an order is still in progress, so the web side only needs the UI.
+
+---
+
 ## Recently closed
 
 - **2026-08-30 — Bookable time windows.** The admin can now edit the pickup and delivery

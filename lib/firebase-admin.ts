@@ -28,9 +28,20 @@ if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     projectId: (serviceAccount as Record<string, any>).project_id,
+    // Needed by `admin.database()` — account deletion has to remove the
+    // customer's chat thread, and the Admin SDK cannot find the RTDB instance
+    // without being told where it lives.
+    databaseURL:
+      process.env.FIREBASE_DATABASE_URL ??
+      'https://amostailor-c759c-default-rtdb.europe-west1.firebasedatabase.app',
   });
 }
 
 export const db = admin.firestore();
 export const auth = admin.auth();
+
+// Lazy on purpose: every route in the app imports this module, and resolving
+// the Realtime Database eagerly would open a connection on each cold start for
+// the one route that actually needs it.
+export const rtdb = () => admin.database();
 export default admin;
