@@ -203,6 +203,20 @@ posted an exact time ("14:00") to `/api/create-payment`. The website dropped tha
   verifies the Firebase ID token, anonymises past orders for bokföringslagen and refuses
   while an order is still in progress, so the web side only needs the UI.
 
+### 16. The app has no 0 kr test-item gate
+- **Web:** `/order` calls `GET /api/test-mode`, which returns `enabled` only for an
+  admin UID, and hides every 0 kr tile from everyone else. Its own comment says why:
+  "a customer must never be offered a 0 kr tile they would only be refused at checkout".
+- **App:** never calls that route — there is no reference to test mode anywhere in
+  `skraddare-app/`. Every 0 kr catalogue item is shown to every app user.
+- **Customer hits:** a real customer sees a free tile, builds a basket with it, and
+  `create-cart-payment` refuses the order at the payment step (the admin check there is
+  the binding one, so nothing can actually be ordered for free — this is a UX failure,
+  not a pricing hole).
+- **Fix:** call `/api/test-mode` with the signed-in user's ID token on load, as `/order`
+  does, and filter 0 kr products out of the grid unless it returns `enabled: true`.
+  Until then, only add 0 kr test items while the app is unpublished.
+
 ---
 
 ## Recently closed
