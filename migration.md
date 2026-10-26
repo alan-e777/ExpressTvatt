@@ -25,201 +25,103 @@ Order the open list by how badly it bites, worst first.
 
 ## Open
 
-### 1. Categories are hard-coded in the app
-- **Web:** `/order` builds its category rows from the Firestore `service_categories`
-  collection — admin controls the name, icon, blurb, sort order and the `hidden` flag.
-- **App:** `screens/HomeScreen.tsx` has a literal `CATEGORIES` array of four categories with
-  hard-coded labels, icons and blurbs.
-- **Customer hits:** a category the admin hid is still offered in the app, and
-  `create-cart-payment` then refuses the basket ("… är inte längre tillgänglig") at the
-  payment step. New categories never show up at all.
-- **Fix:** fetch the categories (they are already public via `/api/services` +
-  `service_categories`) and render the rows from that, mirroring `lib/serviceCategories.ts`.
+### 1. Shared logic is duplicated — now enforced, not trusted
+`skraddare-app/lib/{mattvatt,serviceUnits,serviceCategories,minOrderQty,rut,discount,timeslots}.ts`
+are copies of the website files of the same name, because React Native cannot
+import across the Next app. They are now kept **byte-identical** rather than
+"kept in sync by hand", and `npm run check:mirrors` fails when one drifts.
+- **Why it matters:** these modules decide prices. A silent divergence quotes the
+  customer one total and charges another, which is the one class of bug nobody
+  notices until it reaches a bank statement.
+- **The one permitted difference** is `API_URL`: the app copies prefix an origin
+  onto their fetch paths, because RN has none to resolve a relative path
+  against. The check strips those lines and compares everything else.
+- **Still to do:** run `npm run check:mirrors` after touching any of them, and
+  copy the web file over the app one rather than editing a single side.
+  `lib/productIcons` remains a genuine fork — the web returns JSX, the app
+  returns React Native components — so it is not in the check.
 
-### 2. Mattvätt is priced per m² on the web, fixed sizes in the app
-- **Web:** rug type + a size slider, priced kr/m² from `settings/mattvatt`; the cart line is
-  `matta-normal-3.5`.
-- **App:** three fixed sizes (`matta-liten` 299 / `matta-stor` 499 / `matta-akta` 699) in
-  `HomeScreen.tsx`.
-- **Customer hits:** app prices ignore what the admin sets. The prices only still work
-  because `app/api/create-cart-payment/route.ts` keeps a `MATTVATT_PRICES` compatibility map
-  purely for the app.
-- **Fix:** port the m² slider (`components/SquareMeterSlider.tsx` already exists in the app),
-  then **delete `MATTVATT_PRICES` from the server route** — that map is app-compat debt.
-
-### 3. Per-kg / per-m² products cannot be ordered from the app
-- **Web:** measured products carry `pricing` (unit, step, min/max) and each cart line sends
-  an `amount`; price = rate × amount, re-derived server-side (`lib/serviceUnits.ts`).
-- **App:** adds every product at its flat `price` with no `amount`.
-- **Customer hits:** `create-cart-payment` rejects a measured line with no `amount`, so any
-  per-kg or per-m² product fails at payment.
-- **Fix:** port the amount picker and send `amount` on those lines.
-
-### 4. The app's address confirmation calls a dead Google endpoint
-- **Web:** `/api/places/autocomplete` and `/api/places/details` now use the **new**
-  Places API (`places.googleapis.com/v1`, via `lib/places.ts`) and normalise the
-  answer back to the legacy `{ place_id, description, structured_formatting }`
-  shape — so the app's `fetchSuggestions`, which calls our route, keeps working
-  untouched.
-- **App:** `skraddare-app/lib/places.ts` → `fetchPlaceDetails` does **not** call our
-  route. It calls Google's legacy `maps/api/place/details/json` directly with its own
-  `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`. Google switched the legacy Places API off for
-  Cloud projects created after March 2025, and the owner's project is one of those.
-- **Customer hits:** suggestions appear, but picking one returns nothing — no street,
-  no postcode — so the address can never be confirmed and the booking cannot be
-  completed. Silent: the function returns empty strings on any non-OK status.
-- **Fix:** delete `fetchPlaceDetails`' direct Google call and point it at
-  `${API_URL}/api/places/details?placeId=…`, which already returns exactly the
-  `{ address, postalCode }` it wants. That also retires
-  `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY` — the app then needs no Google key at all.
-
-### 5. The app cannot see the drawn service area, only its bounding box
-- **Web:** the admin now draws the delivery area as a polygon with any number of points
-  (Inställningar → Tjänsteområde). Google's `locationRestriction` takes a circle or a
-  rectangle and **never a polygon**, so `/api/places/autocomplete` restricts suggestions to
-  the polygon's bounding box and the exact shape is applied one step later, in
-  `/api/places/details`: it asks Google for the place's coordinates, runs
-  `pointInPolygon` from `lib/serviceArea.ts`, and answers
-  `{ outsideArea: true }` for an address inside the box but outside the shape.
-  `components/AddressAutocomplete.tsx` shows "Vi kör tyvärr inte till den adressen ännu"
-  and leaves the field unconfirmed, so checkout cannot proceed.
-- **App:** `skraddare-app/lib/places.ts` → `fetchPlaceDetails` calls Google directly
-  (see #4) and so never receives that flag. Its suggestions come from our route, so it is
-  still held to the **bounding box** — but nothing checks the polygon itself.
-- **Customer hits:** in a concave or elongated area — an L along two roads, say — an
-  address in the notch of the L is offered *and accepted* in the app. The driver gets a
-  pickup outside the area the owner drew. The more the shape differs from a circle, the
-  wider the hole; for the default octagon it is the corners only.
-- **Fix:** the same one as #4 — point `fetchPlaceDetails` at
-  `${API_URL}/api/places/details?placeId=…` and honour `outsideArea` in
-  `skraddare-app/components/AddressAutocomplete.tsx` the way the web component does.
-  Fixing #4 gets most of this for free; only the `outsideArea` branch is extra.
-- **Note:** `create-cart-payment` does **not** re-check the address against the area — it
-  never did, for either client. Closing this properly would mean storing the picked
-  coordinates on the order and testing them server-side at checkout.
-
-### 6. RUT-avdrag is per item on the web, all-or-nothing in the app
-- **Web:** RUT eligibility is set per catalogue item (and per category, which bulk-writes
-  its items) under Tjänster — `rutEligible` on the StrukenTvatt doc, mirrored on the
-  `service_categories` doc for Mattvätt, which has no products. `computeCartTotals` returns
-  a `rutEligibleTotalKr` alongside the total, and RUT is 50% of **that** portion only.
-  `create-cart-payment` re-derives eligibility from the catalogue and charges accordingly.
-- **App:** `skraddare-app/lib/rut.ts` and `lib/discount.ts` are hand-copied mirrors that
-  predate the flag. `HomeScreen`/`CheckoutScreen` compute `rutRefundKr(totalKr)` over the
-  **whole** basket, and the app never reads `rutEligible` from `/api/struken-tvatt`.
-- **Customer hits:** a basket holding anything the admin marked as not RUT-eligible shows a
-  **larger deduction in the app than the server actually applies** — the customer is quoted
-  a lower total than they are charged. Silent, and the app's own summary is the thing that
-  is wrong. It only bites once the owner turns RUT off somewhere; until then both sides
-  agree, because absent means eligible.
-- **Fix:** copy the `rutEligibleTotalKr` half of `lib/discount.ts` and the
-  `normalizeRutEligible` half of `lib/rut.ts` into the app's mirrors, read `rutEligible`
-  off the catalogue in `HomeScreen`, and pass it per line into `computeCartTotals`. Mattvätt
-  needs the category flag from `/api/service-categories`, which the app does not fetch yet.
-
-### 7. Minsta antal per vara is not enforced in the app
-- **Web:** a catalogue item can carry a `minQty` — the fewest of it the shop takes at
-  once, set per item under Tjänster. `/order` shows a "Minst 5 st" badge, the first "+"
-  adds the whole minimum, and "−" takes the line out rather than leaving it short, so a
-  basket below the minimum cannot be built.
-- **App:** `HomeScreen.tsx` adds every product one at a time and knows nothing about
-  `minQty`.
-- **Customer hits:** adds one of an item the shop only takes five of, fills in the whole
-  form, and `create-cart-payment` refuses the basket at the payment step
-  ("Minsta antal är inte uppfyllt för …"). The item is orderable again as soon as they
-  guess the right number, with nothing on screen saying what it is.
-- **Fix:** read `minQty` from `/api/struken-tvatt` (it is already normalized there), show
-  it on the product row, and mirror the two cart rules from `lib/minOrderQty.ts` —
-  `addStep` on "+" and `qtyAfterRemove` on "−".
-
-### 8. Admin-blocked dates are not greyed out in the app
-- **Web:** `components/DatePicker.tsx` fetches `/api/availability` and disables blocked days.
-- **App:** `components/DatePickerModal.tsx` offers every date.
-- **Customer hits:** picks a blocked day, fills in the whole form, gets rejected at payment.
-- **Fix:** same fetch in `DatePickerModal` (the endpoint is public and needs no auth).
-
-### 9. No 0 kr test-order path in the app
-- **Web:** an all-0 kr basket skips Stripe entirely and the order is written already paid.
-- **App:** `CartPaymentScreen` waits for a `clientSecret` and keeps the pay button disabled
-  when the server returns `null` for one.
-- **Customer hits:** only the admin, doing a test order from the app — it dead-ends.
-- **Fix:** when the response has no `clientSecret` but has an `orderId`, jump straight to the
-  confirmation screen.
-
-### 10. Shared logic is duplicated, not imported
-`skraddare-app/lib/discount.ts`, `lib/rut.ts` and `lib/timeslots.ts` are hand-copied mirrors
-of the website files of the same name (RN cannot import across the Next app). **Any change to
-a web copy must be mirrored into the app copy in the same commit** or the app's price preview
-drifts from what the server charges. Same story for `lib/productIcons.ts`.
-
-### 11. Dead legacy screens still in the tree
-`BookScreen.tsx`, `PaymentScreen.tsx`, `ProductsScreen.tsx` and `StrukenTvattScreen.tsx` are
-not registered in `navigation/RootNavigator.tsx` — leftovers from the single-service flow that
-posted an exact time ("14:00") to `/api/create-payment`. The website dropped that flow.
-- **Fix:** delete them (and `lib/api.ts`), then decide whether `/api/create-payment` still has
-  any caller. Until then, do not "fix" those screens — they are not shipping.
-
-### 12. No privacy-policy link in the app
-- **Web:** `/integritetspolicy`, driven by the GDPR settings the admin edits.
-- **App:** `ProfileScreen` links to nothing.
-- **Customer hits:** nothing — but App Store review requires the link.
-- **Fix:** link out to the hosted policy from Profil.
-
-### 13. First-time discount is derived differently
-- **Web:** `/api/first-time-eligibility` (verifies the ID token server-side).
-- **App:** reads `customers/{uid}.hasPlacedOrder` straight from Firestore.
-- **Customer hits:** nothing today — the server decides the real discount either way, this is
-  display only. Worth aligning when the app is touched anyway.
-
----
-
-### 14. Ads tracking (Google tag / gtag.js) is web only
+### 2. Ads tracking (Google tag / gtag.js) is web only
 - **Web:** `components/TrackingPixel.tsx` loads the ads team's Google tag (`AW-18517355089`) on every
   public page from `app/layout.tsx`, and re-runs `gtag('config', …, { page_path })` on client-side route
-  changes. Admin and driver are excluded. This replaced the Trlution `tlq` pixel (`LS-27278812-1`), which
-  never reported anything — nothing of it is left in the tree (2026-10-21).
-  Consent is handled with Consent Mode v2: `lib/consent.ts` + `components/CookieBanner.tsx`, with
-  withdrawal (`components/ConsentReset.tsx`) in the privacy policy's cookie section. The tag loads
-  for everyone but stores nothing until the visitor accepts (2026-10-22).
+  changes. Admin and driver are excluded. Consent is handled with Consent Mode v2: `lib/consent.ts` +
+  `components/CookieBanner.tsx`, with withdrawal (`components/ConsentReset.tsx`) in the privacy policy's
+  cookie section. The tag loads for everyone but stores nothing until the visitor accepts (2026-10-22).
 - **App:** nothing — gtag.js is browser JavaScript. Google Ads' mobile equivalent is the Firebase SDK
   (`@react-native-firebase/analytics` + the Ads/Firebase link), which is not in the app's tree.
-- **Customer hits:** none; this only affects the ads team's attribution. Ask them whether app installs /
-  in-app bookings need the Firebase measurement path wired up before launch.
+- **Customer hits:** none; this only affects the ads team's attribution.
+- **Deliberately deferred (2026-10-26).** It needs the ads team to say whether app installs and in-app
+  bookings need attribution at all, and it adds a native SDK plus a consent UI. **Action for the owner:
+  ask them before launch.**
 - **Note for the app:** the consent requirement travels with the tracking, not with the browser. If the
   app ever gets the Firebase/Ads SDK it needs its own consent gate — an ATT-style prompt or an
   equivalent of this banner — and `lib/consent.ts` is web-only (`localStorage`), so it would need a
   React Native counterpart backed by `AsyncStorage` rather than an import.
 
----
-
-### 15. Account deletion exists as a route, but only the app can reach it
-- **Web:** `/profil` has no way to delete an account. The new
-  `POST /api/account/delete` route is live but nothing on the website calls it.
-- **App:** calls it from `ProfileScreen` ("Radera konto"), because App Store guideline
+### 3. Account deletion has no web UI — and that is a deliberate choice
+- **Web:** `/profil` has no "Radera konto" control. `POST /api/account/delete` is live but only the app
+  calls it.
+- **App:** `ProfileScreen` calls it behind a two-step confirmation, because App Store guideline
   5.1.1(v) rejects any app that can create an account but not delete one.
-- **Customer hits:** a web-only customer who asks to be erased has to be handled by hand,
-  while an app customer can do it themselves — the same GDPR right, two different answers.
-- **Fix:** add the same two-step "Radera konto" control to `/profil`. The route already
-  verifies the Firebase ID token, anonymises past orders for bokföringslagen and refuses
-  while an order is still in progress, so the web side only needs the UI.
-
-### 16. The app has no 0 kr test-item gate
-- **Web:** `/order` calls `GET /api/test-mode`, which returns `enabled` only for an
-  admin UID, and hides every 0 kr tile from everyone else. Its own comment says why:
-  "a customer must never be offered a 0 kr tile they would only be refused at checkout".
-- **App:** never calls that route — there is no reference to test mode anywhere in
-  `skraddare-app/`. Every 0 kr catalogue item is shown to every app user.
-- **Customer hits:** a real customer sees a free tile, builds a basket with it, and
-  `create-cart-payment` refuses the order at the payment step (the admin check there is
-  the binding one, so nothing can actually be ordered for free — this is a UX failure,
-  not a pricing hole).
-- **Fix:** call `/api/test-mode` with the signed-in user's ID token on load, as `/order`
-  does, and filter 0 kr products out of the grid unless it returns `enabled: true`.
-  Until then, only add 0 kr test items while the app is unpublished.
+- **GDPR position (checked 2026-10-26):** Article 17 obliges the controller to *honour* an erasure
+  request; it does not mandate a self-service button. The privacy policy states the right to
+  `radering` and gives a contact address, in both Swedish and English
+  (`app/integritetspolicy/page.tsx`), so a web customer's request has a working channel. **No rule is
+  being broken.** Apple's requirement is app-only, and that is satisfied.
+- **Worth doing anyway** when `/profil` is next touched: the route needs nothing, only the UI. A
+  self-service control is less work than handling requests by hand.
 
 ---
 
 ## Recently closed
+
+- **2026-10-26 — The app now reads the same catalogue as the website.** Thirteen entries closed in
+  one pass, all app-side unless noted:
+  - **Categories are no longer hard-coded.** `HomeScreen` had a literal four-category array; it now
+    builds its rows from the catalogue plus `/api/service-categories`, resolved through the shared
+    `resolveCategoryMeta`/`compareCategories`. A category the admin adds, renames, reorders or hides
+    reaches the app, and the icon comes from the admin's `icon` key.
+  - **Mattvätt is priced per m².** The three fixed sizes (299/499/699) are gone; the app now shows the
+    rug types and size slider from `settings/mattvatt` and sends area-based lines. **The server's
+    `MATTVATT_PRICES` shim was deleted with it** — together with the name-regex fallback beside it,
+    because removing only the table would have dropped a stale `matta-liten` into a regex that reads
+    "2 m²" out of its own name and charges 180 kr for a 299 kr rug. Legacy rug lines now price to null
+    and are dropped rather than guessed at. **An app build older than this will not price rugs.**
+  - **Per-kg / per-m² products can be ordered.** Measured products open a sheet that asks for the
+    amount, snapped to the unit's step and clamped to the admin's range, and the line carries `amount`
+    so `create-cart-payment` stops refusing it.
+  - **Categories that ask for a note now ask.** `requiresInput` is honoured in the same sheet, so a
+    tailoring category is actionable instead of arriving with no instruction.
+  - **Address confirmation works again.** `fetchPlaceDetails` called Google's legacy Places endpoint
+    directly — switched off for this Cloud project — and returned empty strings silently, while the
+    component fell back to the prediction text and confirmed anyway. **Orders were being written with
+    no postcode.** It now calls `/api/places/details`, which also retires
+    `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`: the app needs no Google key at all.
+  - **The drawn service area is enforced.** The app honours `outsideArea` and leaves the field
+    unconfirmed, so an address in the notch of a concave area is no longer accepted. A failed lookup
+    now says so instead of confirming.
+  - **RUT is per item.** `computeCartTotals` returns `rutEligibleTotalKr` and both `HomeScreen` and
+    `CheckoutScreen` take the deduction from that share only, so a basket holding something the admin
+    marked as not RUT-eligible is no longer quoted a bigger deduction than it is charged.
+  - **Minsta antal is enforced.** The tile shows "Minst N st", the first "+" adds the whole minimum and
+    "−" drops the line rather than leaving it short, via the shared `addStep`/`qtyAfterRemove`.
+  - **Admin-blocked dates are greyed out.** `DatePickerModal` fetches `/api/availability`, cached once
+    per session; a failed load blocks nothing and lets the server decide.
+  - **0 kr test orders work from the app.** A response with no `clientSecret` but an `orderId` goes
+    straight to the confirmation screen instead of dead-ending on a disabled pay button.
+  - **0 kr items are admin-gated.** The app calls `/api/test-mode` and filters 0 kr tiles out for
+    everyone else, so a customer is never offered a free tile they would be refused at checkout.
+  - **First-time eligibility comes from the server.** `/api/first-time-eligibility` with a verified ID
+    token, rather than reading `customers/{uid}.hasPlacedOrder` from the client.
+  - **Dead legacy screens deleted.** `BookScreen`, `PaymentScreen`, `ProductsScreen` and
+    `StrukenTvattScreen` were unregistered leftovers of the single-service flow, along with
+    `createPaymentIntent` in `lib/api.ts`. `/api/create-payment` is left alone — it is on CLAUDE.md's
+    do-not-touch list.
+  - **The privacy policy is linked** from Profil (App Store requirement).
+
+  The cart was reworked to make this possible: lines are now keyed by `cartLineKey(id, note, amount)`
+  rather than by product id, so two amounts or two notes of the same product are two lines, exactly as
+  on the website.
 
 - **2026-08-30 — Bookable time windows.** The admin can now edit the pickup and delivery
   windows (Inställningar → Tider, `settings/timeslots`). The app was updated in the same

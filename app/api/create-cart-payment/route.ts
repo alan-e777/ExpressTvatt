@@ -34,15 +34,6 @@ type CartItem = {
   amount?: number;
 };
 
-// Legacy fixed mattvätt sizes. The website now sends area-based lines
-// (`matta-normal-3.5`, priced from settings/mattvatt), but the iOS app still
-// sells these three fixed sizes — so their canonical prices stay here.
-const MATTVATT_PRICES: Record<string, number> = {
-  'matta-liten': 299,
-  'matta-stor':  499,
-  'matta-akta':  699,
-};
-
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const {
@@ -267,21 +258,24 @@ export async function POST(request: NextRequest) {
     if (item.type === 'mattvätt') {
       if (hiddenCategories.has(MATTVATT_CATEGORY)) { unavailable.push(item.name); continue; }
       lineRutEligible = categoryRutEligible.get(MATTVATT_CATEGORY) !== false;
-      // Area-based line (`matta-normal-3.5`) → kr per m² × m², both from settings.
-      // Older clients fall back to the fixed sizes, then to the legacy
-      // "Matta X m²" name (kvm × 90).
+      // Area-based line (`matta-normal-3.5`) → kr per m² × m², both from
+      // settings/mattvatt. That is now the only way a rug is priced: both
+      // clients send these lines, so settings/mattvatt is the single source of
+      // truth and nothing here second-guesses it.
+      //
+      // Anything else prices to null and is dropped rather than guessed at. The
+      // two shims that used to stand here — a fixed-size table for the old app
+      // (299/499/699) and a regex over the line name (kvm × 90) — were removed
+      // together on purpose: removing only the table would have sent a stale
+      // `matta-liten` into the regex, which reads "2 m²" out of its own name and
+      // would have charged 180 kr for a 299 kr rug. A dropped line is visible;
+      // a quietly wrong price is not.
       const matta = parseMattaLineId(item.id);
       if (matta) {
         priceKr  = mattaPriceKr(mattvattSettings, matta.type, matta.sqm);
         // Name it from the parsed line too — the order record and the receipt
         // should never show an area the price was not calculated from.
         lineName = mattaLineName(matta.type, matta.sqm, mattvattSettings);
-      } else if (MATTVATT_PRICES[item.id] !== undefined) {
-        priceKr = MATTVATT_PRICES[item.id];
-      } else {
-        const match = item.name.match(/(\d+(?:\.\d+)?)\s*m²/i);
-        const kvm   = match ? parseFloat(match[1]) : null;
-        priceKr     = kvm ? Math.round(kvm) * 90 : null;
       }
     } else if (item.type === 'struken') {
       const product = strukenById[item.id];

@@ -2,7 +2,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "check:mirrors": "bash scripts/check-mirrors.sh"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.4.0",
