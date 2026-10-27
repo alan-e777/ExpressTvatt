@@ -14,6 +14,21 @@ This is a carve-out from "always commit + push in the same turn". That rule cove
 ## Default target
 Unless the user says "mobile", "app", "iOS", or "Expo", always assume changes are for the **website** (`app/` — Next.js). Never touch `skraddare-app/` unless explicitly asked. The app is not live yet, which is why web-only changes are fine — but they leave debt, see below.
 
+## devNotes/IOS_APP_STORE.md — the iOS app's state and launch runbook
+**Read it before touching `skraddare-app/`, and before answering any question about the app's readiness, signing, builds, OTA updates or the App Store.** It is the single record of:
+- **what is proven and what is not.** The app is built, signed and running on the developer's iPhone, but a long list of features typecheck and bundle without ever having been seen working on a device — that list is at the top, under "Where the app stands". Do not describe any of it as working.
+- **the launch runbook** (section B): the exact ordered steps once the client's Apple Developer account exists — releasing the bundle id from the developer's personal team, switching Stripe to the client's live key, re-signing, APNs, the Places key, submission.
+- **the blockers needing the Apple account or owner input** (A–I), including the one easiest to get wrong: production runs **live** Stripe keys from the client's account while the app carries a **test** key from a different one. Never put a live key into a preview or simulator build.
+- EAS coordinates: project `@calleexpressapp/express-tvatt`, bundle id `se.expresstvatt.app`, profiles `simulator` / `preview` / `production`, OTA channel `preview`.
+
+**Keep it current in the same turn as any app change**, the way `migration.md` is kept: move items out of "never seen running" once confirmed on a device, and add new rough edges as they appear. A fix nobody wrote down is a fix nobody remembers to verify.
+
+**All `skraddare-app/` work is deliberately uncommitted** (the owner keeps only the website in git), so this file is also the only durable record that the work exists.
+
+## npm run check:mirrors — the duplicated pricing modules
+Seven modules exist twice because React Native cannot import across the Next app: `mattvatt`, `serviceUnits`, `serviceCategories`, `minOrderQty`, `rut`, `discount`, `timeslots`. They are kept **byte-identical** between `lib/` and `skraddare-app/lib/`, and `npm run check:mirrors` fails when one drifts (lines naming `API_URL` are exempt — RN has no origin for a relative fetch path).
+**Never edit one side only.** Copy the web file over the app one, then check the app still compiles. These modules decide prices: a silent divergence quotes the customer one total and charges another.
+
 ## migration.md — the web ↔ app ledger
 `migration.md` records every place the website and the iOS app now behave differently, so the owner can work through it before the app launches.
 **Whenever a change lands on one side only, add an entry to `migration.md` in the same turn — before committing — and mention it in the summary.** That includes: a web feature the app does not have, a server route the app cannot call, a shared file duplicated instead of imported, and any app-compat shim left in a server route (the entry then says what to delete once the app catches up). When a change closes a gap, move that entry to *Recently closed* with the date.
