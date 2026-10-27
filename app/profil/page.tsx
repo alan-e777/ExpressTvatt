@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  updateProfile, signOut, User,
+  sendPasswordResetEmail, updateProfile, signOut, User,
 } from 'firebase/auth';
 import {
   doc, setDoc, updateDoc, collection, query, where, onSnapshot, Timestamp, serverTimestamp,
@@ -102,6 +102,8 @@ export default function ProfilPage() {
   const [password,   setPassword]   = useState('');
   const [showPass,   setShowPass]   = useState(false);
   const [formError,  setFormError]  = useState('');
+  const [resetNotice, setResetNotice] = useState('');
+  const [resetting,   setResetting]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [savedPhone,      setSavedPhone]      = useState('');
@@ -172,7 +174,26 @@ export default function ProfilPage() {
 
   function clearForm() {
     setName(''); setEmail(''); setPhone(''); setPassword('');
-    setFormError(''); setShowPass(false);
+    setFormError(''); setShowPass(false); setResetNotice('');
+  }
+
+  async function handleResetPassword() {
+    const address = email.trim();
+    if (!address) { setFormError('Fyll i din e-postadress först.'); return; }
+    setFormError(''); setResetNotice(''); setResetting(true);
+    try {
+      await sendPasswordResetEmail(auth, address);
+    } catch {
+      // Deliberately swallowed. Telling the visitor that an address has no
+      // account turns this form into a way to discover who is a customer, so
+      // the answer is the same either way.
+    } finally {
+      setResetNotice(
+        `Om det finns ett konto för ${address} har vi skickat en återställningslänk dit. ` +
+        'Titta även i skräpposten.',
+      );
+      setResetting(false);
+    }
   }
 
   async function handleAddAddress(e: React.FormEvent) {
@@ -354,7 +375,24 @@ export default function ProfilPage() {
           }
         />
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8, marginBottom: 8 }}>
+          <button
+            type="button"
+            className="small"
+            style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onClick={handleResetPassword}
+            disabled={resetting}
+          >
+            {resetting ? 'Skickar…' : 'Glömt lösenord?'}
+          </button>
+        </div>
+
         {formError && <p className="error-msg">{formError}</p>}
+        {resetNotice && (
+          <p className="small" style={{ color: 'var(--forest-dark)', textAlign: 'center', marginBottom: 8 }}>
+            {resetNotice}
+          </p>
+        )}
 
         <button type="submit" className="btn-primary" disabled={submitting} style={{ marginTop: 8 }}>
           {submitting ? 'Loggar in…' : 'Logga in'}

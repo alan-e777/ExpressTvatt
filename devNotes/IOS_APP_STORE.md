@@ -54,6 +54,13 @@ website's logic, but no one has watched it work on a device:
 - the 0 kr test-order path and the admin-only gate on 0 kr tiles
 - the note field for categories with `requiresInput`
 - account deletion end to end (app → route → Auth user gone → signed out)
+- **"Glömt lösenord?" on `AuthScreen`** (added 2026-10-27). Calls Firebase's
+  `sendPasswordResetEmail` directly — no server route, no Resend, because the
+  client did not want another paid service. The screen always shows the same
+  "if an account exists we sent a link" message whether or not the address is
+  real, so it cannot be used to discover who is a customer. The mail itself is
+  Firebase's, styled per `FIREBASE_EMAIL_TEMPLATES.md`. Worth checking that the
+  link actually opens and completes a reset from a phone.
 - push notifications — never tested, and cannot be until **C** is done
 
 ### Known rough edges, not yet fixed
