@@ -9,6 +9,61 @@ Cross-reference with `CLAUDE.md` for codebase structure.
 
 ---
 
+### 🔴 LIVE PASSWORDS ARE IN THIS REPOSITORY'S PUBLIC HISTORY — ROTATE THEM
+
+Found 2026-10-27. **Not yet done.** The most urgent item in this file.
+
+Two plaintext account logins were committed to `CLAUDE.md` early on and removed
+again a few commits later. Removing them changed nothing: **this repository is
+public and both commits remain in its history.** One of the two is the
+**bootstrap `ADMIN_UID`** — the root admin, with the whole dashboard behind it,
+which `lib/admin-auth.ts` treats as `developer` and which by design cannot be
+locked out. The other is a customer test account.
+
+This section deliberately does not name the accounts or the commits. Anyone can
+find them by reading the history; there is no reason for this file — which is
+itself public — to hand over the shortcut. The owner knows which two they are.
+
+**Fix — rotation, not history rewriting:**
+
+1. Firebase Console → Authentication → Users → each account → Reset password.
+   The admin panel **cannot** do the root admin:
+   `POST /api/admin/admins/reset-password` deliberately excludes the bootstrap
+   UID so the owner can never be locked out.
+2. If either password was reused anywhere else — the mail account itself,
+   Stripe, Vercel, Firebase Console — change it there too. A password in public
+   history is burned everywhere it appears, not only where it leaked.
+3. Mark this item done only once both are actually changed.
+
+Rewriting history afterwards is optional and does **not** substitute for
+rotation: GitHub retains unreachable objects, and clones and forks persist.
+
+A full sweep found nothing else exposed: `.env.local`, `.env`,
+`firebase-service-account.json` and both app env files have **never** been
+committed, and the only `sk_live_` string in the repo is a literal placeholder.
+
+---
+
+### ~~🔴 ADMIN PANEL UNREACHABLE — ERR_TOO_MANY_REDIRECTS~~ ✅ Done (2026-10-27)
+
+Fixed in `0ff08d7`. `/admin/login` looped forever once a session cookie was
+present but no longer valid: `middleware.ts` saw the cookie and redirected to
+`/admin`, while `(dashboard)/layout.tsx` verified it, found it dead, and
+redirected back.
+
+Middleware runs on the Edge runtime and cannot load `firebase-admin`, so it can
+only see that a cookie *exists*, never whether it still verifies — deciding
+"already logged in" from presence alone was never safe. Sessions last 14 days,
+so every admin reached this eventually and the panel locked itself out on a
+timer, escapable only by clearing cookies by hand.
+
+The middleware's login→`/admin` redirect is gone; the protective direction
+stays. **Do not reintroduce it.** If a signed-in admin should skip the login
+form, that belongs in the login page client-side, where a session can actually
+be verified.
+
+---
+
 ### ~~1. Firestore Security Rules~~ ✅ Done
 
 `firestore.rules` committed to repo and deployed via Firebase Console.
@@ -128,7 +183,27 @@ Register both new event types in the Stripe Dashboard webhook config.
 
 ---
 
-### 🔴 RESEND_FROM IS NOT SET IN VERCEL — PRODUCTION SENDS NO EMAIL
+### 🟡 RESEND_FROM — owner reports it is now set in Vercel (2026-10-27), UNVERIFIED
+
+**One step to close this:** open **Admin → Inställningar → the notification
+status panel** (`NotificationStatusPanel.tsx`, backed by
+`GET /api/admin/notification-config`) and confirm:
+
+| Field | Must read |
+|---|---|
+| `from` | an `@expresstvatt.se` address — **not** `onboarding@resend.dev` |
+| `sandbox` | `false` |
+| `replyTo` | a mailbox someone actually reads, not `null` |
+| `configured` | `true` |
+
+If all four are right, mark this item ✅ Done and delete the rest of this
+section. That panel exists precisely because Vercel hides a value once saved,
+so the Vercel UI cannot answer this — and the failure mode is not "unset" but
+"set on Preview and not Production", which looks identical there.
+
+The original finding follows, as the reason not to take this on trust.
+
+---
 
 `expresstvatt.se` **is verified in Resend** (root domain, since ~2026-06), so
 there is no DNS work. The problem is the env var, and it is in **production**.
@@ -137,9 +212,9 @@ Proven, not inferred: a real order placed on https://expresstvatt.se recorded
 
 ```
 confirmationNotice.from  = "Express Tvätt <onboarding@resend.dev>"
-confirmationNotice.email = { ok: false, to: "zupimcarl@gmail.com",
+confirmationNotice.email = { ok: false, to: "<customer address>",
                              error: "You can only send testing emails to your
-                                     own email address (alan.e777@hotmail.com)…" }
+                                     own email address (<Resend account owner>)…" }
 ```
 
 That `from` string is the **fallback baked into `lib/order-status-email.ts`**,

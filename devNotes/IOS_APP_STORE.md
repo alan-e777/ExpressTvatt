@@ -4,6 +4,11 @@ Audit of `skraddare-app/` begun **2026-10-26**, ahead of getting access to the
 client's Apple Developer account. Companion to `BEFORE_DEPLOYMENT.md`, which
 covers the website, and to `migration.md`, which tracks web ↔ app divergence.
 
+> **`devNotes/LAUNCH_CHECKLIST.md` is the ordered list of what is left before
+> launch**, website and app together. This file is the app's detail: what is
+> proven, what is not, and the Apple runbook in section **B**. If you are
+> picking this up in a new session, read the checklist first.
+
 **Build path: Expo + EAS Build (cloud).** There is no Xcode on the dev machine
 (`xcode-select` points at Command Line Tools only), so `expo run:ios` cannot
 work locally. EAS compiles on Expo's own Macs and needs no local Xcode. This is

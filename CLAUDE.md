@@ -1,5 +1,11 @@
-## Deployment
-See `devNotes/BEFORE_DEPLOYMENT.md` for known security and data issues that must be resolved before going live. Includes exact code fixes for each item.
+## Deployment — start at devNotes/LAUNCH_CHECKLIST.md
+**`devNotes/LAUNCH_CHECKLIST.md` is the single ordered list of what is left before launch**, across the website, the iOS app and security. Read it first in any new session, and keep it current: tick items off as they land, and add anything new that blocks launch. Everything else is detail hanging off it.
+- `devNotes/BEFORE_DEPLOYMENT.md` — website security and data issues, with exact code fixes per item.
+- `devNotes/GO_LIVE_HANDOVER.md` — the cutover-day runbook (Stripe live keys, webhook, Maps).
+- `devNotes/IOS_APP_STORE.md` — the iOS app's state and its Apple runbook (see its own section below).
+- `devNotes/FIREBASE_EMAIL_TEMPLATES.md` — the password-reset email, and why Firebase blocks editing it.
+
+Three things a new session gets wrong if it does not read the checklist first: the app's source is **not in git** (it lives in the working tree plus the local-only branch `local-only/app-work`, which must never be pushed); this repository is **public**, so nothing secret may ever be committed; and app changes normally ship by **OTA update**, not a rebuild.
 
 ## Never commit the owner's personal files
 Files the owner writes **for themselves** — notes, scratch prompts, working instructions, todo lists, personal reference — are not part of the codebase and must **never** be committed or pushed. If the owner creates `instructions.md`, `notes.md`, `todo.md`, `ideas.md`, a stray `.txt` dump or anything similar, leave it alone: do not `git add` it, do not include it in a commit, do not mention it in a commit message.
