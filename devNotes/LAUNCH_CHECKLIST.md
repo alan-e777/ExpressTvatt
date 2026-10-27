@@ -47,11 +47,7 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
 
 ## 1. Do now — nothing blocks these
 
-- [ ] **Rotate the two leaked passwords.** They are in public git history and
-      one is the root admin. Firebase Console → Authentication → Users.
-      Details and the reason the admin panel cannot do it:
-      `BEFORE_DEPLOYMENT.md` → "LIVE PASSWORDS ARE IN THIS REPOSITORY'S PUBLIC
-      HISTORY". **This is the single most urgent item in any of these files.**
+- [x] ~~Rotate the two leaked passwords.~~ **Done 2026-10-27.**
 - [ ] **Verify `RESEND_FROM` actually took in Production.** One click: Admin →
       Inställningar → notification status panel. Confirm `sandbox: false` and an
       `@expresstvatt.se` sender. If it is right, mark the item done in
@@ -129,6 +125,8 @@ From `BEFORE_DEPLOYMENT.md` and `GO_LIVE_HANDOVER.md`:
 
 ## Recently closed (2026-10-26 → 27)
 
+- Two credentials that had been committed early on and were still readable in
+  this repo's public history were **rotated**. See `BEFORE_DEPLOYMENT.md`.
 - Admin panel redirect loop — `/admin/login` was unreachable (`0ff08d7`).
 - Customer password reset — did not exist on either surface; now on both.
 - Customer account deletion — App Store requires it; route plus app UI.

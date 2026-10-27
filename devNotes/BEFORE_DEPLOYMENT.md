@@ -9,38 +9,29 @@ Cross-reference with `CLAUDE.md` for codebase structure.
 
 ---
 
-### 🔴 LIVE PASSWORDS ARE IN THIS REPOSITORY'S PUBLIC HISTORY — ROTATE THEM
+### ~~🔴 Credentials in this repository's public history~~ ✅ Done (2026-10-27)
 
-Found 2026-10-27. **Not yet done.** The most urgent item in this file.
+Two plaintext account logins — one of them the bootstrap `ADMIN_UID` — were
+committed to `CLAUDE.md` early on and removed a few commits later. Removing
+them changed nothing, because this repository is public and both commits remain
+in its history. **Both passwords were rotated on 2026-10-27**, which is what
+actually closes it; the old values are now worthless wherever they appear.
 
-Two plaintext account logins were committed to `CLAUDE.md` early on and removed
-again a few commits later. Removing them changed nothing: **this repository is
-public and both commits remain in its history.** One of the two is the
-**bootstrap `ADMIN_UID`** — the root admin, with the whole dashboard behind it,
-which `lib/admin-auth.ts` treats as `developer` and which by design cannot be
-locked out. The other is a customer test account.
+Kept as a record rather than deleted, for two reasons that still apply:
 
-This section deliberately does not name the accounts or the commits. Anyone can
-find them by reading the history; there is no reason for this file — which is
-itself public — to hand over the shortcut. The owner knows which two they are.
-
-**Fix — rotation, not history rewriting:**
-
-1. Firebase Console → Authentication → Users → each account → Reset password.
-   The admin panel **cannot** do the root admin:
-   `POST /api/admin/admins/reset-password` deliberately excludes the bootstrap
-   UID so the owner can never be locked out.
-2. If either password was reused anywhere else — the mail account itself,
-   Stripe, Vercel, Firebase Console — change it there too. A password in public
-   history is burned everywhere it appears, not only where it leaked.
-3. Mark this item done only once both are actually changed.
-
-Rewriting history afterwards is optional and does **not** substitute for
-rotation: GitHub retains unreachable objects, and clones and forks persist.
+- **Rotation, not history rewriting, is the fix.** GitHub retains unreachable
+  objects and clones and forks persist, so a rewrite would not have helped.
+- **The root admin cannot be reset from the admin panel.**
+  `POST /api/admin/admins/reset-password` deliberately excludes the bootstrap
+  UID so the owner can never be locked out — it has to be done in the Firebase
+  Console.
 
 A full sweep found nothing else exposed: `.env.local`, `.env`,
 `firebase-service-account.json` and both app env files have **never** been
 committed, and the only `sk_live_` string in the repo is a literal placeholder.
+
+**The standing rule this came from is in CLAUDE.md → "Test accounts": no
+credential goes in this repo, ever.** Git history is permanent.
 
 ---
 
