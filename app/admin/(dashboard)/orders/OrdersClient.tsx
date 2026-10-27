@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase-client";
 import * as XLSX from "xlsx";
 import { IconDeviceMobile, IconDeviceDesktop, IconCircleCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { queueStatusEmail } from "@/lib/order-email-bus";
+import { ACTIVE_ORDER_STATUSES } from "@/lib/order-status";
 
 /** `note` is the customer's instruction for this line ("korta 2 cm"), asked for
  *  by categories with customer input turned on. Two lines can share an id and
@@ -73,8 +74,9 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   refunded:         { bg: "#e5e7eb", color: "#374151" },
 };
 
-// Default: show all non-done statuses
-const DEFAULT_FILTER = new Set(["paid", "collected", "in_progress", "ready_for_pickup"]);
+// Default: show all non-done statuses. Shared with the Calendar, which filters to
+// the same set — see `lib/order-status.ts`.
+const DEFAULT_FILTER = new Set<string>(ACTIVE_ORDER_STATUSES);
 
 // Default date range: 1st of current month → today
 function toDateInput(d: Date) {

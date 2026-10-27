@@ -43,29 +43,53 @@ builds a basket, reaches checkout, and renders the booking summary with the
 first-time discount, delivery fee and the admin's time windows. OTA updates
 reach it.
 
+Confirmed on the phone **2026-10-27**:
+
+- **A picked address captures its postcode.** The postcode shows up on the order
+  in the admin panel, which closes the silent failure that was writing orders
+  without one — the worst item that was on the unproven list.
+- **An address outside the drawn service area is rejected.** The `outsideArea`
+  answer from `/api/places/details` is honoured and the field stays unconfirmed.
+- **Minsta antal behaves exactly as specified.** "Lägg till" adds the whole
+  minimum, "+" then adds one at a time, "−" steps down to the minimum and the
+  next "−" drops the line rather than leaving it short (`addStep` /
+  `qtyAfterRemove`).
+- **A hidden category does not reach the app.** Mattvätt is `hidden: true` in
+  `service_categories` and is correctly absent from the app — which is the
+  `hidden` flag propagating, the thing that replaced the hard-coded category
+  array.
+- **"Glömt lösenord?" works end to end from the phone.** `AuthScreen` calls
+  Firebase's `sendPasswordResetEmail` directly — no server route, no Resend,
+  because the client did not want another paid service — and the reset completes
+  from the link. The screen shows the same "if an account exists we sent a link"
+  message whether or not the address is real, so it cannot be used to discover
+  who is a customer. The mail is Firebase's own, per
+  `FIREBASE_EMAIL_TEMPLATES.md`.
+- **Admin-blocked dates are greyed out** in the app's date picker
+  (`DatePickerModal` → `/api/availability`).
+
 ### Written and verified to compile — but never seen running
 
 **Treat every item here as unproven.** It typechecks, bundles and follows the
 website's logic, but no one has watched it work on a device:
 
 - the amount sheet for per-kg / per-m² products, and the `amount` it sends
-- the Mattvätt m² slider and its area-based line ids
-- "Minst N st" badges and the add/remove rules around a minimum
-- per-item RUT maths (`rutEligibleTotalKr`) in both the basket and checkout
-- admin-blocked dates greying out in the date picker
-- `outsideArea` rejection for an address outside the drawn polygon
-- **whether a picked address now actually captures a postcode** — this was
-  silently broken before and is the single most important thing to confirm
+- the Mattvätt m² slider and its area-based line ids — **untestable while the
+  category is hidden** (`hidden: true` as of 2026-10-27). Nothing can order a rug
+  on either surface, so this is blocked rather than failing. If rug cleaning is
+  meant to sell at launch, un-hide it and test the slider before shipping.
+- per-item RUT maths in the app's own basket and checkout. **The arithmetic
+  itself is confirmed** — a web basket of Blixtlås 199 kr (Skrädderi,
+  `rutEligible: false`) + Hushållstvätt 449 kr with the 10% first-timer discount
+  produced subtotal 648, rabatt −65, RUT −202, leverans 99, total 480 kr, which
+  is exactly what `computeCartTotals` + `rutRefundKr` give when Blixtlås is
+  excluded (whole-basket RUT would have been −292 and a 390 kr total). Both
+  `HomeScreen` and `CheckoutScreen` pass `rutEligible` per line into the same
+  byte-identical module, so the app computes the same figures; it has simply not
+  been watched doing it.
 - the 0 kr test-order path and the admin-only gate on 0 kr tiles
 - the note field for categories with `requiresInput`
 - account deletion end to end (app → route → Auth user gone → signed out)
-- **"Glömt lösenord?" on `AuthScreen`** (added 2026-10-27). Calls Firebase's
-  `sendPasswordResetEmail` directly — no server route, no Resend, because the
-  client did not want another paid service. The screen always shows the same
-  "if an account exists we sent a link" message whether or not the address is
-  real, so it cannot be used to discover who is a customer. The mail itself is
-  Firebase's, styled per `FIREBASE_EMAIL_TEMPLATES.md`. Worth checking that the
-  link actually opens and completes a reset from a phone.
 - push notifications — never tested, and cannot be until **C** is done
 
 ### Known rough edges, not yet fixed
@@ -90,6 +114,23 @@ website's logic, but no one has watched it work on a device:
 - **Node 23 locally**, which Expo does not officially support (20 or 22 LTS).
   Everything builds, but EAS uses its own Node, so this only affects local
   commands.
+- **`eas update` dies with `EMFILE: too many open files`** from a normal Terminal
+  (hit 2026-10-27). This Mac has `kern.maxfilesperproc = 10240` while a login
+  shell starts at the macOS default soft limit, and Metro blows through that
+  bundling 7475 modules. It is made worse by `eas update` defaulting to
+  `--platform all`, so it bundles Android alongside iOS for an iOS-only app.
+  **The working invocation**, which must set the limit in the same shell command:
+
+  ```bash
+  ulimit -n 10240 && npx eas-cli update --branch preview --platform ios --clear-cache -m "…"
+  ```
+
+  `--clear-cache` because the failure happens mid-write to `metro-cache` and can
+  leave a truncated entry. Durable fixes, neither done: `brew install watchman`
+  (not installed — Metro then delegates file watching instead of holding the
+  handles itself), and trimming `platforms` in `app.json` from
+  `["ios", "android"]` to `["ios"]`. **This will bite again on launch day**, when
+  an OTA hotfix is published under time pressure.
 
 ### ⚠️ All app changes are uncommitted
 

@@ -53,9 +53,18 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       `@expresstvatt.se` sender. If it is right, mark the item done in
       `BEFORE_DEPLOYMENT.md`. Until confirmed, assume no production email works —
       order confirmations included.
-- [ ] **Restrict the Google Places API key** to iOS bundle id
-      `se.expresstvatt.app` in Google Cloud Console. The key ships inside the app
-      binary and can be extracted from the `.ipa`.
+- [ ] **Do NOT restrict the Google key to the iOS bundle id** — the old wording
+      of this item was wrong and following it would break the live website.
+      `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY` is referenced nowhere in the app, so it
+      is never inlined into the binary and there is nothing to protect; and it is
+      the *same* key (`GOOGLE_MAPS_API_KEY`) the website uses server-side in
+      `places/autocomplete`, `places/details`, `lib/geocode.ts` and the two
+      driver routes, where a bundle-id restriction rejects every call. App-side
+      action is to delete the variable:
+      `npx eas-cli env:delete <env> --variable-name EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`
+      for both `preview` and `production`, and drop the line from `.env` /
+      `.env.production`. Restricting the key is then a **website** task and needs
+      two keys, because `admin/settings` ships it to the browser for the map.
 
 ## 2. Decisions waiting on the owner
 
@@ -97,10 +106,21 @@ Follow **`IOS_APP_STORE.md` → section B** step by step. The ordered summary:
 
 - [ ] **Test the "never seen running" list on the device.** It is at the top of
       `IOS_APP_STORE.md`. Everything on it typechecks and bundles but has never
-      been watched working. **The highest-value check: confirm that picking an
-      address actually fills in a postcode** — that was silently broken and was
-      writing orders without one.
-- [ ] Confirm the password-reset link completes a reset from the phone.
+      been watched working. **Confirmed 2026-10-27:** postcode capture, service-area
+      rejection, Minsta antal, and that a hidden category stays out of the app.
+      Password reset and blocked dates are confirmed too. The per-item RUT
+      arithmetic is confirmed on the web and the app feeds the same inputs to the
+      same module. **What is left is the 0 kr test-order path, the
+      `requiresInput` note field and account deletion.** None of it needs Stripe: the
+      order row is written before the card is touched, so reaching the payment
+      screen and leaving it lets you compare the `pending_payment` order's
+      `amount` / `rutRefundOre` in the admin panel (clear the status filter —
+      `pending_payment` is not one of its options) against what the app showed.
+
+      **Mattvätt is `hidden: true`**, so the m² slider cannot be tested and no
+      rug can be ordered on either surface. Un-hide and test it if rug cleaning
+      is meant to sell at launch.
+- [x] ~~Confirm the password-reset link completes a reset from the phone.~~ **Done 2026-10-27.**
 - [ ] Confirm account deletion works end to end (app → route → Auth user gone →
       signed out).
 

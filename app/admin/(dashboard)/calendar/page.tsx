@@ -1,5 +1,6 @@
 import { db } from "@/lib/firebase-admin";
 import { FieldPath } from "firebase-admin/firestore";
+import { isActiveOrderStatus } from "@/lib/order-status";
 import CalendarClient, { type CalendarOrder } from "./CalendarClient";
 
 export default async function CalendarPage() {
@@ -37,7 +38,11 @@ export default async function CalendarPage() {
         notes:         data.notes ?? "",
       };
     })
-    .filter(o => !!o.dropoffDate);
+    // Same four statuses the Orders table defaults to. An order is pre-written as
+    // `pending_payment` before the card is charged, so abandoned checkouts pile up
+    // and would otherwise show as bookings on the calendar. Filtered here rather
+    // than in the client so they are never sent to the browser at all.
+    .filter(o => !!o.dropoffDate && isActiveOrderStatus(o.status));
 
   return <CalendarClient orders={orders} initialBlockedDates={blockedDates as string[]} />;
 }

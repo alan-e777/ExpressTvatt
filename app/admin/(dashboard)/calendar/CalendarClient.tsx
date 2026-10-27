@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { ACTIVE_ORDER_STATUSES } from "@/lib/order-status";
 
 // Statuses that still count as a live booking when warning about a blocked day.
-const ACTIVE_FOR_WARNING = new Set(["paid", "collected", "in_progress", "ready_for_pickup"]);
+// `page.tsx` already filters the calendar to exactly these, so this is currently
+// every order it receives — kept as its own check so the blocked-day warning
+// stays correct if finished orders are ever shown here again.
+const ACTIVE_FOR_WARNING = new Set<string>(ACTIVE_ORDER_STATUSES);
 
 export type CalendarOrder = {
   id: string;
@@ -247,7 +251,6 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
                 const [y, m] = (o.dropoffDate || "").split("-").map(Number);
                 return y === year && m === month + 1;
               });
-              const active = monthOrders.filter(o => o.status !== "cancelled" && o.status !== "completed").length;
               const blockedThisMonth = [...blockedDates].filter(ymd => {
                 const [y, m] = ymd.split("-").map(Number);
                 return y === year && m === month + 1;
@@ -257,11 +260,6 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
                   <span style={{ fontSize: "0.75rem", color: "#999" }}>
                     <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{monthOrders.length}</span> orders this month
                   </span>
-                  {active > 0 && (
-                    <span style={{ fontSize: "0.75rem", color: "#999" }}>
-                      <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{active}</span> active
-                    </span>
-                  )}
                   {blockedThisMonth > 0 && (
                     <span style={{ fontSize: "0.75rem", color: "#dc2626" }}>
                       <span style={{ fontWeight: 600 }}>{blockedThisMonth}</span> blocked
