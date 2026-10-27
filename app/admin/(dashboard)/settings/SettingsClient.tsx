@@ -13,7 +13,6 @@ import {
   MATTA_TYPES, MATTVATT_DEFAULTS, SQM_STEP, clampKrPerSqm, clampSqm,
   formatSqm, mattaPriceKr, normalizeMattvattSettings, type MattvattSettings,
 } from "@/lib/mattvatt";
-import WishlistPanel from "./WishlistPanel";
 import GdprSettingsPanel from "./GdprSettingsPanel";
 import NotificationStatusPanel from "./NotificationStatusPanel";
 import TimeSlotsPanel from "./TimeSlotsPanel";
@@ -35,7 +34,6 @@ const SECTION_TERMS = {
   gdpr:      "gdpr integritetspolicy personuppgifter dataskydd policy juridik företagsuppgifter organisationsnummer",
   avsandare: "avsändare avsandare epost e-post mejl sms resend 46elks from svara till domän sandbox testavsändare",
   map:       "karta google maps tjänsteområde form polygon punkter rita redigera radie cirkel centrum",
-  wishlist:  "önskelista önskemål wishlist funktioner idéer förslag",
 } as const;
 
 type SectionKey = keyof typeof SECTION_TERMS;
@@ -540,7 +538,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
   // must not be able to scroll out of reach behind a filter.
   const pendingAreaEdit = editingArea || (savedSettings !== null &&
     JSON.stringify(settings.serviceArea) !== JSON.stringify(savedSettings.serviceArea));
-  const showsRightColumn = shows("map") || shows("wishlist");
+  const showsRightColumn = shows("map");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "auto" }}>
@@ -930,7 +928,7 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
               bottom of the page, so it cannot be scrolled past or missed. */}
         </div>
 
-        {/* ── Right: map, with the wishlist stacked under it ────────────────── */}
+        {/* ── Right: map ────────────────────────────────────────────────────── */}
         <div style={{ display: showsRightColumn ? undefined : "none" }}>
         <Filterable query={query} section="map">
         <section style={{ background: "#fff", border: "1px solid #eee", borderRadius: "10px", overflow: "hidden" }}>
@@ -960,10 +958,9 @@ export default function SettingsClient({ mapsKey }: { mapsKey: string }) {
         </section>
         </Filterable>
 
-        {/* TEMPORARY — remove after launch along with the wishlist feature. */}
-        <Filterable query={query} section="wishlist">
-          <WishlistPanel />
-        </Filterable>
+        {/* The Önskelista panel is hidden for launch. `./WishlistPanel.tsx` is
+            still in place — re-add it inside a <Filterable section="wishlist">
+            (and restore the `wishlist` entry in SECTION_TERMS) to bring it back. */}
         </div>
       </div>
 

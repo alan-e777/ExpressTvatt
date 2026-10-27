@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import ChatNavLink from "./ChatNavLink";
 import OrderStatusNotifier from "@/components/admin/OrderStatusNotifier";
-import WishlistOverlay from "@/components/admin/WishlistOverlay";
 import AdminMobileNav from "./AdminMobileNav";
 import { getAdminSession, mustChangePassword } from "@/lib/admin-auth";
 
@@ -95,8 +94,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       <OrderStatusNotifier />
 
-      {/* TEMPORARY — remove after launch along with the wishlist feature. */}
-      <WishlistOverlay />
+      {/* The Önskelista overlay is hidden for launch. `components/admin/
+          WishlistOverlay.tsx` and `/api/admin/wishes` are still in place —
+          re-add <WishlistOverlay /> here to bring it back. */}
     </>
   );
 }
