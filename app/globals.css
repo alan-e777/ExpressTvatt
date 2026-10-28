@@ -2178,22 +2178,27 @@ input, textarea, select { font-family: inherit; }
   margin: 0 auto;
   padding: 0 40px;
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  /* The second column is empty — it exists so the copy stops before the
+     garment bag in the hero photo. The headline is three full sentences now,
+     so the copy column takes the larger share of it. */
+  grid-template-columns: 1.32fr 0.68fr;
   align-items: center;
   gap: 48px;
 }
 .lp-hero-title {
-  font-size: clamp(46px, 7vw, 72px);
+  font-size: clamp(31px, 4.3vw, 53px);
   font-weight: 700;
-  line-height: 1.0;
-  letter-spacing: -0.03em;
+  line-height: 1.09;
+  letter-spacing: -0.025em;
   color: #fff;
 }
+/* One sentence per line, each free to wrap on a narrow viewport. */
+.lp-hero-title-line { display: block; }
 .lp-hero-sub {
   margin-top: 26px;
-  max-width: 550px;
-  font-size: 19px;
-  line-height: 1.6;
+  max-width: 600px;
+  font-size: 17px;
+  line-height: 1.65;
   color: rgba(255,255,255,0.72);
 }
 .lp-hero-cta-group {
@@ -2417,6 +2422,14 @@ input, textarea, select { font-family: inherit; }
   color: var(--muted);
   max-width: 44ch;
 }
+/* Second paragraph under the lead — same voice, one step quieter. */
+.lp-why-text {
+  margin: -14px 0 32px;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  max-width: 52ch;
+}
 .lp-why-right { display: flex; flex-direction: column; }
 .lp-benefit {
   position: relative;
@@ -2586,6 +2599,9 @@ input, textarea, select { font-family: inherit; }
   padding-bottom: 56px;
 }
 .lp-footer-brand { max-width: 280px; }
+/* The wordmark's "EXPRESS" is deep teal, which is also the footer's background —
+   it was there but invisible. */
+.lp-footer-brand .lp-nav-express { color: #fff; }
 .lp-footer-brand p {
   margin-top: 16px;
   font-size: 14px;
@@ -2632,6 +2648,152 @@ input, textarea, select { font-family: inherit; }
   font-size: 13px;
   color: rgba(255,255,255,0.40);
 }
+
+/* ── Social links (hero + footer) ───────────────────────────────────── */
+.lp-social {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lp-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: rgba(255,255,255,0.82);
+  border: 1px solid rgba(255,255,255,0.28);
+  background: rgba(255,255,255,0.04);
+  transition:
+    color 180ms var(--ease-soft),
+    border-color 180ms var(--ease-soft),
+    background 180ms var(--ease-soft),
+    transform 180ms var(--ease);
+}
+.lp-social-link:hover {
+  color: var(--p);
+  background: #fff;
+  border-color: #fff;
+  transform: translateY(-2px);
+}
+.lp-social-link:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.lp-social--hero { margin-top: 34px; }
+.lp-social--footer { margin-top: 14px; }
+.lp-social--footer .lp-social-link { width: 40px; height: 40px; }
+.lp-footer-social-h { margin-top: 26px; }
+
+/* ── Google reviews ─────────────────────────────────────────────────── */
+.lp-rev { background: var(--light); padding: 104px 0; }
+.lp-rev-head { text-align: center; }
+
+.lp-rev-summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.07);
+  border-radius: 999px;
+  box-shadow: var(--sh-1);
+}
+.lp-rev-g { width: 20px; height: 20px; flex-shrink: 0; }
+.lp-rev-score {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.lp-rev-stars { display: inline-flex; gap: 2px; line-height: 0; }
+.lp-rev-stars .is-on  { color: #FBBC05; }
+.lp-rev-stars .is-off { color: rgba(15,23,42,0.15); }
+.lp-rev-count { font-size: 14px; color: var(--muted); }
+
+.lp-rev-grid {
+  display: grid;
+  /* Google returns at most five reviews, and 5 × 230px + gaps is what the
+     1400px container holds — so a full set lands as one row and folds to
+     three, then two, then one as the viewport narrows. No breakpoints. */
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px;
+  margin-top: 48px;
+  list-style: none;
+  padding: 0;
+}
+.lp-rev-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 22px;
+  background: #fff;
+  border: 1px solid rgba(15,23,42,0.07);
+  border-radius: 16px;
+  box-shadow: var(--sh-1);
+  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease);
+}
+.lp-rev-card:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+.lp-rev-card-head { display: flex; align-items: center; gap: 11px; }
+.lp-rev-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+.lp-rev-author {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Reviews run to wildly different lengths; clamping keeps the row of cards a
+   row rather than one tall card and four stubs. */
+.lp-rev-text {
+  flex: 1;
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 9;
+  line-clamp: 9;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lp-rev-date {
+  font-size: 12.5px;
+  color: rgba(100,116,139,0.8);
+  text-align: right;
+}
+.lp-rev-all {
+  display: block;
+  width: fit-content;
+  margin: 40px auto 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--p);
+  border-bottom: 1px solid rgba(8,63,65,0.25);
+  padding-bottom: 2px;
+  transition: border-color 200ms var(--ease-soft);
+}
+.lp-rev-all:hover { border-color: var(--gold); }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 @media (min-width: 901px) {
@@ -2681,7 +2843,10 @@ input, textarea, select { font-family: inherit; }
   .lp-forbund-badge-img { max-width: 160px; }
   .lp-forbund-points { text-align: left; }
   .lp-footer-inner { grid-template-columns: 1fr 1fr; gap: 32px; }
-  .lp-footer-brand { grid-column: 1 / -1; }
+  .lp-footer-brand { grid-column: 1 / -1; max-width: none; }
+  .lp-rev { padding: 80px 0; }
+  .lp-rev-grid { margin-top: 36px; }
+  .lp-social--hero { margin-top: 28px; }
 }
 @media (max-width: 560px) {
   .lp-how-grid { grid-template-columns: 1fr; }
@@ -2694,6 +2859,11 @@ input, textarea, select { font-family: inherit; }
      The primary CTA lives inside the dropdown menu instead. */
   .lp-nav-cta { display: none; }
   .lp-nav-burger { margin-left: auto; }
+  .lp-social--hero .lp-social-link { width: 40px; height: 40px; }
+  /* The hero lead is four sentences now — one step down keeps the whole hero
+     (headline, lead, both buttons, socials) inside the first screen. */
+  .lp-hero-sub { font-size: 16px; margin-top: 22px; }
+  .lp-rev-text { -webkit-line-clamp: 12; line-clamp: 12; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

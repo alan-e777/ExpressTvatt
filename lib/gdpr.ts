@@ -44,8 +44,14 @@ export const GDPR_DEFAULTS: GdprSettings = {
   inactiveAccountRetentionYears: 10,
 
   // The legal entity behind the Express Tvätt brand. The registration number is
-  // unchanged — only the registered company name changed.
-  companyName: "Nya Ringens Kemiska Tvätt Aktiebolag",
+  // unchanged — only the registered company name changed (2026-10-28, at the
+  // ads team's request).
+  //
+  // ⚠️ These are DEFAULTS. `withGdprDefaults` lets a stored `settings/gdpr`
+  // document override every field, so if the name was ever saved through
+  // Admin → Inställningar → GDPR, the policy page keeps showing the saved one
+  // and changing it here does nothing. Check there too.
+  companyName: "Expresstvätt STHLM AB",
   orgNumber: "556097-5640",
   postalAddress: "Svandammsvägen 20, 126 34 Hägersten",
   privacyEmail: "info@expresstvatt.se",

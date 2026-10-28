@@ -25,9 +25,38 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+/* Site-wide defaults. The homepage overrides title/description/OG and adds the
+   canonical in `app/page.tsx` — a canonical set here would be inherited by
+   every route and point them all at `/`. `metadataBase` is what lets relative
+   URLs in child metadata resolve to the live domain. */
 export const metadata: Metadata = {
-  title: 'Express Tvätt',
-  description: 'Kemtvätt. Upphämtning. Hemleverans.',
+  metadataBase: new URL('https://expresstvatt.se'),
+  title: {
+    default: 'Kemtvätt i Stockholm med Hämtning & Hemleverans | ExpressTvätt',
+    template: '%s | Express Tvätt',
+  },
+  description:
+    'Professionell kemtvätt i Stockholm med snabb upphämtning och hemleverans. Vi hämtar dina plagg, rengör dem med omsorg och levererar tillbaka dem direkt till din dörr.',
+  keywords: [
+    'kemtvätt Stockholm',
+    'kemtvätt med hemleverans',
+    'kemtvätt med upphämtning',
+    'tvättservice Stockholm',
+    'express tvätt',
+    'plaggvård',
+    'kemtvätt Hägersten',
+    'skjorttvätt',
+    'kostymtvätt',
+  ],
+  openGraph: {
+    title: 'Kemtvätt i Stockholm med Hämtning & Hemleverans',
+    description:
+      'Snabb och professionell kemtvätt i Stockholm. Upphämtning och leverans direkt till dörren.',
+    url: 'https://expresstvatt.se/',
+    type: 'website',
+    siteName: 'Express Tvätt',
+    locale: 'sv_SE',
+  },
 };
 
 export const viewport: Viewport = {

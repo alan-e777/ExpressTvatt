@@ -5,7 +5,7 @@ import { withGdprDefaults, type GdprSettings } from "@/lib/gdpr";
 import ConsentReset from "@/components/ConsentReset";
 
 export const metadata: Metadata = {
-  title: "Integritetspolicy — Express Tvätt",
+  title: "Integritetspolicy",
   description: "Hur vi behandlar personuppgifter enligt GDPR.",
 };
 

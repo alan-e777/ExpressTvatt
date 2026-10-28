@@ -1,7 +1,7 @@
 # Launch checklist — the one ordered list
 
 **Start here.** Everything else is detail hanging off this file. Last updated
-**2026-10-27**.
+**2026-10-28**.
 
 The other docs and what they are for:
 
@@ -65,6 +65,29 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       for both `preview` and `production`, and drop the line from `.env` /
       `.env.production`. Restricting the key is then a **website** task and needs
       two keys, because `admin/settings` ships it to the browser for the map.
+
+- [ ] **Turn the Google reviews strip on.** The landing page has one
+      (`components/GoogleReviews.tsx` → `GET /api/reviews`) and it renders
+      **nothing at all** until Google answers with reviews, which is the state
+      it shipped in. Two steps:
+      1. Put the business's Google place id in `GOOGLE_PLACE_ID` (env, local
+         *and* Vercel). Without it the route falls back to a Text Search by
+         name, which costs an extra billed call and may match the wrong listing.
+      2. The existing `GOOGLE_MAPS_API_KEY` currently answers **403
+         PERMISSION_DENIED** for both Text Search and Place Details-with-reviews
+         — reviews are on the **Places API (New) Enterprise** SKU, a different
+         one from the address lookups. Enable it for the key in Google Cloud and
+         check the key's API restrictions.
+      Verify with `curl https://expresstvatt.se/api/reviews` — a non-empty
+      `reviews` array means the section is live. Server logs print the resolved
+      place id and the exact Google error.
+- [ ] **Confirm the company name and org.nr with the client.** The site now says
+      **Expresstvätt STHLM AB** (ads team's request, 2026-10-28) while keeping
+      **556097-5640**, on the assumption this is the same legal entity renamed.
+      If it is a *different* company, the org.nr, the address and the privacy
+      policy's controller all have to change with it. Note also that
+      `lib/gdpr.ts` only sets the **default** — a name saved through Admin →
+      Inställningar → GDPR overrides it, so check there as well.
 
 ## 2. Decisions waiting on the owner
 

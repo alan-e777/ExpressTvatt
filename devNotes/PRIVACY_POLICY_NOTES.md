@@ -5,7 +5,7 @@ rendered from `settings/gdpr` in Firestore, so it can be corrected from
 Admin → Inställningar → GDPR without a deploy. This file records how it was derived, so a
 lawyer or a future maintainer can check it against reality.
 
-**Legal entity:** Nya Ringens Kemiska Tvätt Aktiebolag, org.nr 556097-5640.
+**Legal entity:** Expresstvätt STHLM AB, org.nr 556097-5640.
 "Express Tvätt" is the trading name; the policy states this explicitly in both languages.
 
 ---
@@ -82,7 +82,7 @@ and Skatteverket for RUT reporting. All are referenced in code or `package.json`
 
 1. **`[NEEDS INPUT]` — verify the registered address.** The policy uses Svandammsvägen 20,
    126 34 Hägersten, taken from the site footer. Confirm this is the *registered* address of
-   Nya Ringens Kemiska Tvätt Aktiebolag, not just the shop.
+   Expresstvätt STHLM AB, not just the shop.
 2. **`[NEEDS INPUT]` — a dedicated privacy contact.** Currently `info@expresstvatt.se`. Fine
    legally, but a separate address is easier to manage if a request ever arrives.
 3. **Personnummer is sent to Stripe as PaymentIntent metadata**

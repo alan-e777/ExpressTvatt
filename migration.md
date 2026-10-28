@@ -58,7 +58,24 @@ import across the Next app. They are now kept **byte-identical** rather than
   equivalent of this banner — and `lib/consent.ts` is web-only (`localStorage`), so it would need a
   React Native counterpart backed by `AsyncStorage` rather than an import.
 
-### 3. Account deletion has no web UI — and that is a deliberate choice
+### 3. Marketing surface added to the landing page is web only (2026-10-28)
+- **Web:** the landing page now carries the ads team's copy, links to the three social channels
+  (`components/SocialLinks.tsx` — one list, rendered in the hero and the footer) and a Google
+  reviews strip (`components/GoogleReviews.tsx` + `GET /api/reviews` + `lib/googleReviews.ts`).
+  The homepage's SEO tags moved into a server wrapper, `app/page.tsx`, so the canonical points at
+  `/` and is not inherited by every route.
+- **App:** none of it. The app has no landing page, no footer and no About surface, so there is
+  nowhere for any of this to live yet.
+- **Customer hits:** nothing functional. A customer who only ever uses the app sees no social
+  links and no reviews — a marketing gap, not a behavioural one.
+- **Fix, if wanted:** a small "Om oss" block on the app's Profile tab could reuse the same three
+  URLs and call `GET /api/reviews` as-is; the route is public and returns plain JSON. Low value
+  until the app is actually on the Store.
+- **Company name:** `lib/gdpr.ts` now defaults to **Expresstvätt STHLM AB**. The app never renders
+  a company name, so there is nothing to mirror — but see the warning in that file: the stored
+  Firestore value, if one exists, wins over the default.
+
+### 4. Account deletion has no web UI — and that is a deliberate choice
 - **Web:** `/profil` has no "Radera konto" control. `POST /api/account/delete` is live but only the app
   calls it.
 - **App:** `ProfileScreen` calls it behind a two-step confirmation, because App Store guideline

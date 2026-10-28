@@ -8,9 +8,9 @@ import { useEffect, useState } from 'react';
 // Anchor links resolve to the landing page sections (the site root) so the
 // header behaves identically on every route it's rendered on.
 const NAV_LINKS = [
-  { id: 'how',     href: '/#how',     label: 'Så fungerar det' },
-  { id: 'why',     href: '/#why',     label: 'Varför oss' },
-  { id: 'reviews', href: '/#reviews', label: 'Certifikat' },
+  { id: 'how',        href: '/#how',        label: 'Så fungerar det' },
+  { id: 'why',        href: '/#why',        label: 'Varför oss' },
+  { id: 'certifikat', href: '/#certifikat', label: 'Certifikat' },
 ];
 
 export default function LandingHeader() {

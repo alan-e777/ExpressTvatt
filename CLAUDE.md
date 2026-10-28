@@ -110,6 +110,12 @@ See `structure.md` for full file map.
 
 ## Env vars
 - `ADMIN_UID` — Firebase UID of the bootstrap/root admin (in `.env.local`)
+- `GOOGLE_PLACE_ID` — the business's Google place id, for the landing page's
+  reviews strip (`GET /api/reviews`). Optional: without it the route resolves
+  the place by name, which costs an extra billed call and can match the wrong
+  listing. Reviews sit on a **different Places SKU** from the address lookups,
+  so the shared `GOOGLE_MAPS_API_KEY` may answer 403 until that SKU is enabled —
+  the section then simply renders nothing. See `devNotes/LAUNCH_CHECKLIST.md`.
 
 ## Test accounts
 Credentials are NOT kept in this repo — it is public, and anything committed here
