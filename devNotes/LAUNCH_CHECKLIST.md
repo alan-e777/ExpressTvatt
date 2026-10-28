@@ -102,9 +102,15 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       can be withdrawn — GDPR art. 7(3)). Whatever tool the client mails from
       (Mailchimp, Brevo, Resend broadcasts…) has to supply that link, **and
       someone has to act on the unsubscribes** — there is no automatic path back
-      into Firestore. Practical rule for the client: when a customer
-      unsubscribes, set `newsletterConsent: false` on their `customers/{uid}`
-      doc, or the next export will hand them back as a J.
+      into Firestore. **Half of this is now handled** (2026-10-28): a
+      customer can switch the consent off themselves under Profil → Utskick, on
+      both the website and the app, and the next export shows them as N
+      automatically. What is still missing is the unsubscribe **link inside the
+      emails the client sends** — if someone opts out through the mailing tool
+      instead of their profile, nothing writes back to Firestore and the next
+      export hands them back as a J. So either point that link at `/profil`, or
+      have the client set `newsletterConsent: false` on that `customers/{uid}`
+      doc by hand.
       Nothing in this repo sends marketing email today; the export is the whole
       feature.
 

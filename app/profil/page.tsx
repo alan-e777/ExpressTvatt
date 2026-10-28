@@ -16,7 +16,10 @@ import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import ActiveOrderCard from '@/components/ActiveOrderCard';
 import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
-import { consentFields, NEWSLETTER_LABEL } from '@/lib/newsletter';
+import {
+  consentFields, consentChangeFields, hasNewsletterConsent,
+  NEWSLETTER_LABEL, NEWSLETTER_SETTING_TITLE, NEWSLETTER_SETTING_BODY,
+} from '@/lib/newsletter';
 
 const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
 
@@ -127,6 +130,8 @@ export default function ProfilPage() {
   const [showAddForm, setShowAddForm] = useState(false);
 
   const [rutEnabled,      setRutEnabled]      = useState(false);
+  const [newsEnabled,     setNewsEnabled]     = useState(false);
+  const [savingNews,      setSavingNews]      = useState(false);
   const [rutPersonnummer, setRutPersonnummer] = useState('');
   const [savingRut,       setSavingRut]       = useState(false);
   const [rutError,        setRutError]        = useState('');
@@ -170,6 +175,7 @@ export default function ProfilPage() {
       const data = snap.data();
       setAddresses((data?.addresses ?? []) as SavedAddress[]);
       setRutEnabled(!!data?.rutEnabled);
+      setNewsEnabled(hasNewsletterConsent(data));
       setRutPersonnummer(formatPersonnummer((data?.personnummer ?? '') as string));
       setSavedPhone((data?.phone ?? '') as string);
     });
@@ -214,6 +220,31 @@ export default function ProfilPage() {
       setAddrError('Kunde inte spara. Försök igen.');
     } finally {
       setSavingAddr(false);
+    }
+  }
+
+  /**
+   * Withdrawal has to be as easy as consent was (GDPR art. 7(3)), so this
+   * writes straight through — no confirmation dialog, no "are you sure".
+   * The optimistic flip is reverted if the write fails, because a toggle that
+   * says "off" while Firestore still says true would send mail to someone who
+   * believes they opted out.
+   */
+  async function toggleNewsletter() {
+    if (!user || savingNews) return;
+    const next = !newsEnabled;
+    setNewsEnabled(next);
+    setSavingNews(true);
+    try {
+      await setDoc(
+        doc(db, 'customers', user.uid),
+        consentChangeFields(next, 'web'),
+        { merge: true },
+      );
+    } catch {
+      setNewsEnabled(!next);
+    } finally {
+      setSavingNews(false);
     }
   }
 
@@ -651,6 +682,43 @@ export default function ProfilPage() {
               </button>
             </form>
           )}
+        </div>
+
+        {/* Newsletter — the customer's own opt-out. Deliberately as prominent
+            as any other profile setting: consent is only valid while it can be
+            withdrawn just as easily as it was given. */}
+        <div style={{ marginTop: 'var(--sp-xl)' }}>
+          <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>Utskick</div>
+          <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="body-bold" style={{ color: 'var(--text-dark)' }}>{NEWSLETTER_SETTING_TITLE}</div>
+                <div className="small" style={{ marginTop: 2, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {NEWSLETTER_SETTING_BODY}
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={newsEnabled}
+                aria-label={NEWSLETTER_SETTING_TITLE}
+                onClick={toggleNewsletter}
+                disabled={savingNews}
+                style={{
+                  position: 'relative', width: 46, height: 26, flexShrink: 0,
+                  borderRadius: 999, border: 'none', cursor: 'pointer', padding: 0,
+                  background: newsEnabled ? 'var(--moss)' : '#cdd5cd',
+                  transition: 'background 0.18s ease',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: newsEnabled ? 23 : 3,
+                  width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.18s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* RUT-Avdrag */}

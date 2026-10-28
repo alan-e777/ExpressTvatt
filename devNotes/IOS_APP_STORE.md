@@ -80,6 +80,11 @@ website's logic, but no one has watched it work on a device:
   confirm the two appear as J and N in Orders → "Alla kunder (CSV)". The box
   must come up **unticked** — if it ever renders pre-ticked, that is a legal
   defect, not a style bug.
+- the **Utskick switch on the Profile tab** (added 2026-10-28), which is how a
+  customer withdraws that consent. Same check: flip it off, confirm that row in
+  the CSV export turns from J to N, flip it back on. It must write through
+  immediately with no confirmation step — withdrawal has to be as easy as
+  giving consent was.
 - the amount sheet for per-kg / per-m² products, and the `amount` it sends
 - the Mattvätt m² slider and its area-based line ids — **untestable while the
   category is hidden** (`hidden: true` as of 2026-10-27). Nothing can order a rug

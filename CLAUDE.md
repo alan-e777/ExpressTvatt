@@ -82,9 +82,15 @@ monthly XLSX one: the client's own mailing list, one row per customer.
   correct, since consent that was never asked for cannot be inferred.
   The signup box is **never pre-ticked** and the label must stay legible; that
   file records why both are legal requirements, not preferences.
-- Nothing here *sends* email. Before the client mails anyone they need a working
-  unsubscribe, and unsubscribes must be written back as
-  `newsletterConsent: false` — see `devNotes/LAUNCH_CHECKLIST.md`.
+- **Customers withdraw it themselves** under Profil → **Utskick**, a switch on
+  both surfaces that writes `consentChangeFields(...)` straight through — no
+  confirmation step, because withdrawal has to be as easy as consent was
+  (art. 7(3)). Turning it off stamps `newsletterConsentWithdrawnAt`, and the
+  next export shows that customer as N on its own.
+- Nothing here *sends* email. The remaining gap is the unsubscribe link inside
+  whatever the client mails from: an opt-out made there does not write back to
+  Firestore. Point it at `/profil` or flip the flag by hand — see
+  `devNotes/LAUNCH_CHECKLIST.md`.
 
 ## Minimum order quantity (per item)
 A catalogue item can require a minimum number per booking — set per item under Tjänster, on the `min 1` chip in the product row (or the "Minsta antal" field in the add / new-category forms). Stored as `minQty` on the StrukenTvatt doc; 1 means no minimum, which is also what every pre-existing doc normalizes to.
