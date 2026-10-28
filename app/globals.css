@@ -1617,6 +1617,18 @@ input, textarea, select { font-family: inherit; }
   color: var(--moss);
 }
 
+/* Light-surfaced cards — see the .profile-card note further down. */
+.profile-page .profile-card .h2,
+.profile-page .profile-card .h3,
+.profile-page .profile-card .body,
+.profile-page .profile-card .body-bold {
+  color: var(--text-dark);
+}
+.profile-page .profile-card .small,
+.profile-page .profile-card .field-label {
+  color: var(--text-muted);
+}
+
 /* "Logga ut" button — visible ghost on dark background */
 .profile-page .btn-secondary {
   color: #ffffff;
@@ -3655,6 +3667,25 @@ input, textarea, select { font-family: inherit; }
 
 .site-shell .profile-page .small {
   color: rgba(183, 220, 215, 0.85); /* moss at 85% */
+}
+
+/* …but every one of those rules is for text sitting directly on the deep-teal
+   canvas. Inside a card the surface is cream, and white-on-cream is invisible —
+   which is exactly what happened to the "Inga beställningar än" and "Inga
+   sparade adresser" empty states.
+
+   `.profile-card` marks a light surface and puts the text back to ink. Any new
+   card on this page gets the class and is correct by default, instead of each
+   one having to remember an inline colour. */
+.site-shell .profile-page .profile-card .h2,
+.site-shell .profile-page .profile-card .h3,
+.site-shell .profile-page .profile-card .body,
+.site-shell .profile-page .profile-card .body-bold {
+  color: var(--text-dark);
+}
+.site-shell .profile-page .profile-card .small,
+.site-shell .profile-page .profile-card .field-label {
+  color: var(--text-muted);
 }
 
 /* "Logga ut" — visible ghost on dark canvas */

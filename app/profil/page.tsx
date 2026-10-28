@@ -595,7 +595,7 @@ export default function ProfilPage() {
         <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>Mina ordrar</div>
 
         {orders.length === 0 ? (
-          <div style={{
+          <div className="profile-card" style={{
             background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)',
           }}>
             <div className="body">Inga beställningar än.</div>
@@ -634,14 +634,14 @@ export default function ProfilPage() {
           </div>
 
           {addresses.length === 0 && !showAddForm && (
-            <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
+            <div className="profile-card" style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
               <div className="small">Inga sparade adresser.</div>
               <div className="small" style={{ marginTop: 4 }}>Adresser sparas automatiskt när du genomför en bokning.</div>
             </div>
           )}
 
           {addresses.map((a, i) => (
-            <div key={i} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-md)', display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
+            <div key={i} className="profile-card" style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-md)', display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-sm)' }}>
               <div style={{ flex: 1 }}>
                 <div className="body-bold" style={{ color: 'var(--text-dark)' }}>{a.address}</div>
                 {(a.postalCode || a.deliveryNote) && (
@@ -662,7 +662,7 @@ export default function ProfilPage() {
           ))}
 
           {showAddForm && (
-            <form onSubmit={handleAddAddress} style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)', marginTop: addresses.length > 0 ? 'var(--sp-sm)' : 0 }}>
+            <form onSubmit={handleAddAddress} className="profile-card" style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)', marginTop: addresses.length > 0 ? 'var(--sp-sm)' : 0 }}>
               <div className="input-group">
                 <label className="field-label">Adress</label>
                 <AddressAutocomplete
@@ -689,7 +689,7 @@ export default function ProfilPage() {
             withdrawn just as easily as it was given. */}
         <div style={{ marginTop: 'var(--sp-xl)' }}>
           <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>Utskick</div>
-          <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
+          <div className="profile-card" style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="body-bold" style={{ color: 'var(--text-dark)' }}>{NEWSLETTER_SETTING_TITLE}</div>
@@ -724,7 +724,7 @@ export default function ProfilPage() {
         {/* RUT-Avdrag */}
         <div style={{ marginTop: 'var(--sp-xl)' }}>
           <div className="h3" style={{ marginBottom: 'var(--sp-md)' }}>RUT-Avdrag</div>
-          <div style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
+          <div className="profile-card" style={{ background: 'var(--linen)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="body-bold" style={{ color: 'var(--text-dark)' }}>Aktivera RUT-avdrag</div>
