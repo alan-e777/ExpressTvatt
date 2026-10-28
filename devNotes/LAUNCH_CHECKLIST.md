@@ -102,17 +102,25 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       can be withdrawn — GDPR art. 7(3)). Whatever tool the client mails from
       (Mailchimp, Brevo, Resend broadcasts…) has to supply that link, **and
       someone has to act on the unsubscribes** — there is no automatic path back
-      into Firestore. **Half of this is now handled** (2026-10-28): a
-      customer can switch the consent off themselves under Profil → Utskick, on
-      both the website and the app, and the next export shows them as N
-      automatically. What is still missing is the unsubscribe **link inside the
-      emails the client sends** — if someone opts out through the mailing tool
-      instead of their profile, nothing writes back to Firestore and the next
-      export hands them back as a J. So either point that link at `/profil`, or
-      have the client set `newsletterConsent: false` on that `customers/{uid}`
-      doc by hand.
-      Nothing in this repo sends marketing email today; the export is the whole
-      feature.
+      into Firestore. **This is now built** (2026-10-28) and needs **one
+      env var** to switch on:
+
+      1. `openssl rand -hex 32`, and put the result in `UNSUBSCRIBE_SECRET` —
+         local `.env.local` *and* Vercel Production. **Set it once and never
+         change it**: rotating it breaks every unsubscribe link already sent.
+      2. Export the CSV and check the **`Avregistreringslänk`** column has a
+         URL in it. Empty means the secret is missing — the code deliberately
+         ships no link rather than one that fails.
+      3. Tell the client to use that column as the unsubscribe merge field in
+         whatever they send from. It needs no login, works forever, and writes
+         `newsletterConsent: false` straight back — so the next export shows
+         that person as N without anyone doing anything by hand.
+
+      Customers can also switch it off themselves under Profil → Utskick, on
+      both the website and the app. Nothing in this repo *sends* marketing
+      email; the export and the opt-out are the whole feature.
+      Verify once live: open an unsubscribe URL from the CSV, confirm the page
+      says "Du är avregistrerad", then re-export and confirm that row is N.
 
 ## 2. Decisions waiting on the owner
 

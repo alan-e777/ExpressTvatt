@@ -87,10 +87,22 @@ monthly XLSX one: the client's own mailing list, one row per customer.
   confirmation step, because withdrawal has to be as easy as consent was
   (art. 7(3)). Turning it off stamps `newsletterConsentWithdrawnAt`, and the
   next export shows that customer as N on its own.
-- Nothing here *sends* email. The remaining gap is the unsubscribe link inside
-  whatever the client mails from: an opt-out made there does not write back to
-  Firestore. Point it at `/profil` or flip the flag by hand — see
-  `devNotes/LAUNCH_CHECKLIST.md`.
+- **The export carries a one-click `Avregistreringslänk` per customer**, which
+  is what goes in the mailing tool's merge field. It needs no login:
+  `lib/unsubscribe.ts` signs the uid with `UNSUBSCRIBE_SECRET` (HMAC-SHA256,
+  24 hex chars), `/avregistrera` POSTs it to `POST /api/unsubscribe`, and that
+  writes `newsletterConsent: false`. Requiring a login instead would make
+  withdrawal harder than consent was, which art. 7(3) forbids.
+  - **The mutation is POST, never GET.** Mail scanners and security gateways
+    fetch every link in a message; a GET would let a customer's own spam filter
+    unsubscribe them. The page fires the POST from JavaScript on load, so it is
+    still one click for the customer.
+  - **No secret configured → the column is empty and the route 503s.** Never a
+    link that silently fails: a customer told they opted out when nothing was
+    written is worse than no link.
+  - Links have **no expiry** (people act on old emails) and are **blank for
+    guests**, who have no account to flip and always read N.
+- Nothing here *sends* marketing email — the client's own tool does that.
 
 ## Minimum order quantity (per item)
 A catalogue item can require a minimum number per booking — set per item under Tjänster, on the `min 1` chip in the product row (or the "Minsta antal" field in the add / new-category forms). Stored as `minQty` on the StrukenTvatt doc; 1 means no minimum, which is also what every pre-existing doc normalizes to.
@@ -142,6 +154,11 @@ See `structure.md` for full file map.
 
 ## Env vars
 - `ADMIN_UID` — Firebase UID of the bootstrap/root admin (in `.env.local`)
+- `UNSUBSCRIBE_SECRET` — any long random string; signs the one-click
+  unsubscribe links in the customer CSV export. Generate with
+  `openssl rand -hex 32`. **Changing it invalidates every link already sent**,
+  so set it once and leave it. Unset means the export's link column is empty
+  and `/api/unsubscribe` answers 503.
 - `GOOGLE_PLACE_ID` — the business's Google place id, for the landing page's
   reviews strip (`GET /api/reviews`). Optional: without it the route resolves
   the place by name, which costs an extra billed call and can match the wrong

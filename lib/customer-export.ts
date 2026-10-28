@@ -53,6 +53,7 @@ export const HEADERS = [
   "Totalt spenderat (kr)",
   "Senaste order",
   "Köpt",
+  "Avregistreringslänk",
   "Registrerad",
   "Kund-ID",
 ] as const;
@@ -99,7 +100,16 @@ export function boughtSummary(orders: ExportOrder[]): string {
   return [...seen].join(", ");
 }
 
-export function buildRows(customers: ExportCustomer[], orders: ExportOrder[]): Row[] {
+/**
+ * `unsubscribeLink` is injected rather than imported so this module stays pure
+ * — `lib/unsubscribe.ts` pulls in node:crypto and reads a secret, neither of
+ * which belongs in something the tests run directly.
+ */
+export function buildRows(
+  customers: ExportCustomer[],
+  orders: ExportOrder[],
+  unsubscribeLink: (uid: string) => string = () => "",
+): Row[] {
   const byCustomer: Record<string, ExportOrder[]> = {};
   const guestOrders: ExportOrder[] = [];
 
@@ -144,6 +154,11 @@ export function buildRows(customers: ExportCustomer[], orders: ExportOrder[]): R
       "Totalt spenderat (kr)": kr(cOrders.reduce((s, o) => s + o.amount, 0)),
       "Senaste order": latest?.createdAt?.slice(0, 10) ?? "",
       "Köpt": boughtSummary(cOrders),
+      // One-click opt-out for the mailing tool's merge field. Empty when no
+      // UNSUBSCRIBE_SECRET is configured — an empty column is better than a
+      // column of links that all fail, which would tell customers they had
+      // unsubscribed when nothing was written.
+      "Avregistreringslänk": unsubscribeLink(c.uid),
       "Registrerad": (c.createdAt ?? "").slice(0, 10),
       "Kund-ID": c.uid,
     });
@@ -179,6 +194,8 @@ export function buildRows(customers: ExportCustomer[], orders: ExportOrder[]): R
       "Totalt spenderat (kr)": kr(gOrders.reduce((s, o) => s + o.amount, 0)),
       "Senaste order": latest.createdAt?.slice(0, 10) ?? "",
       "Köpt": boughtSummary(gOrders),
+      // Guests have no account to switch a flag on, and are always N anyway.
+      "Avregistreringslänk": "",
       "Registrerad": "",
       "Kund-ID": "",
     });

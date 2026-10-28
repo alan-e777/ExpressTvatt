@@ -57,7 +57,7 @@ Order of the day:
 >
 > **Then the production config swap (I do the secret entry, you guide + verify):**
 >
-> 7. Tell me exactly which env vars to set for production (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, `GOOGLE_PLACE_ID`, `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_UID`, `FIREBASE_SERVICE_ACCOUNT`, plus 46elks if used) and where (Vercel project + local `.env.local`). After I set them, verify presence and prefix only (`sk_live`/`pk_live`/`whsec_`), never the values.
+> 7. Tell me exactly which env vars to set for production (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, `GOOGLE_PLACE_ID`, `UNSUBSCRIBE_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `ADMIN_UID`, `FIREBASE_SERVICE_ACCOUNT`, plus 46elks if used) and where (Vercel project + local `.env.local`). After I set them, verify presence and prefix only (`sk_live`/`pk_live`/`whsec_`), never the values.
 > 8. Walk me through registering the **live Stripe webhook** at `https://<DOMAIN>/api/webhook` for `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.refunded`, and putting the new live `whsec_` in env.
 > 9. **ADMIN_UID ↔ firestore.rules:** if the production admin is the client's Firebase account, update `ADMIN_UID` **and** the hardcoded UID in `firestore.rules`, and give me the `firebase deploy --only firestore:rules` command. Confirm both match.
 > 10. Remind me to verify the Google Maps key restrictions and the Resend verified domain (so customer emails actually send).

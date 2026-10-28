@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { db } from "@/lib/firebase-admin";
 import { buildRows, toCsv, type ExportCustomer, type ExportOrder } from "@/lib/customer-export";
+import { unsubscribeUrl } from "@/lib/unsubscribe";
 
 /**
  * Every customer the shop has, as one CSV row each, for the client's own
@@ -19,7 +20,7 @@ import { buildRows, toCsv, type ExportCustomer, type ExportOrder } from "@/lib/c
  */
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -60,8 +61,13 @@ export async function GET() {
     };
   });
 
+  // Taken from the request so the links work on whatever host the admin is
+  // actually on — production, a preview deployment or localhost — instead of
+  // needing yet another env var to state the site's own address.
+  const origin = new URL(req.url).origin;
+
   const stamp = new Date().toISOString().slice(0, 10);
-  return new NextResponse(toCsv(buildRows(customers, orders)), {
+  return new NextResponse(toCsv(buildRows(customers, orders, uid => unsubscribeUrl(uid, origin))), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="expresstvatt-kunder-${stamp}.csv"`,
