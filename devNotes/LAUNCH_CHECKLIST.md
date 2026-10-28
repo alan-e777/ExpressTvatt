@@ -166,7 +166,15 @@ From `BEFORE_DEPLOYMENT.md` and `GO_LIVE_HANDOVER.md`:
 
 ---
 
-## Recently closed (2026-10-26 → 27)
+## Recently closed (2026-10-26 → 28)
+
+- **Admin logout sent every admin to `http://localhost:3000/admin/login`**
+  (2026-10-28). The route built an absolute redirect from
+  `NEXT_PUBLIC_BASE_URL`, a variable set nowhere in this project, so the
+  hard-coded localhost fallback was used in production too. It also answered
+  307, which preserves the POST method, so even on the right host the browser
+  would have re-POSTed to a page that only answers GET. Now a relative
+  `Location` with status 303.
 
 - Two credentials that had been committed early on and were still readable in
   this repo's public history were **rotated**. See `BEFORE_DEPLOYMENT.md`.
