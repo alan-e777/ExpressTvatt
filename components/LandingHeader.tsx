@@ -3,7 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getReviews } from '@/lib/reviews-client';
 
 // Anchor links resolve to the landing page sections (the site root) so the
 // header behaves identically on every route it's rendered on.
@@ -13,6 +14,12 @@ const NAV_LINKS = [
   { id: 'certifikat', href: '/#certifikat', label: 'Certifikat' },
 ];
 
+/* Added only when Google actually returns reviews. The section hides itself
+   when there are none, so a permanent tab here would be a link that scrolls
+   nowhere — which is the state the site is in until GOOGLE_PLACE_ID is set and
+   the Places reviews SKU is enabled. */
+const REVIEWS_LINK = { id: 'reviews', href: '/#reviews', label: 'Omdömen' };
+
 export default function LandingHeader() {
   const pathname = usePathname();
   const onLanding = pathname === '/';
@@ -20,6 +27,20 @@ export default function LandingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hasReviews, setHasReviews] = useState(false);
+
+  // Same shared request the reviews section makes.
+  useEffect(() => {
+    let alive = true;
+    getReviews().then(d => { if (alive) setHasReviews(d.reviews.length > 0); });
+    return () => { alive = false; };
+  }, []);
+
+  // Omdömen sits last, immediately before Profil.
+  const links = useMemo(
+    () => (hasReviews ? [...NAV_LINKS, REVIEWS_LINK] : NAV_LINKS),
+    [hasReviews],
+  );
 
   // Glass effect kicks in after a short scroll.
   useEffect(() => {
@@ -33,12 +54,12 @@ export default function LandingHeader() {
   // sections actually exist. The section nearest the upper third wins.
   useEffect(() => {
     if (!onLanding) return;
-    const sections = NAV_LINKS
+    const sections = links
       .map(l => document.getElementById(l.id))
       .filter((el): el is HTMLElement => el !== null);
     if (!sections.length) return;
 
-    const order = NAV_LINKS.map(l => l.id);
+    const order = links.map(l => l.id);
     const inView = new Set<string>();
     const io = new IntersectionObserver(
       entries => {
@@ -54,7 +75,9 @@ export default function LandingHeader() {
     );
     sections.forEach(s => io.observe(s));
     return () => io.disconnect();
-  }, [onLanding]);
+    // `links` is in here on purpose: the reviews section mounts after its fetch
+    // resolves, so the observer has to be rebuilt once it exists.
+  }, [onLanding, links]);
 
   // Lock body scroll while the mobile menu is open.
   useEffect(() => {
@@ -74,7 +97,7 @@ export default function LandingHeader() {
         </Link>
 
         <nav className="lp-nav-links" aria-label="Sidnavigation">
-          {NAV_LINKS.map(l => (
+          {links.map(l => (
             <a
               key={l.href}
               href={l.href}
@@ -108,7 +131,7 @@ export default function LandingHeader() {
         hidden={!menuOpen}
       >
         <nav className="lp-nav-mobile-links" aria-label="Mobilnavigation">
-          {NAV_LINKS.map(l => (
+          {links.map(l => (
             <a
               key={l.href}
               href={l.href}

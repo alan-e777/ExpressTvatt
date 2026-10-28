@@ -1993,6 +1993,7 @@ input, textarea, select { font-family: inherit; }
   font-weight: 500;
   color: var(--p);
   padding: 7px 16px;
+  white-space: nowrap;
   border-radius: 9999px;
   transition: background 160ms ease, color 160ms ease;
 }
@@ -2796,14 +2797,20 @@ input, textarea, select { font-family: inherit; }
 .lp-rev-all:hover { border-color: var(--gold); }
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
-@media (min-width: 901px) {
+/* The header has its own breakpoint, ahead of the page layout's 900px.
+   Five links + wordmark + CTA need about 1010px, so between 901 and 1060 the
+   bar was a cramped two-line mess — and the dropdown already carries every
+   link plus the CTA. 1060 leaves enough slack for a Windows scrollbar. */
+@media (min-width: 1061px) {
   .lp-nav-burger, .lp-nav-mobile, .lp-nav-scrim { display: none !important; }
 }
-@media (max-width: 900px) {
+@media (max-width: 1060px) {
   .lp-nav-links { display: none; }
   .lp-nav-burger { display: inline-flex; }
   .lp-nav-cta { margin-left: auto; }
   .lp-nav-inner { gap: 12px; }
+}
+@media (max-width: 900px) {
   .lp-section-inner, .lp-nav-inner, .lp-hero-inner, .lp-trust-inner { padding-left: 24px; padding-right: 24px; }
   .lp-final, .lp-footer { padding-left: 24px; padding-right: 24px; }
   .lp-hero-inner { grid-template-columns: 1fr; gap: 48px; }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { IconStarFilled } from '@tabler/icons-react';
 import type { GoogleReviewsPayload } from '@/lib/googleReviews';
+import { getReviews } from '@/lib/reviews-client';
 
 /**
  * Google's own listing, read live through `/api/reviews` (which caches for six
@@ -50,10 +51,9 @@ export default function GoogleReviews() {
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/reviews')
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (alive) setData(d); })
-      .catch(() => { if (alive) setData(null); });
+    // Shared with the header, which uses the same answer to decide whether to
+    // show its "Omdömen" link — one request, not two.
+    getReviews().then(d => { if (alive) setData(d); });
     return () => { alive = false; };
   }, []);
 

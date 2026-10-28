@@ -81,6 +81,12 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       Verify with `curl https://expresstvatt.se/api/reviews` — a non-empty
       `reviews` array means the section is live. Server logs print the resolved
       place id and the exact Google error.
+      **The nav's "Omdömen" tab is tied to this**: the header only shows it when
+      the API returns reviews, so it is invisible today and appears by itself
+      the moment the key works. Nothing to deploy for it.
+      *(Owner, 2026-10-28: this is part of a wider backlog of API-key work —
+      Vercel will not display an already-saved value, so which keys are actually
+      set where has to be re-established by hand.)*
 - [ ] **Confirm the company name and org.nr with the client.** The site now says
       **Expresstvätt STHLM AB** (ads team's request, 2026-10-28) while keeping
       **556097-5640**, on the assumption this is the same legal entity renamed.
