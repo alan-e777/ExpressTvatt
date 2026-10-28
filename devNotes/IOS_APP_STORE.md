@@ -73,6 +73,13 @@ Confirmed on the phone **2026-10-27**:
 **Treat every item here as unproven.** It typechecks, bundles and follows the
 website's logic, but no one has watched it work on a device:
 
+- the **newsletter opt-in on the signup screen** (added 2026-10-28). It is the
+  same field and the same wording as the website (`lib/newsletter.ts` is a
+  checked mirror), but nobody has seen the tick render on a device. Worth one
+  pass: create a throwaway account with the box ticked and one without, then
+  confirm the two appear as J and N in Orders → "Alla kunder (CSV)". The box
+  must come up **unticked** — if it ever renders pre-ticked, that is a legal
+  defect, not a style bug.
 - the amount sheet for per-kg / per-m² products, and the `amount` it sends
 - the Mattvätt m² slider and its area-based line ids — **untestable while the
   category is hidden** (`hidden: true` as of 2026-10-27). Nothing can order a rug

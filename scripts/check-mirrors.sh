@@ -10,7 +10,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 EXEMPT="API_URL|api/timeslots"
-MIRRORS="mattvatt serviceUnits serviceCategories minOrderQty rut discount timeslots"
+MIRRORS="mattvatt serviceUnits serviceCategories minOrderQty rut discount timeslots newsletter"
 status=0
 
 for f in $MIRRORS; do

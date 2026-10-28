@@ -16,6 +16,7 @@ import { auth, db } from '@/lib/firebase-client';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import ActiveOrderCard from '@/components/ActiveOrderCard';
 import { formatPersonnummer, isValidPersonnummer, RUT_DISCOUNT_PERCENT } from '@/lib/rut';
+import { consentFields, NEWSLETTER_LABEL } from '@/lib/newsletter';
 
 const ACTIVE_STATUSES = ['paid', 'collected', 'in_progress', 'ready_for_pickup'];
 
@@ -100,6 +101,9 @@ export default function ProfilPage() {
   const [email,      setEmail]      = useState('');
   const [phone,      setPhone]      = useState('');
   const [password,   setPassword]   = useState('');
+  // Unticked by default and never pre-set — see lib/newsletter.ts for why that
+  // is not a style choice.
+  const [newsletter, setNewsletter] = useState(false);
   const [showPass,   setShowPass]   = useState(false);
   const [formError,  setFormError]  = useState('');
   const [resetNotice, setResetNotice] = useState('');
@@ -174,7 +178,7 @@ export default function ProfilPage() {
 
   function clearForm() {
     setName(''); setEmail(''); setPhone(''); setPassword('');
-    setFormError(''); setShowPass(false); setResetNotice('');
+    setFormError(''); setShowPass(false); setResetNotice(''); setNewsletter(false);
   }
 
   async function handleResetPassword() {
@@ -290,6 +294,10 @@ export default function ProfilPage() {
       await setDoc(doc(db, 'customers', cred.user.uid), {
         uid: cred.user.uid, name: name.trim(), email: email.trim(),
         phone: phone.trim(), createdAt: serverTimestamp(),
+        // Recorded either way: an explicit "no" is worth more than an absent
+        // field, because it tells the shop "declined" from "signed up before
+        // we asked".
+        ...consentFields(newsletter, 'web'),
       });
       clearForm();
     } catch (err: any) {
@@ -440,6 +448,19 @@ export default function ProfilPage() {
             </button>
           }
         />
+
+        {/* Marketing consent. Quiet by design — small, muted, below the fields —
+            but it is a real opt-in: unticked, legible, and worded so it is
+            clear what is being agreed to. It cannot be pre-ticked or hidden;
+            lib/newsletter.ts has the references. */}
+        <label className="signup-consent">
+          <input
+            type="checkbox"
+            checked={newsletter}
+            onChange={e => setNewsletter(e.target.checked)}
+          />
+          <span>{NEWSLETTER_LABEL}</span>
+        </label>
 
         {formError && <p className="error-msg">{formError}</p>}
 

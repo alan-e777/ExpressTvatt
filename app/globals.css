@@ -2873,6 +2873,31 @@ input, textarea, select { font-family: inherit; }
   .lp-rev-text { -webkit-line-clamp: 12; line-clamp: 12; }
 }
 
+/* Signup newsletter opt-in — deliberately quiet: small, muted, sitting under
+   the fields rather than beside the submit button. Quiet is as far as it goes:
+   the box ships unticked, the text stays at a readable size and contrast, and
+   the hit area covers the whole label. See lib/newsletter.ts. */
+.signup-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 2px 2px;
+  cursor: pointer;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted, #64748B);
+  user-select: none;
+}
+.signup-consent input {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  margin: 1px 0 0;
+  accent-color: var(--forest-dark, #083F41);
+  cursor: pointer;
+}
+.signup-consent:hover { color: var(--text-mid, #334155); }
+
 /* ═══════════════════════════════════════════════════════════════════════
    SITE-WIDE DESIGN SYSTEM  —  scoped under .site-shell
    Applies the .lp landing language to EVERY customer route (home, kassa,

@@ -95,6 +95,19 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       `lib/gdpr.ts` only sets the **default** — a name saved through Admin →
       Inställningar → GDPR overrides it, so check there as well.
 
+- [ ] **Before the client sends a single ad mail, they need an unsubscribe
+      mechanism.** The signup checkbox and the CSV export (Orders → "Alla kunder
+      (CSV)") are in place, but every marketing email must carry a working
+      opt-out (marknadsföringslagen § 20, and the consent is only valid while it
+      can be withdrawn — GDPR art. 7(3)). Whatever tool the client mails from
+      (Mailchimp, Brevo, Resend broadcasts…) has to supply that link, **and
+      someone has to act on the unsubscribes** — there is no automatic path back
+      into Firestore. Practical rule for the client: when a customer
+      unsubscribes, set `newsletterConsent: false` on their `customers/{uid}`
+      doc, or the next export will hand them back as a J.
+      Nothing in this repo sends marketing email today; the export is the whole
+      feature.
+
 ## 2. Decisions waiting on the owner
 
 - [ ] **Password-reset email.** The flow works today on both surfaces and sends

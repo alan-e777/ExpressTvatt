@@ -33,6 +33,9 @@ Unless the user says "mobile", "app", "iOS", or "Expo", always assume changes ar
 
 ## npm run check:mirrors — the duplicated pricing modules
 Seven modules exist twice because React Native cannot import across the Next app: `mattvatt`, `serviceUnits`, `serviceCategories`, `minOrderQty`, `rut`, `discount`, `timeslots`. They are kept **byte-identical** between `lib/` and `skraddare-app/lib/`, and `npm run check:mirrors` fails when one drifts (lines naming `API_URL` are exempt — RN has no origin for a relative fetch path).
+`newsletter.ts` is the eighth, added 2026-10-28: it holds the marketing-consent
+wording and the "absent means no" rule, and the two surfaces must never show a
+customer different consent text or read the flag differently.
 **Never edit one side only.** Copy the web file over the app one, then check the app still compiles. These modules decide prices: a silent divergence quotes the customer one total and charges another.
 
 ## migration.md — the web ↔ app ledger
@@ -59,6 +62,29 @@ Read `style.md` before creating or editing any screen or component.
 - `components/DatePicker.tsx` + `components/TimePicker.tsx` — custom dropdowns, must stay visually in sync. Never replace with native `<input type="date/time">`.
 - `TimePicker` no longer hard-codes the windows: it takes `kind="pickup" | "delivery"` and fetches the admin-configured list from `/api/timeslots` (module-level cache shared with the cart, same trick `DatePicker` uses for blocked dates). `minEndHour` greys out windows that have already closed today.
 - Kassa (`app/kassa/page.tsx`) fetches `customers/{uid}` on auth to show a profile card and pre-fill contact fields. `notes` textarea is the single source of truth — no separate careOf field.
+
+## Newsletter consent & the customer CSV export
+Admin → Orders has a second export button, **"Alla kunder (CSV)"**, next to the
+monthly XLSX one: the client's own mailing list, one row per customer.
+- `GET /api/admin/customers/export` (admin-gated, `force-dynamic`) reads
+  Firestore; **all the shaping is in `lib/customer-export.ts`**, which is pure so
+  the rules can be tested without an admin session.
+- **One row per customer, never per order** — the file feeds a mail merge.
+  Guests (orders with `customerId: 'anonymous'`) get a row too, keyed by email,
+  de-duplicated against account holders and marked `Typ: Gäst`.
+  `pending_payment` orders are skipped.
+- CSV is **semicolon-separated with a UTF-8 BOM and CRLF** — anything else and
+  Swedish Excel mangles åäö or puts every row in one column.
+- The **`Vill ha reklam` J/N column** is the point: the file holds everyone and
+  the client filters it themselves.
+- `lib/newsletter.ts` (mirrored to the app) is the single source of truth for
+  the flag. **Absent means no** — accounts predating the field read N, which is
+  correct, since consent that was never asked for cannot be inferred.
+  The signup box is **never pre-ticked** and the label must stay legible; that
+  file records why both are legal requirements, not preferences.
+- Nothing here *sends* email. Before the client mails anyone they need a working
+  unsubscribe, and unsubscribes must be written back as
+  `newsletterConsent: false` — see `devNotes/LAUNCH_CHECKLIST.md`.
 
 ## Minimum order quantity (per item)
 A catalogue item can require a minimum number per booking — set per item under Tjänster, on the `min 1` chip in the product row (or the "Minsta antal" field in the add / new-category forms). Stored as `minQty` on the StrukenTvatt doc; 1 means no minimum, which is also what every pre-existing doc normalizes to.

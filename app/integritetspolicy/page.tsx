@@ -68,7 +68,8 @@ export default async function PrivacyPolicyPage() {
             <li><strong>Fullgöra avtalet</strong> (art. 6.1 b): utföra beställd tvätt, hämta och lämna, hantera betalning och kontakta dig om din order.</li>
             <li><strong>Rättslig förpliktelse</strong> (art. 6.1 c): bokföring och redovisning enligt bokföringslagen, samt rapportering av RUT-avdrag till Skatteverket.</li>
             <li><strong>Berättigat intresse</strong> (art. 6.1 f): förebygga bedrägeri och missbruk, säkerställa driftsäkerhet, hantera reklamationer och rättsliga anspråk samt utveckla och förbättra tjänsten. Vi har bedömt att dessa intressen väger tyngre än det begränsade integritetsintrång behandlingen innebär.</li>
-            <li><strong>Samtycke</strong> (art. 6.1 a): endast där det uttryckligen inhämtas, exempelvis vid frivillig lagring av personnummer i din profil. Samtycke kan när som helst återkallas, vilket dock inte påverkar lagligheten av behandling som skett dessförinnan.</li>
+            <li><strong>Samtycke</strong> (art. 6.1 a): endast där det uttryckligen inhämtas, exempelvis vid frivillig lagring av personnummer i din profil, eller om du vid registreringen kryssat i att du vill få erbjudanden och nyheter via e-post. Samtycke kan när som helst återkallas, vilket dock inte påverkar lagligheten av behandling som skett dessförinnan.</li>
+            <li><strong>Marknadsföring via e-post</strong> (art. 6.1 a samt 19 § marknadsföringslagen): vi skickar endast erbjudanden och nyhetsbrev till dig om du aktivt har kryssat i rutan vid registreringen. Rutan är aldrig förkryssad. Du kan när som helst avregistrera dig via länken i varje utskick eller genom att höra av dig till oss, och vi slutar då skicka. Transaktionsmejl om dina egna ordrar är inte marknadsföring och skickas oavsett.</li>
           </ul>
 
           <h2>4. Mottagare och personuppgiftsbiträden</h2>
@@ -207,7 +208,8 @@ export default async function PrivacyPolicyPage() {
             <li><strong>Performance of a contract</strong> (Art. 6(1)(b)): providing the cleaning service, pickup and delivery, processing payment and contacting you about your order.</li>
             <li><strong>Legal obligation</strong> (Art. 6(1)(c)): accounting under the Swedish Bookkeeping Act, and reporting RUT deductions to Skatteverket.</li>
             <li><strong>Legitimate interests</strong> (Art. 6(1)(f)): preventing fraud and abuse, maintaining operational security, handling complaints and legal claims, and improving the service. We consider these interests to outweigh the limited privacy impact.</li>
-            <li><strong>Consent</strong> (Art. 6(1)(a)): only where expressly obtained, such as optionally saving your personnummer to your profile. Consent may be withdrawn at any time without affecting the lawfulness of prior processing.</li>
+            <li><strong>Consent</strong> (Art. 6(1)(a)): only where expressly obtained, such as optionally saving your personnummer to your profile, or where you ticked the box at registration to receive offers and news by email. Consent may be withdrawn at any time without affecting the lawfulness of prior processing.</li>
+            <li><strong>Email marketing</strong> (Art. 6(1)(a) and s. 19 of the Swedish Marketing Act): we send offers and newsletters only if you actively ticked the box at registration. The box is never pre-ticked. You may unsubscribe at any time using the link in every message or by contacting us, and we will stop. Transactional emails about your own orders are not marketing and are sent regardless.</li>
           </ul>
 
           <h2>4. Recipients and processors</h2>

@@ -134,6 +134,36 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
 
   const [exportMonth, setExportMonth] = useState(_now.getMonth());
   const [exportYear,  setExportYear]  = useState(_now.getFullYear());
+  const [exportingCustomers, setExportingCustomers] = useState(false);
+
+  /**
+   * The whole customer list as CSV, for the client's own mailing list.
+   *
+   * Built on the server (it needs every customer *and* every order, which the
+   * orders page does not hold) and streamed back as a download. The file
+   * contains everyone — the "Vill ha reklam" column is what the client filters
+   * on before sending anything.
+   */
+  async function exportCustomersCSV() {
+    setExportingCustomers(true);
+    try {
+      const res = await fetch("/api/admin/customers/export");
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `expresstvatt-kunder-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Kunde inte exportera kundlistan. Försök igen.");
+    } finally {
+      setExportingCustomers(false);
+    }
+  }
 
   function exportXLSX() {
     const monthStart = new Date(exportYear, exportMonth, 1, 0, 0, 0, 0).getTime();
@@ -462,6 +492,25 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                 ↓ Exportera {SWEDISH_MONTHS[exportMonth]} {exportYear}
               </button>
             </div>
+
+            {/* Whole customer list, for the client's own ad mailings */}
+            <button
+              onClick={exportCustomersCSV}
+              disabled={exportingCustomers}
+              title="Alla kunder som CSV, med en kolumn för om de vill ha reklam"
+              style={{
+                display: "flex", alignItems: "center", gap: "0.4rem",
+                padding: "0.45rem 0.9rem",
+                background: "#fff", border: "1px solid #bfdbfe",
+                borderRadius: "7px",
+                cursor: exportingCustomers ? "default" : "pointer",
+                fontSize: "0.8rem", fontWeight: 600, color: "#1d4ed8",
+                whiteSpace: "nowrap",
+                opacity: exportingCustomers ? 0.6 : 1,
+              }}
+            >
+              {exportingCustomers ? "Exporterar…" : "↓ Alla kunder (CSV)"}
+            </button>
 
             {orders.some(o => o.status === "completed") && (
               <button
