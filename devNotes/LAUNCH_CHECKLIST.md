@@ -117,7 +117,14 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
          that person as N without anyone doing anything by hand.
 
       Customers can also switch it off themselves under Profil → Utskick, on
-      both the website and the app. Nothing in this repo *sends* marketing
+      both the website and the app.
+      **The consent covers SMS as well as e-post since 2026-10-28.** Two things
+      follow. First, marketing SMS needs its own opt-out — the convention is a
+      STOP keyword handled by the sending tool (46elks is already a dependency
+      for order SMS), and like the e-post link it does not write back to
+      Firestore on its own. Second, read the export's **`Kanaler`** column
+      before any SMS campaign: a row that says J / `e-post` consented under the
+      older wording and **must not be texted**. Nothing in this repo *sends* marketing
       email; the export and the opt-out are the whole feature.
       Verify once live: open an unsubscribe URL from the CSV, confirm the page
       says "Du är avregistrerad", then re-export and confirm that row is N.

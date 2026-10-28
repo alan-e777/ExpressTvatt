@@ -80,6 +80,16 @@ monthly XLSX one: the client's own mailing list, one row per customer.
 - `lib/newsletter.ts` (mirrored to the app) is the single source of truth for
   the flag. **Absent means no** — accounts predating the field read N, which is
   correct, since consent that was never asked for cannot be inferred.
+- **One tick, two channels (2026-10-28).** The consent covers **e-post and
+  SMS**; live phone calls are deliberately out, since those sit under
+  NIX-Telefon rather than marknadsföringslagen § 19. `newsletterChannels`
+  records what each consent actually covered, and **absent means `['email']`** —
+  the wording was e-post-only until 2026-10-28, so anyone who ticked before
+  that must never be texted. The export's **`Kanaler`** column shows which, so
+  the client can see a J that is e-post only.
+  To add a channel later: extend `NewsletterChannel`, add it to
+  `CURRENT_CHANNELS` and update `NEWSLETTER_LABEL`. Do **not** retro-apply it to
+  existing consents.
   The signup box is **never pre-ticked** and the label must stay legible; that
   file records why both are legal requirements, not preferences.
 - **Customers withdraw it themselves** under Profil → **Utskick**, a switch on

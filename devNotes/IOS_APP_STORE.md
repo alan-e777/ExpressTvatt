@@ -84,7 +84,9 @@ website's logic, but no one has watched it work on a device:
   customer withdraws that consent. Same check: flip it off, confirm that row in
   the CSV export turns from J to N, flip it back on. It must write through
   immediately with no confirmation step — withdrawal has to be as easy as
-  giving consent was.
+  giving consent was. Both now read "via e-post och SMS" (2026-10-28) — the
+  wording comes from the mirrored `lib/newsletter.ts`, so confirm the app shows
+  the same sentence as the website rather than a stale copy.
 - the amount sheet for per-kg / per-m² products, and the `amount` it sends
 - the Mattvätt m² slider and its area-based line ids — **untestable while the
   category is hidden** (`hidden: true` as of 2026-10-27). Nothing can order a rug

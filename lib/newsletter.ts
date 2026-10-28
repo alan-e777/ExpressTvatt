@@ -28,6 +28,25 @@
 
 export type NewsletterSource = 'web' | 'app';
 
+/**
+ * Which channels the customer actually agreed to.
+ *
+ * This exists because the consent text changed on 2026-10-28 from e-post only
+ * to e-post *and* SMS. Reusing the boolean alone would have silently widened
+ * every existing consent to a channel its owner never agreed to — so the
+ * channels are recorded with the consent, and **absent means `['email']`**,
+ * which is what the earlier wording asked for.
+ *
+ * Live phone calls are deliberately **not** here. They sit under NIX-Telefon
+ * rather than marknadsföringslagen § 19, and a laundry ringing customers with
+ * offers was not the intent; adding them later is a wording change plus a new
+ * channel value, not a rebuild.
+ */
+export type NewsletterChannel = 'email' | 'sms';
+
+/** What a consent given today covers. */
+export const CURRENT_CHANNELS: NewsletterChannel[] = ['email', 'sms'];
+
 export type NewsletterConsent = {
   newsletterConsent: boolean;
   /** ISO timestamp of the affirmative act. Null when consent is not held. */
@@ -35,6 +54,8 @@ export type NewsletterConsent = {
   newsletterConsentSource: NewsletterSource | null;
   /** ISO timestamp of a later withdrawal. Null if none has happened. */
   newsletterConsentWithdrawnAt: string | null;
+  /** The channels this particular consent covered. Null when none is held. */
+  newsletterChannels: NewsletterChannel[] | null;
 };
 
 /** Absent means no. Never infer a yes from a missing field. */
@@ -45,6 +66,32 @@ export function hasNewsletterConsent(data: { newsletterConsent?: unknown } | nul
 /** The Y/N the client filters the export on. */
 export function consentLabel(data: { newsletterConsent?: unknown } | null | undefined): 'J' | 'N' {
   return hasNewsletterConsent(data) ? 'J' : 'N';
+}
+
+/**
+ * The channels a stored consent covers.
+ *
+ * An absent `newsletterChannels` on a held consent means it was given under
+ * the e-post-only wording, so it returns `['email']` and never `['email','sms']`.
+ * Texting that customer would be marketing through a channel they were never
+ * asked about.
+ */
+export function consentChannels(
+  data: { newsletterConsent?: unknown; newsletterChannels?: unknown } | null | undefined,
+): NewsletterChannel[] {
+  if (!hasNewsletterConsent(data)) return [];
+  const raw = data?.newsletterChannels;
+  if (!Array.isArray(raw) || raw.length === 0) return ['email'];
+  return raw.filter((c): c is NewsletterChannel => c === 'email' || c === 'sms');
+}
+
+/** Human-readable channel list for the export: "e-post" / "e-post, SMS". */
+export function channelsLabel(
+  data: { newsletterConsent?: unknown; newsletterChannels?: unknown } | null | undefined,
+): string {
+  return consentChannels(data)
+    .map(c => (c === 'email' ? 'e-post' : 'SMS'))
+    .join(', ');
 }
 
 /**
@@ -59,6 +106,7 @@ export function consentFields(accepted: boolean, source: NewsletterSource): News
     newsletterConsentSource: accepted ? source : null,
     // Declining at signup is not a withdrawal — there was nothing to withdraw.
     newsletterConsentWithdrawnAt: null,
+    newsletterChannels: accepted ? [...CURRENT_CHANNELS] : null,
   };
 }
 
@@ -77,14 +125,15 @@ export function consentChangeFields(accepted: boolean, source: NewsletterSource)
     newsletterConsentAt: accepted ? now : null,
     newsletterConsentSource: accepted ? source : null,
     newsletterConsentWithdrawnAt: accepted ? null : now,
+    newsletterChannels: accepted ? [...CURRENT_CHANNELS] : null,
   };
 }
 
 /** The one wording shown at signup, on both surfaces — keep them identical. */
 export const NEWSLETTER_LABEL =
-  'Jag vill få erbjudanden och nyheter från Express Tvätt via e-post. Kan avslutas när som helst.';
+  'Jag vill få erbjudanden och nyheter från Express Tvätt via e-post och SMS. Kan avslutas när som helst.';
 
 /** The profile toggle's heading and explanation, likewise shared. */
 export const NEWSLETTER_SETTING_TITLE = 'Erbjudanden och nyheter';
 export const NEWSLETTER_SETTING_BODY =
-  'Få e-post med kampanjer och nyheter från Express Tvätt. Du kan slå av det när som helst — mejl om dina egna ordrar påverkas inte.';
+  'Få kampanjer och nyheter från Express Tvätt via e-post och SMS. Du kan slå av det när som helst — meddelanden om dina egna ordrar påverkas inte.';

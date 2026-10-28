@@ -1,4 +1,4 @@
-import { consentLabel } from "./newsletter";
+import { channelsLabel, consentLabel } from "./newsletter";
 
 /**
  * Turning the shop's customers and orders into the CSV the client mail-merges.
@@ -21,6 +21,7 @@ export type ExportCustomer = {
   createdAt?: string | null;
   newsletterConsent?: unknown;
   newsletterConsentAt?: string | null;
+  newsletterChannels?: unknown;
 };
 
 export type ExportOrder = {
@@ -47,6 +48,7 @@ export const HEADERS = [
   "Adress",
   "Postnummer",
   "Vill ha reklam",
+  "Kanaler",
   "Samtycke datum",
   "Typ",
   "Antal ordrar",
@@ -148,6 +150,10 @@ export function buildRows(
       "Adress": saved?.address ?? latest?.address ?? "",
       "Postnummer": saved?.postalCode ?? latest?.postalCode ?? "",
       "Vill ha reklam": consentLabel(c),
+      // Which channels that J actually covers. A consent given under the old
+      // e-post-only wording reads "e-post", so the client does not text
+      // someone who was never asked about SMS.
+      "Kanaler": channelsLabel(c),
       "Samtycke datum": (c.newsletterConsentAt ?? "").slice(0, 10),
       "Typ": "Konto",
       "Antal ordrar": cOrders.length,
@@ -188,6 +194,7 @@ export function buildRows(
       "Postnummer": latest.postalCode,
       // A guest checkout never showed a consent box, so this is always N.
       "Vill ha reklam": "N",
+      "Kanaler": "",
       "Samtycke datum": "",
       "Typ": "Gäst",
       "Antal ordrar": gOrders.length,
