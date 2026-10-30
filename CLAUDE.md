@@ -182,6 +182,41 @@ Admin-editable under Inställningar → "Tider för upphämtning & avlämning" (
 - Routes: `GET/POST /api/admin/timeslots` (admin) · `GET /api/timeslots` (public, for the pickers — `settings` is not client-readable per `firestore.rules`).
 - The iOS app reads the same list: `skraddare-app/lib/timeslots.ts` (hand-copied mirror — keep the two in sync) feeds `TimeSpanPickerModal`/`CheckoutScreen`. Because both clients agree, `create-cart-payment` rejects a pickup or delivery time that is not on the admin's list; an empty time or a failed settings read skips the check rather than blocking checkout.
 
+## Booking availability — closed days & recurring weekday closures
+Admin-editable on the **Calendar** page. Two ways to close a day, and the
+difference matters: `lib/availability.ts` is the single source of truth for
+both, and is client-safe (no `firebase-admin`).
+- Firestore `settings/availability` → `{ blockedDates, blockedWeekdays, allowedDates }`.
+  `blockedWeekdays` is `0`–`6` matching `Date.getDay()` (0 = Sunday).
+- **A weekday closure is a standing rule, not a bulk edit.** Switching Saturdays
+  off writes `blockedWeekdays: [6]` and nothing else — no dates are expanded
+  into `blockedDates`. So it covers every future Saturday with no end date, and
+  switching it back on reopens them all. Resolution order in `isDateBlocked`:
+  an explicit `blockedDates` entry wins, then an `allowedDates` exception,
+  then the weekday rule.
+- **`allowedDates` is what makes the rule usable**: "generally no Saturdays, but
+  I can do the 15th". Clicking a rule-closed day in the calendar records the
+  exception rather than fighting the rule; clicking it again removes it. The
+  day-detail panel says which of the two is in play.
+- Exceptions are **not** deleted when a weekday is reopened. They are inert
+  while the rule is off (`isDateBlocked` only consults them against a live
+  rule) and come back correctly if it is closed again — deleting them would
+  silently throw away the admin's own decisions.
+- `POST /api/admin/availability` (single day) is **rule-aware** and
+  read-modify-write, not `arrayUnion`: closing a day the rule already closes
+  must not also write an explicit block, or that day would stay shut after the
+  rule was lifted. `PUT` sets the weekday rules.
+- **`GET /api/availability` flattens the rules into plain dates**
+  (`expandBlockedDates`, 400-day horizon, explicit blocks always included even
+  beyond it). That is what let this ship without touching the website picker or
+  the iOS app — both still read `blockedDates` and both got the feature for
+  free, with no way to disagree about what a rule means.
+- `create-cart-payment` re-checks with the same `isDateBlocked`, so a weekday
+  closure is enforced at the charge and not only in the UI.
+- Dates are parsed with `weekdayOf`/`toYmd`, which build from the parts rather
+  than `new Date(ymd)` / `toISOString()` — a bare date string parses as **UTC**,
+  which would shift the weekday and make "no Saturdays" close Fridays.
+
 ## Service area (delivery zone)
 Admin-editable under Inställningar → "Tjänsteområde" (`app/admin/(dashboard)/settings/SettingsClient.tsx`). It used to be a circle; it is now a **polygon with any number of points (3–60)**, drawn on the map.
 - `lib/serviceArea.ts` is the single source of truth: types, `pointInPolygon`, `boundingCircle`, `boundingRect`, `polygonFromCircle`, `areaSqKm`, the strict `validatePolygon()` used on save and the lenient `normalizeServiceArea()` used on read. Client-safe — no `firebase-admin`. `lib/serviceArea-server.ts` holds the one Firestore read (`getServiceArea()`).

@@ -13,6 +13,7 @@ import { normalizeTimeSlotSettings, slotsToSpans } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { clampAmountToRange, isMeasured, measuredLineName, measuredPriceKr, normalizePricing } from '@/lib/serviceUnits';
 import { normalizeMinQty } from '@/lib/minOrderQty';
+import { isDateBlocked, normalizeAvailability } from '@/lib/availability';
 import { consentFields } from '@/lib/newsletter';
 
 type CartItem = {
@@ -110,9 +111,12 @@ export async function POST(request: NextRequest) {
   if (!contact.address) return NextResponse.json({ error: 'Adress krävs.' }, { status: 400 });
 
   // ── Availability: reject pickup/delivery on an admin-blocked date ─────────────
+  // Re-checked here, not trusted from the client. `isDateBlocked` is the same
+  // predicate the pickers and the admin calendar use, so a standing weekday
+  // rule ("no Saturdays") is enforced at the charge, not just in the UI.
   const availSnap = await db.collection('settings').doc('availability').get();
-  const blockedDates: string[] = (availSnap.exists ? availSnap.data()?.blockedDates : []) ?? [];
-  if (blockedDates.includes(date) || (deliveryDate && blockedDates.includes(deliveryDate))) {
+  const availability = normalizeAvailability(availSnap.exists ? availSnap.data() : null);
+  if (isDateBlocked(date, availability) || (deliveryDate && isDateBlocked(deliveryDate, availability))) {
     return NextResponse.json({ error: 'Ett av de valda datumen är inte längre tillgängligt. Välj ett annat datum.' }, { status: 400 });
   }
 

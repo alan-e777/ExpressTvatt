@@ -802,10 +802,7 @@ function CheckoutForm() {
           `Typ: Gäst`, which is how an untouched pre-tick stays distinguishable
           from someone who actively ticked at signup. See lib/newsletter.ts. */}
       {!userId && (
-        // Extra room underneath: this is the last thing in the form, and the
-        // sticky "Betala" bar overlaps the bottom of the page. A consent line
-        // half-hidden behind a button is not clearly presented.
-        <div className="of-section" style={{ paddingBottom: 96 }}>
+        <div className="of-section">
           <label className="signup-consent">
             <input
               type="checkbox"

@@ -2,6 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { ACTIVE_ORDER_STATUSES } from "@/lib/order-status";
+import {
+  AVAILABILITY_DEFAULTS, WEEKDAYS, blockReason, isDateBlocked, toYmd, weekdayLongName, weekdayOf,
+  type AvailabilitySettings,
+} from "@/lib/availability";
 
 // Statuses that still count as a live booking when warning about a blocked day.
 // `page.tsx` already filters the calendar to exactly these, so this is currently
@@ -42,16 +46,15 @@ const STATUS_LABEL: Record<string, string> = {
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function toYmd(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
 function parseLocalDate(ymd: string) {
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
-export default function CalendarClient({ orders, initialBlockedDates = [] }: { orders: CalendarOrder[]; initialBlockedDates?: string[] }) {
+export default function CalendarClient({
+  orders,
+  initialAvailability = AVAILABILITY_DEFAULTS,
+}: { orders: CalendarOrder[]; initialAvailability?: AvailabilitySettings }) {
   const today = new Date();
   const todayYmd = toYmd(today);
 
@@ -59,37 +62,77 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
 
-  const [blockedDates, setBlockedDates] = useState<Set<string>>(() => new Set(initialBlockedDates));
+  const [availability, setAvailability] = useState<AvailabilitySettings>(initialAvailability);
   const [togglingDate, setTogglingDate] = useState<string | null>(null);
+  const [weekdayPanelOpen, setWeekdayPanelOpen] = useState(false);
+  const [savingWeekdays, setSavingWeekdays] = useState(false);
 
+  const blocked = (ymd: string) => isDateBlocked(ymd, availability);
+
+  /**
+   * Flip one day. Only the intent — open or closed — is sent; the route works
+   * out whether that means an explicit block or an exception to a weekday
+   * rule, so the two can never disagree about it.
+   */
   async function toggleBlocked(ymd: string) {
-    const blocked = !blockedDates.has(ymd);
+    const want = !blocked(ymd);
+    const previous = availability;
     setTogglingDate(ymd);
-    // Optimistic update
-    setBlockedDates(prev => {
-      const next = new Set(prev);
-      blocked ? next.add(ymd) : next.delete(ymd);
-      return next;
+    // Optimistic, using the same predicate the server will apply.
+    setAvailability(prev => {
+      const blockedDates = new Set(prev.blockedDates);
+      const allowedDates = new Set(prev.allowedDates);
+      const ruleCloses = prev.blockedWeekdays.includes(weekdayOf(ymd));
+      if (want) {
+        allowedDates.delete(ymd);
+        ruleCloses ? blockedDates.delete(ymd) : blockedDates.add(ymd);
+      } else {
+        blockedDates.delete(ymd);
+        ruleCloses ? allowedDates.add(ymd) : allowedDates.delete(ymd);
+      }
+      return { ...prev, blockedDates: [...blockedDates], allowedDates: [...allowedDates] };
     });
     try {
       const res = await fetch("/api/admin/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: ymd, blocked }),
+        body: JSON.stringify({ date: ymd, blocked: want }),
       });
       if (!res.ok) throw new Error();
-      const data = await res.json();
-      setBlockedDates(new Set(data.blockedDates ?? []));
+      setAvailability(await res.json());
     } catch {
-      // Revert
-      setBlockedDates(prev => {
-        const next = new Set(prev);
-        blocked ? next.delete(ymd) : next.add(ymd);
-        return next;
-      });
+      setAvailability(previous);
       alert("Failed to update availability. Try again.");
     } finally {
       setTogglingDate(null);
+    }
+  }
+
+  /**
+   * Turn a whole weekday on or off. Standing rule, no end date — every future
+   * Saturday closes at once, and the per-day exceptions already recorded are
+   * left in place so "except the 15th" survives.
+   */
+  async function toggleWeekday(value: number) {
+    const next = availability.blockedWeekdays.includes(value)
+      ? availability.blockedWeekdays.filter(d => d !== value)
+      : [...availability.blockedWeekdays, value];
+    const previous = availability;
+    setSavingWeekdays(true);
+    setAvailability(prev => ({ ...prev, blockedWeekdays: next.sort((a, b) => a - b) }));
+    try {
+      const res = await fetch("/api/admin/availability", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockedWeekdays: next }),
+      });
+      if (!res.ok) throw new Error();
+      setAvailability(await res.json());
+    } catch {
+      setAvailability(previous);
+      alert("Failed to update weekdays. Try again.");
+    } finally {
+      setSavingWeekdays(false);
     }
   }
 
@@ -123,7 +166,16 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
   const selectedOrders_sorted = [...selectedOrders].sort((a, b) =>
     (a.dropoffTime || "").localeCompare(b.dropoffTime || "")
   );
-  const selectedBlocked = blockedDates.has(selectedYmd);
+  const selectedBlocked = blocked(selectedYmd);
+  const selectedReason  = blockReason(selectedYmd, availability);
+  const closedWeekdayNames = WEEKDAYS
+    .filter(w => availability.blockedWeekdays.includes(w.value))
+    .map(w => w.short)
+    .join(", ");
+  // Only exceptions that a live rule still needs — a leftover from a weekday
+  // since reopened is not something to report.
+  const exceptionCount = availability.allowedDates
+    .filter(ymd => availability.blockedWeekdays.includes(weekdayOf(ymd))).length;
   const selectedActiveCount = selectedOrders.filter(o => ACTIVE_FOR_WARNING.has(o.status)).length;
 
   function fmtSelectedDate() {
@@ -179,7 +231,8 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
               const hasOrders = orderList.length > 0;
               const hasCancelled = orderList.every(o => o.status === "cancelled");
               const dotColor = hasCancelled ? "#e5e5e5" : "#378ADD";
-              const isBlocked = blockedDates.has(ymd);
+              const isBlocked = blocked(ymd);
+              const byWeekday = blockReason(ymd, availability) === "weekday";
               const activeCount = orderList.filter(o => ACTIVE_FOR_WARNING.has(o.status)).length;
               const isConflict = isBlocked && activeCount > 0; // booked on a closed day
 
@@ -187,7 +240,12 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
                 <button
                   key={day}
                   onClick={() => setSelectedYmd(ymd)}
-                  title={isConflict ? `${activeCount} booking(s) on a blocked day` : isBlocked ? "Blocked for booking" : undefined}
+                  title={
+                    isConflict ? `${activeCount} booking(s) on a blocked day`
+                    : byWeekday ? `Closed — no ${weekdayLongName(weekdayOf(ymd))}`
+                    : isBlocked ? "Blocked for booking"
+                    : undefined
+                  }
                   style={{
                     aspectRatio: "1",
                     display: "flex",
@@ -251,10 +309,10 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
                 const [y, m] = (o.dropoffDate || "").split("-").map(Number);
                 return y === year && m === month + 1;
               });
-              const blockedThisMonth = [...blockedDates].filter(ymd => {
-                const [y, m] = ymd.split("-").map(Number);
-                return y === year && m === month + 1;
-              }).length;
+              // Counted over the month's real days, since a weekday rule
+              // closes days that are in no stored list.
+              const blockedThisMonth = Array.from({ length: daysInMonth }, (_, i) => dayYmd(i + 1))
+                .filter(ymd => blocked(ymd)).length;
               return (
                 <>
                   <span style={{ fontSize: "0.75rem", color: "#999" }}>
@@ -268,6 +326,70 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
                 </>
               );
             })()}
+          </div>
+
+          {/* ── Recurring closures ──────────────────────────────────────
+              A standing rule rather than a bulk edit: nothing is written
+              into blockedDates, so turning a weekday back on reopens every
+              date it had closed, and a day re-opened by hand keeps its
+              exception either way. */}
+          <div style={{ borderTop: "1px solid #f0f0f0" }}>
+            <button
+              onClick={() => setWeekdayPanelOpen(o => !o)}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: "0.5rem", padding: "0.75rem 1.25rem", background: "none", border: "none",
+                cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, color: "#1a1a1a",
+              }}
+            >
+              <span>Weekdays</span>
+              <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontWeight: 500, color: closedWeekdayNames ? "#dc2626" : "#999" }}>
+                  {closedWeekdayNames || "All open"}
+                </span>
+                <span style={{ color: "#bbb", fontSize: "0.7rem" }}>{weekdayPanelOpen ? "▲" : "▼"}</span>
+              </span>
+            </button>
+
+            {weekdayPanelOpen && (
+              <div style={{ padding: "0 1.25rem 1rem" }}>
+                <p style={{ fontSize: "0.72rem", color: "#999", margin: "0 0 0.6rem", lineHeight: 1.5 }}>
+                  Switch a day off to close it every week, from now on. Single dates can still be
+                  reopened afterwards by clicking them in the calendar.
+                </p>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {WEEKDAYS.map(w => {
+                    const closed = availability.blockedWeekdays.includes(w.value);
+                    return (
+                      <button
+                        key={w.value}
+                        onClick={() => toggleWeekday(w.value)}
+                        disabled={savingWeekdays}
+                        aria-pressed={!closed}
+                        title={closed ? `${w.long} are closed` : `${w.long} are open`}
+                        style={{
+                          flex: "1 1 0", minWidth: 42, padding: "0.45rem 0.2rem",
+                          borderRadius: "7px", cursor: savingWeekdays ? "default" : "pointer",
+                          fontSize: "0.74rem", fontWeight: 600,
+                          border: closed ? "1px solid #fca5a5" : "1px solid #d7ead9",
+                          background: closed ? "#fee2e2" : "#f0fdf4",
+                          color: closed ? "#dc2626" : "#15803d",
+                          textDecoration: closed ? "line-through" : "none",
+                          opacity: savingWeekdays ? 0.6 : 1,
+                        }}
+                      >
+                        {w.short}
+                      </button>
+                    );
+                  })}
+                </div>
+                {exceptionCount > 0 && (
+                  <p style={{ fontSize: "0.72rem", color: "#999", margin: "0.6rem 0 0" }}>
+                    {exceptionCount} single date{exceptionCount !== 1 ? "s are" : " is"} kept open against these rules.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -301,7 +423,9 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
             >
               {togglingDate === selectedYmd
                 ? "Saving…"
-                : selectedBlocked ? "↺ Reopen this day" : "⊘ Block this day"}
+                : selectedReason === "weekday" ? "↺ Open this date anyway"
+                : selectedBlocked ? "↺ Reopen this day"
+                : "⊘ Block this day"}
             </button>
           </div>
 
@@ -327,9 +451,33 @@ export default function CalendarClient({ orders, initialBlockedDates = [] }: { o
                 borderBottom: "1px solid #f0f0f0", color: "#888", fontSize: "0.8rem",
               }}>
                 <span>⊘</span>
-                <span>This day is blocked — customers can't book it for pickup or dropoff.</span>
+                <span>
+                  {selectedReason === "weekday" ? (
+                    <>
+                      Closed because <strong>{weekdayLongName(weekdayOf(selectedYmd))} are switched off</strong>{" "}
+                      under Weekdays. Opening this date leaves the rule in place.
+                    </>
+                  ) : (
+                    <>This day is blocked — customers can&apos;t book it for pickup or dropoff.</>
+                  )}
+                </span>
               </div>
             )
+          )}
+
+          {!selectedBlocked
+            && availability.allowedDates.includes(selectedYmd)
+            && availability.blockedWeekdays.includes(weekdayOf(selectedYmd)) && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.5rem",
+              padding: "0.65rem 1.25rem", background: "#f0fdf4",
+              borderBottom: "1px solid #dcfce7", color: "#15803d", fontSize: "0.8rem",
+            }}>
+              <span>✓</span>
+              <span>
+                Open as an exception — {weekdayLongName(weekdayOf(selectedYmd))} are otherwise closed.
+              </span>
+            </div>
           )}
 
           {selectedOrders_sorted.length === 0 ? (
