@@ -56,7 +56,14 @@ Read `style.md` before creating or editing any screen or component.
 - `App.tsx` (StripeProvider/GestureHandler wrapper)
 - Stripe payment logic in PaymentScreen — restyle only
 - Firestore queries and onSnapshot listeners — keep in place
-- `app/api/create-payment/`, `app/api/services/`, `app/api/webhook/` — existing API routes
+- `app/api/services/`, `app/api/webhook/` — existing API routes
+  (`app/api/create-payment/` was **deleted 2026-10-30**: the single-service
+  checkout it served was replaced by `/order → /kassa` long ago, its only
+  caller `components/CheckoutWrapper.tsx` was orphaned, and the route was
+  still answering unauthenticated POSTs that bypassed the delivery fee,
+  discounts, RUT, blocked dates, minimum quantities and the service-area
+  address check. `services/{id}` docs are untouched — they are real priced
+  services and `/api/services` still lists them.)
 
 ## Custom components (web)
 - `components/DatePicker.tsx` + `components/TimePicker.tsx` — custom dropdowns, must stay visually in sync. Never replace with native `<input type="date/time">`.

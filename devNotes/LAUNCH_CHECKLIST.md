@@ -1,7 +1,7 @@
 # Launch checklist — the one ordered list
 
 **Start here.** Everything else is detail hanging off this file. Last updated
-**2026-10-28**.
+**2026-10-30**.
 
 The other docs and what they are for:
 
@@ -196,13 +196,32 @@ From `BEFORE_DEPLOYMENT.md` and `GO_LIVE_HANDOVER.md`:
       `charge.refunded`, with the live `whsec_…` in env. Without it, paid orders
       never flip to paid.
 - [ ] **Google Maps billing** on the owner's account — five APIs, two keys.
-- [ ] **Klarna / Amazon Pay have no `return_url`**, so redirect-based payment
-      methods error on pay. Either implement the return handling or disable
-      those methods in Stripe.
-- [ ] Legacy booking pages (`/boka`, `/struken-tvatt`) bypass the delivery fee,
-      discounts and blocked-date rules.
-- [ ] Rate limiting on payment and Maps autocomplete endpoints.
-- [ ] `pending_payment` orders accumulate forever.
+- [x] ~~**Klarna / Amazon Pay have no `return_url`**.~~ **Verified done
+      2026-10-30** — `app/kassa/page.tsx` passes
+      `return_url: <origin>/order-bekraftelse`, and that page calls
+      `/api/confirm-order` so a redirect-based payment settles like any other.
+      *(The iOS app's `CartPaymentScreen` still passes none — app only.)*
+- [x] ~~Legacy booking pages bypass the delivery fee, discounts and
+      blocked-date rules.~~ **Verified done 2026-10-30** — `/boka`,
+      `/struken-tvatt` and `/struken-tvatt/boka` are six-line redirect stubs to
+      `/order`.
+- [x] ~~`POST /api/create-payment` was still live.~~ **Deleted 2026-10-30.**
+      Nothing had called it since the `/order → /kassa` rework; its only caller,
+      `components/CheckoutWrapper.tsx`, was orphaned and went with it. It took
+      unauthenticated orders that skipped the delivery fee, discounts, RUT,
+      blocked dates, minimum quantities and the service-area check. The price
+      itself was read from Firestore, so it was never a tampering hole.
+      An **older** app build did call it (snapshot `82b6e81`, which still had
+      `PaymentScreen`); the current app calls only `/api/create-cart-payment`,
+      and the app is on the developer's phone alone, so nothing customer-facing
+      could regress. If that phone still runs a pre-rework bundle, one OTA
+      brings it current.
+- [ ] **Rate limiting on payment and Maps autocomplete endpoints.** Still open,
+      and `/api/places/autocomplete` is open to the world — every call is
+      billable Google spend, so this is a cost risk once ads drive traffic.
+- [ ] `pending_payment` orders accumulate forever. Cosmetic; note that any such
+      order whose Stripe intent says *Succeeded* is money with no usable order,
+      and the reconcile sweep only looks back 48 hours.
 
 ---
 
