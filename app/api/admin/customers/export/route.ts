@@ -3,6 +3,7 @@ import { isAdmin } from "@/lib/admin-auth";
 import { db } from "@/lib/firebase-admin";
 import { buildRows, toCsv, type ExportCustomer, type ExportOrder } from "@/lib/customer-export";
 import { guestOptOutKey, guestUnsubscribeUrl, unsubscribeUrl } from "@/lib/unsubscribe";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * Every customer the shop has, as one CSV row each, for the client's own
@@ -21,7 +22,7 @@ import { guestOptOutKey, guestUnsubscribeUrl, unsubscribeUrl } from "@/lib/unsub
  */
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET() {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -73,17 +74,16 @@ export async function GET(req: Request) {
     };
   });
 
-  // Taken from the request so the links work on whatever host the admin is
-  // actually on — production, a preview deployment or localhost — instead of
-  // needing yet another env var to state the site's own address.
-  const origin = new URL(req.url).origin;
-
+  // Deliberately NOT the request's own origin. These links go into a marketing
+  // email; an export downloaded from localhost or a preview deployment would
+  // otherwise ship a campaign whose unsubscribe links fail for every
+  // recipient. See lib/site-url.ts.
   const stamp = new Date().toISOString().slice(0, 10);
   const csv = toCsv(buildRows(
     customers,
     orders,
-    uid => unsubscribeUrl(uid, origin),
-    email => guestUnsubscribeUrl(email, origin),
+    uid => unsubscribeUrl(uid, SITE_URL),
+    email => guestUnsubscribeUrl(email, SITE_URL),
     email => optedOutKeys.has(guestOptOutKey(email)),
   ));
 

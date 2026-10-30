@@ -4,6 +4,7 @@ import './globals.css';
 import ClientLayout from '@/components/ClientLayout';
 import TrackingPixel from '@/components/TrackingPixel';
 import CookieBanner from '@/components/CookieBanner';
+import { SITE_URL } from '@/lib/site-url';
 
 /* Self-hosted at build time. These used to be two @import lines at the top of
    globals.css, which meant every page load — public, admin and driver — hit
@@ -30,7 +31,7 @@ const inter = Inter({
    every route and point them all at `/`. `metadataBase` is what lets relative
    URLs in child metadata resolve to the live domain. */
 export const metadata: Metadata = {
-  metadataBase: new URL('https://expresstvatt.se'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'Kemtvätt i Stockholm med Hämtning & Hemleverans | ExpressTvätt',
     template: '%s | Express Tvätt',
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
     title: 'Kemtvätt i Stockholm med Hämtning & Hemleverans',
     description:
       'Snabb och professionell kemtvätt i Stockholm. Upphämtning och leverans direkt till dörren.',
-    url: 'https://expresstvatt.se/',
+    url: `${SITE_URL}/`,
     type: 'website',
     siteName: 'Express Tvätt',
     locale: 'sv_SE',

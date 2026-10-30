@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import LandingPage from '@/components/LandingPage';
+import { SITE_URL } from '@/lib/site-url';
 
 /**
  * The landing page itself is a client component (scroll reveals, the parcel
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     title: 'Kemtvätt i Stockholm med Hämtning & Hemleverans',
     description:
       'Snabb och professionell kemtvätt i Stockholm. Upphämtning och leverans direkt till dörren.',
-    url: 'https://expresstvatt.se/',
+    url: `${SITE_URL}/`,
     type: 'website',
     siteName: 'Express Tvätt',
     locale: 'sv_SE',

@@ -124,7 +124,10 @@ monthly XLSX one: the client's own mailing list, one row per customer.
   (art. 7(3)). Turning it off stamps `newsletterConsentWithdrawnAt`, and the
   next export shows that customer as N on its own.
 - **The export carries a one-click `Avregistreringslänk` per customer**, which
-  is what goes in the mailing tool's merge field. It needs no login:
+  is what goes in the mailing tool's merge field. **The link always points at
+  the live domain** (`lib/site-url.ts`), never at the host the admin downloaded
+  the file from — an export taken from localhost or a preview would otherwise
+  ship a campaign whose every unsubscribe link fails. It needs no login:
   `lib/unsubscribe.ts` signs the uid with `UNSUBSCRIBE_SECRET` (HMAC-SHA256,
   24 hex chars), `/avregistrera` POSTs it to `POST /api/unsubscribe`, and that
   writes `newsletterConsent: false`. Requiring a login instead would make
@@ -207,6 +210,11 @@ See `structure.md` for full file map.
   `openssl rand -hex 32`. **Changing it invalidates every link already sent**,
   so set it once and leave it. Unset means the export's link column is empty
   and `/api/unsubscribe` answers 503.
+- `NEXT_PUBLIC_SITE_URL` — optional. Overrides the site's own address, which
+  defaults to `https://expresstvatt.se` (`lib/site-url.ts`) and is what the
+  customer export's unsubscribe links are built from. Only set it on a real
+  staging deployment that sends its own mail; setting it locally would put
+  `localhost` links into a campaign.
 - `GOOGLE_PLACE_ID` — the business's Google place id, for the landing page's
   reviews strip (`GET /api/reviews`). Optional: without it the route resolves
   the place by name, which costs an extra billed call and can match the wrong
