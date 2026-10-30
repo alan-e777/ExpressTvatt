@@ -99,7 +99,17 @@ monthly XLSX one: the client's own mailing list, one row per customer.
   **onto the order** by `create-cart-payment` (`consentFields(..., 'guest')`),
   since a guest has no `customers/{uid}` document. The export reads the
   **most recent** order: a later untick overrides an earlier tick, which is the
-  safe direction. Unticked by default, like every other consent box here.
+  safe direction.
+- **The checkout box is pre-ticked; the signup boxes are not** (owner's
+  decision, 2026-10-30). That makes it an opt-*out*, which does not rest on
+  art. 4(11) consent but on the existing-customer route in
+  marknadsföringslagen § 19 st. 2 — lawful only while the customer gets a clear
+  chance to decline when the address is collected **and in every message
+  since**. So: the box must stay plainly visible in the checkout (never
+  collapsed, hidden or pushed below the fold), and the client's sends must
+  always carry the unsubscribe link. `Typ: Gäst` in the export is what keeps an
+  untouched pre-tick distinguishable from an actively ticked signup — do not
+  let the two columns blur into one.
 - **A guest's opt-out is its own record.** There is no document to flip, so
   `POST /api/unsubscribe` with `{email, token}` writes
   `marketing_optouts/{guestOptOutKey(email)}` — a hash of the lowercased

@@ -14,9 +14,22 @@
  * Two rules that are not ours to relax, and that the admin UI must not be
  * changed to work around:
  *
- *  - **The box is never pre-ticked.** Consent needs a clear affirmative act
- *    (art. 4(11), recital 32); a pre-ticked box is not consent — the CJEU
- *    settled that in Planet49 (C-673/17).
+ *  - **The signup boxes are never pre-ticked.** Consent needs a clear
+ *    affirmative act (art. 4(11), recital 32); a pre-ticked box is not consent
+ *    — the CJEU settled that in Planet49 (C-673/17). This holds for both
+ *    signup forms, and changing either of them is a legal defect, not a style
+ *    choice.
+ *  - **The guest checkout box is the one exception** (owner's decision,
+ *    2026-10-30). It is pre-ticked, so it does not rest on art. 4(11) consent
+ *    at all: it leans on the existing-customer route in marknadsföringslagen
+ *    § 19 st. 2, which lets a shop email a customer about similar services
+ *    provided they were given a clear chance to decline **when the address was
+ *    collected and in every message since**. Two things therefore have to stay
+ *    true, or it loses its footing: the box stays plainly visible in the
+ *    checkout (never collapsed, hidden or moved below the fold), and every
+ *    message carries a working unsubscribe link. A guest's row is marked
+ *    `Typ: Gäst` in the export, which is what keeps an untouched pre-tick
+ *    distinguishable from someone who actively ticked at signup.
  *  - **Marketing email to a consumer is opt-in** under marknadsföringslagen
  *    § 19. The separate "soft opt-in" for existing customers (§ 19 st. 2) is a
  *    different legal route with its own conditions, and this field does not
@@ -31,6 +44,11 @@
  * Where the consent was given. `guest` is a checkout with no account behind it
  * — the consent then lives on the order, since there is no `customers/{uid}`
  * document to hold it.
+ *
+ * `guest` also carries a weaker claim than the other two: that box is
+ * pre-ticked, so the value means "did not opt out", while `web` and `app` mean
+ * "ticked it". Do not merge the three when reasoning about how a consent was
+ * obtained.
  */
 export type NewsletterSource = 'web' | 'app' | 'guest';
 

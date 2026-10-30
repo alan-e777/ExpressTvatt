@@ -97,9 +97,11 @@ import across the Next app. They are now kept **byte-identical** rather than
   nobody is signed in, so every app order already has an account behind it and the consent
   question is answered at signup instead.
 - **Customer hits:** nothing. This is not a missing feature so much as a different front door.
-- **If the app ever drops the login wall**, it must add the same tick to its checkout, send
-  `newsletter` in the `create-cart-payment` body and leave it off by default. An app guest
-  order without it would land in the client's export as N forever, with no way to ask.
+- **If the app ever drops the login wall**, it must add the same tick to its checkout and send
+  `newsletter` in the `create-cart-payment` body. Match the web default — **pre-ticked at
+  checkout, unticked at signup** — and keep it plainly visible, since a pre-tick the customer
+  never saw is not an opportunity to decline. An app guest order without the field would land
+  in the client's export as N forever, with no way to ask.
 - **Also web only:** the guest opt-out path — `marketing_optouts`, and the `?e=`/`?t=` form of
   the unsubscribe link. Nothing in the app reads or writes either.
 

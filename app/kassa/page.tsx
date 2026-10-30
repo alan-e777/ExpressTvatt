@@ -171,8 +171,10 @@ function CheckoutForm() {
   const [deliveryTime,     setDeliveryTime]     = useState('');
   const [notes,            setNotes]            = useState('');
   const [rutAvdrag,        setRutAvdrag]        = useState(false);
-  // Guest marketing consent. Starts unticked — see lib/newsletter.ts.
-  const [newsletter,       setNewsletter]       = useState(false);
+  // Guest marketing consent. Pre-ticked at the owner's decision (2026-10-30) —
+  // the customer unticks it to decline. Note this is the *checkout* box only:
+  // the signup boxes on both surfaces stay unticked. See lib/newsletter.ts.
+  const [newsletter,       setNewsletter]       = useState(true);
   const [personnummer,     setPersonnummer]     = useState('');
   const [formError,        setFormError]        = useState('');
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
@@ -794,8 +796,11 @@ function CheckoutForm() {
           Profil → Utskick; asking again here would let a checkout silently
           overwrite that. A guest has no account, so this tick is the only
           chance to ask — and the consent is stored on the order itself.
-          Unticked by design: a pre-ticked box is not consent (recital 32,
-          Planet49 C-673/17). See lib/newsletter.ts. */}
+          Pre-ticked, so it must stay plainly visible and never be collapsed,
+          moved below the fold or shrunk further: an opt-out the customer did
+          not see is not an opportunity to decline. The export marks these rows
+          `Typ: Gäst`, which is how an untouched pre-tick stays distinguishable
+          from someone who actively ticked at signup. See lib/newsletter.ts. */}
       {!userId && (
         // Extra room underneath: this is the last thing in the form, and the
         // sticky "Betala" bar overlaps the bottom of the page. A consent line
