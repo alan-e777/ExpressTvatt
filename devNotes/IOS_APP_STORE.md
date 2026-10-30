@@ -87,6 +87,10 @@ website's logic, but no one has watched it work on a device:
   giving consent was. Both now read "via e-post och SMS" (2026-10-28) — the
   wording comes from the mirrored `lib/newsletter.ts`, so confirm the app shows
   the same sentence as the website rather than a stale copy.
+  **Nothing to test for guest checkout** (web, 2026-10-30): the app renders
+  `AuthScreen` whenever nobody is signed in, so it has no guest orders and no
+  guest consent box. If that login wall is ever dropped, the box has to come
+  with it — see `migration.md` #5.
 - the amount sheet for per-kg / per-m² products, and the `amount` it sends
 - the Mattvätt m² slider and its area-based line ids — **untestable while the
   category is hidden** (`hidden: true` as of 2026-10-27). Nothing can order a rug
