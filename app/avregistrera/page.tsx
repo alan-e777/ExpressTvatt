@@ -23,6 +23,9 @@ type State = 'working' | 'done' | 'invalid' | 'failed';
 function UnsubscribeInner() {
   const params = useSearchParams();
   const uid = params.get('u') ?? '';
+  // Guests have no uid — their link carries the email instead. See
+  // lib/unsubscribe.ts for why the two are signed separately.
+  const email = params.get('e') ?? '';
   const token = params.get('t') ?? '';
 
   const [state, setState] = useState<State>('working');
@@ -36,7 +39,7 @@ function UnsubscribeInner() {
       const res = await fetch('/api/unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid, token }),
+        body: JSON.stringify(uid ? { uid, token } : { email, token }),
       });
       if (res.ok) { setState('done'); return; }
       setState(res.status === 403 ? 'invalid' : 'failed');
@@ -48,7 +51,7 @@ function UnsubscribeInner() {
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
-    if (!uid || !token) { setState('invalid'); return; }
+    if ((!uid && !email) || !token) { setState('invalid'); return; }
     submit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -17,6 +17,7 @@ import { formatPersonnummer, isValidPersonnummer, normalizeRutEligible, rutRefun
 import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { fetchTimeSlots, TIMESLOT_DEFAULTS, type TimeSlotSettings } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
+import { NEWSLETTER_LABEL } from '@/lib/newsletter';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -170,6 +171,8 @@ function CheckoutForm() {
   const [deliveryTime,     setDeliveryTime]     = useState('');
   const [notes,            setNotes]            = useState('');
   const [rutAvdrag,        setRutAvdrag]        = useState(false);
+  // Guest marketing consent. Starts unticked — see lib/newsletter.ts.
+  const [newsletter,       setNewsletter]       = useState(false);
   const [personnummer,     setPersonnummer]     = useState('');
   const [formError,        setFormError]        = useState('');
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
@@ -371,7 +374,7 @@ function CheckoutForm() {
           'Content-Type': 'application/json',
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
-        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes: notes.trim(), items, rutAvdrag, personnummer: rutAvdrag ? personnummer : '' }),
+        body:    JSON.stringify({ customerId: userId, name: name.trim(), email: email.trim(), phone: phone.trim(), address, postalCode, date: pickupDate, time: pickupTime, deliveryDate, deliveryTime, notes: notes.trim(), items, rutAvdrag, personnummer: rutAvdrag ? personnummer : '', newsletter }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? 'Fel vid betalning.');
       const data = await res.json();
@@ -785,6 +788,29 @@ function CheckoutForm() {
         )}
       </div>
       </div>
+
+      {/* ── Marketing consent (guests only) ──────────────────────────────
+          A signed-in customer answered this at signup and can change it under
+          Profil → Utskick; asking again here would let a checkout silently
+          overwrite that. A guest has no account, so this tick is the only
+          chance to ask — and the consent is stored on the order itself.
+          Unticked by design: a pre-ticked box is not consent (recital 32,
+          Planet49 C-673/17). See lib/newsletter.ts. */}
+      {!userId && (
+        // Extra room underneath: this is the last thing in the form, and the
+        // sticky "Betala" bar overlaps the bottom of the page. A consent line
+        // half-hidden behind a button is not clearly presented.
+        <div className="of-section" style={{ paddingBottom: 96 }}>
+          <label className="signup-consent">
+            <input
+              type="checkbox"
+              checked={newsletter}
+              onChange={e => setNewsletter(e.target.checked)}
+            />
+            <span>{NEWSLETTER_LABEL}</span>
+          </label>
+        </div>
+      )}
 
       {(formError || loadError) && (
         <div style={{ paddingTop: 'var(--sp-md)' }}>

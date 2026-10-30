@@ -1,5 +1,6 @@
 /**
- * Marketing-email consent, stored on `customers/{uid}`.
+ * Marketing-email consent, stored on `customers/{uid}` — or, for a guest
+ * checkout, on the order itself, which is the only record of that person.
  *
  * `newsletterConsent: true` is the only thing that counts as a yes. Absent,
  * null and false all mean no — every account created before this field existed
@@ -26,7 +27,12 @@
  *    with no confirmation step to wear the customer down.
  */
 
-export type NewsletterSource = 'web' | 'app';
+/**
+ * Where the consent was given. `guest` is a checkout with no account behind it
+ * — the consent then lives on the order, since there is no `customers/{uid}`
+ * document to hold it.
+ */
+export type NewsletterSource = 'web' | 'app' | 'guest';
 
 /**
  * Which channels the customer actually agreed to.

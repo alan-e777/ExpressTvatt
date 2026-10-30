@@ -92,6 +92,22 @@ monthly XLSX one: the client's own mailing list, one row per customer.
   existing consents.
   The signup box is **never pre-ticked** and the label must stay legible; that
   file records why both are legal requirements, not preferences.
+- **Guests get the same tick at checkout (2026-10-30).** `/kassa` shows it only
+  when nobody is signed in: a signed-in buyer answered at signup and can change
+  it under Profil → Utskick, and letting a checkout rewrite that would mean the
+  last order silently overruled their profile. The guest's answer is written
+  **onto the order** by `create-cart-payment` (`consentFields(..., 'guest')`),
+  since a guest has no `customers/{uid}` document. The export reads the
+  **most recent** order: a later untick overrides an earlier tick, which is the
+  safe direction. Unticked by default, like every other consent box here.
+- **A guest's opt-out is its own record.** There is no document to flip, so
+  `POST /api/unsubscribe` with `{email, token}` writes
+  `marketing_optouts/{guestOptOutKey(email)}` — a hash of the lowercased
+  address, not the address itself. The export loads that collection and marks
+  those guests N, overriding whatever their last order said. Guest links are
+  signed with a **different HMAC subject** from account links
+  (`unsubscribe-guest:` vs `unsubscribe:`), so neither family can authorise the
+  other's write.
 - **Customers withdraw it themselves** under Profil → **Utskick**, a switch on
   both surfaces that writes `consentChangeFields(...)` straight through — no
   confirmation step, because withdrawal has to be as easy as consent was
@@ -113,6 +129,18 @@ monthly XLSX one: the client's own mailing list, one row per customer.
   - Links have **no expiry** (people act on old emails) and are **blank for
     guests**, who have no account to flip and always read N.
 - Nothing here *sends* marketing email — the client's own tool does that.
+- **Guest checkout is web only** — the app requires a login, so it has no guest
+  consent box and never writes one. See `migration.md` #5.
+
+## create-cart-payment validates the contact details (2026-10-30)
+`name`, `email`, `phone` and `address` are re-checked server-side and answer
+400 when blank. Both clients already block an empty field, so this only catches
+a request that did not come from one of them — but it matters because a guest
+order is the **only** record of that customer. There is no profile for
+`resolveCustomerContact` to fall back on, so an order that arrives without an
+email or an address can be neither confirmed nor delivered. `postalCode` is
+deliberately **not** required: some Places results have none, and blocking a
+checkout over it would be worse than storing a blank.
 
 ## Minimum order quantity (per item)
 A catalogue item can require a minimum number per booking — set per item under Tjänster, on the `min 1` chip in the product row (or the "Minsta antal" field in the add / new-category forms). Stored as `minQty` on the StrukenTvatt doc; 1 means no minimum, which is also what every pre-existing doc normalizes to.

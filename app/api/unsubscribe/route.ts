@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
 import { consentChangeFields } from "@/lib/newsletter";
-import { unsubscribeConfigured, verifyUnsubscribeToken } from "@/lib/unsubscribe";
+import { guestOptOutKey, unsubscribeConfigured, verifyGuestUnsubscribeToken, verifyUnsubscribeToken } from "@/lib/unsubscribe";
 
 /**
  * Turns marketing consent off from a link in an email. No session required —
@@ -27,13 +27,36 @@ export async function POST(req: NextRequest) {
   }
 
   let uid = "";
+  let email = "";
   let token = "";
   try {
     const body = await req.json();
     uid = String(body?.uid ?? "").trim();
+    email = String(body?.email ?? "").trim();
     token = String(body?.token ?? "").trim();
   } catch {
     return NextResponse.json({ ok: false, error: "bad_request" }, { status: 400 });
+  }
+
+  // ── Guests ────────────────────────────────────────────────────────────────
+  // No account, so nothing to flip: the opt-out is recorded on its own and the
+  // export reads it. Kept separate from the uid path rather than folded into
+  // it, so a guest token can never authorise a write to a customer document.
+  if (email && !uid) {
+    if (!verifyGuestUnsubscribeToken(email, token)) {
+      return NextResponse.json({ ok: false, error: "invalid_link" }, { status: 403 });
+    }
+    try {
+      await db.collection("marketing_optouts").doc(guestOptOutKey(email)).set({
+        email: email.toLowerCase(),
+        optedOutAt: new Date().toISOString(),
+        source: "guest_link",
+      });
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      console.error("[unsubscribe] guest", err);
+      return NextResponse.json({ ok: false, error: "write_failed" }, { status: 500 });
+    }
   }
 
   if (!verifyUnsubscribeToken(uid, token)) {

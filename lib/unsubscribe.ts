@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 /**
  * One-click unsubscribe links for the client's marketing emails.
@@ -59,4 +59,57 @@ export function unsubscribeUrl(uid: string, origin: string): string {
   const token = unsubscribeToken(uid);
   if (!token) return "";
   return `${origin.replace(/\/$/, "")}/avregistrera?u=${encodeURIComponent(uid)}&t=${token}`;
+}
+
+// ── Guests ──────────────────────────────────────────────────────────────────
+// A guest checkout has no account, so there is no uid to sign and no document
+// to flip. The email is the only identifier that person has, so it is what the
+// link carries and what the opt-out is recorded against.
+//
+// The subject is prefixed differently from the uid form on purpose: without
+// that, an email that happened to equal some uid would produce the same token
+// for both, and unsubscribing one would authorise the other.
+
+/** Emails are compared case-insensitively — the same person, typed either way. */
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function guestUnsubscribeToken(email: string): string {
+  const normalized = normalizeEmail(email);
+  if (!SECRET || !normalized) return "";
+  return createHmac("sha256", SECRET).update(`unsubscribe-guest:${normalized}`).digest("hex").slice(0, TOKEN_LENGTH);
+}
+
+export function verifyGuestUnsubscribeToken(email: string, token: string): boolean {
+  if (!SECRET || !email || !token) return false;
+  const expected = guestUnsubscribeToken(email);
+  if (!expected || expected.length !== token.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(token));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Document id for a guest opt-out.
+ *
+ * A hash rather than the address itself, for two reasons: an email is not a
+ * legal Firestore document id (a "/" in a local part would split the path),
+ * and a collection whose ids are plaintext addresses is a mailing list sitting
+ * in the key space. The hash is unkeyed on purpose — the export has to be able
+ * to look a guest up, and it is an existence check, not a secret.
+ */
+export function guestOptOutKey(email: string): string {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return "";
+  return createHash("sha256").update(normalized).digest("hex").slice(0, 32);
+}
+
+/** The guest equivalent of `unsubscribeUrl`. Empty when no secret is set. */
+export function guestUnsubscribeUrl(email: string, origin: string): string {
+  const token = guestUnsubscribeToken(email);
+  if (!token) return "";
+  return `${origin.replace(/\/$/, "")}/avregistrera?e=${encodeURIComponent(normalizeEmail(email))}&t=${token}`;
 }

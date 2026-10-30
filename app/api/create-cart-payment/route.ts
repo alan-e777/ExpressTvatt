@@ -13,6 +13,7 @@ import { normalizeTimeSlotSettings, slotsToSpans } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { clampAmountToRange, isMeasured, measuredLineName, measuredPriceKr, normalizePricing } from '@/lib/serviceUnits';
 import { normalizeMinQty } from '@/lib/minOrderQty';
+import { consentFields } from '@/lib/newsletter';
 
 type CartItem = {
   id:    string;
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     platform,
     rutAvdrag,
     personnummer,
+    newsletter,
   }: {
     items: CartItem[];
     customerId?: string;
@@ -70,6 +72,8 @@ export async function POST(request: NextRequest) {
     platform?: string;
     rutAvdrag?: boolean;
     personnummer?: string;
+    /** Guest checkout's marketing-consent tick. Ignored for signed-in buyers. */
+    newsletter?: boolean;
   } = body;
 
   // ── RUT-Avdrag ───────────────────────────────────────────────────────────────
@@ -84,6 +88,26 @@ export async function POST(request: NextRequest) {
   if (!items?.length) {
     return NextResponse.json({ error: 'Varukorgen är tom.' }, { status: 400 });
   }
+
+  // ── Contact details ─────────────────────────────────────────────────────────
+  // Both clients already block an empty field, so this only catches a request
+  // that did not come from one of them. It matters because a guest order is
+  // the *only* record of that customer — there is no profile to fall back on
+  // (see resolveCustomerContact), so an order without an email or an address
+  // can be neither delivered nor chased.
+  const contact = {
+    name:       (name       ?? '').trim(),
+    email:      (email      ?? '').trim(),
+    phone:      (phone      ?? '').trim(),
+    address:    (address    ?? '').trim(),
+    postalCode: (postalCode ?? '').trim(),
+  };
+  if (!contact.name)    return NextResponse.json({ error: 'Namn krävs.' }, { status: 400 });
+  if (!contact.email || !contact.email.includes('@')) {
+    return NextResponse.json({ error: 'Ange en giltig e-postadress.' }, { status: 400 });
+  }
+  if (!contact.phone)   return NextResponse.json({ error: 'Telefonnummer krävs.' }, { status: 400 });
+  if (!contact.address) return NextResponse.json({ error: 'Adress krävs.' }, { status: 400 });
 
   // ── Availability: reject pickup/delivery on an admin-blocked date ─────────────
   const availSnap = await db.collection('settings').doc('availability').get();
@@ -464,12 +488,12 @@ export async function POST(request: NextRequest) {
     firstTimeDiscountPercent:  firstTimePct,
     discountSavingsOre:        discountSavingsOre,
     multipleDiscountsAllowed:  discounts.multipleDiscountsAllowed,
-    customerName:    name ?? '',
+    customerName:    contact.name,
     careOf:          careOf ?? '',
-    customerEmail:   email ?? '',
-    customerPhone:   phone ?? '',
-    address,
-    postalCode,
+    customerEmail:   contact.email,
+    customerPhone:   contact.phone,
+    address:         contact.address,
+    postalCode:      contact.postalCode,
     // `dropoffDate`/`dropoffTime` historically hold the scheduled pickup — kept for
     // the admin calendar/driver/orders views which key off them.
     dropoffDate:     date,
@@ -490,6 +514,10 @@ export async function POST(request: NextRequest) {
     tags:                [...(rutAvdrag ? ['RUT'] : []), ...(isTestOrder ? ['TEST'] : [])],
     platform:        platform === 'mobile' ? 'mobile' : 'web',
     createdAt:       new Date(),
+    // Marketing consent for a guest. A signed-in buyer's answer lives on their
+    // customer doc (signup box / profile toggle) and must not be overwritten
+    // from a checkout, so this is written for anonymous orders only.
+    ...(effectiveCustomerId === 'anonymous' ? consentFields(newsletter === true, 'guest') : {}),
     // A test order has nothing to settle — no PaymentIntent will ever succeed
     // for it — so it is born paid. `settlePaidOrder` is never involved.
     ...(isTestOrder ? {

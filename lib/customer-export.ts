@@ -36,6 +36,15 @@ export type ExportOrder = {
   postalCode: string;
   createdAt: string | null;
   items: Array<{ name?: string; title?: string }>;
+  /**
+   * A guest checkout's marketing consent. Written onto the order because a
+   * guest has no `customers/{uid}` document to hold it. Absent on orders
+   * placed before the checkout box existed, and on signed-in orders, whose
+   * answer lives on the customer instead.
+   */
+  newsletterConsent?: unknown;
+  newsletterConsentAt?: string | null;
+  newsletterChannels?: unknown;
 };
 
 export type Row = Record<string, string | number>;
@@ -111,6 +120,9 @@ export function buildRows(
   customers: ExportCustomer[],
   orders: ExportOrder[],
   unsubscribeLink: (uid: string) => string = () => "",
+  /** Guest equivalents, injected for the same reason. */
+  guestUnsubscribeLink: (email: string) => string = () => "",
+  guestOptedOut: (email: string) => boolean = () => false,
 ): Row[] {
   const byCustomer: Record<string, ExportOrder[]> = {};
   const guestOrders: ExportOrder[] = [];
@@ -184,6 +196,12 @@ export function buildRows(
     gOrders.sort(newestFirst);
     const latest = gOrders[0];
     const { first, last } = splitName(latest.customerName);
+    const guestEmail = latest.customerEmail.trim();
+    // A click on the unsubscribe link is recorded separately, since there is no
+    // document to flip; it overrides whatever the last order said.
+    const optedOut = guestOptedOut(guestEmail);
+    const consent: Pick<ExportOrder, "newsletterConsent" | "newsletterConsentAt" | "newsletterChannels"> =
+      optedOut ? {} : latest;
 
     rows.push({
       "Förnamn": first,
@@ -192,17 +210,21 @@ export function buildRows(
       "Telefon": latest.customerPhone ?? "",
       "Adress": latest.address,
       "Postnummer": latest.postalCode,
-      // A guest checkout never showed a consent box, so this is always N.
-      "Vill ha reklam": "N",
-      "Kanaler": "",
-      "Samtycke datum": "",
+      // The guest's own answer, from the tick at checkout. Their most recent
+      // order wins: someone who left the box unticked the second time has
+      // changed their mind, and under-sending is the safe side of that.
+      // Absent on orders placed before the box existed, which read N.
+      "Vill ha reklam": consentLabel(consent),
+      "Kanaler": channelsLabel(consent),
+      "Samtycke datum": (consent.newsletterConsentAt ?? "").slice(0, 10),
       "Typ": "Gäst",
       "Antal ordrar": gOrders.length,
       "Totalt spenderat (kr)": kr(gOrders.reduce((s, o) => s + o.amount, 0)),
       "Senaste order": latest.createdAt?.slice(0, 10) ?? "",
       "Köpt": boughtSummary(gOrders),
-      // Guests have no account to switch a flag on, and are always N anyway.
-      "Avregistreringslänk": "",
+      // Signed over the email rather than a uid, and the click records an
+      // opt-out instead of flipping a document — a guest has neither.
+      "Avregistreringslänk": optedOut ? "" : guestUnsubscribeLink(guestEmail),
       "Registrerad": "",
       "Kund-ID": "",
     });

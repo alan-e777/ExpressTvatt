@@ -88,6 +88,21 @@ import across the Next app. They are now kept **byte-identical** rather than
 - **Worth doing anyway** when `/profil` is next touched: the route needs nothing, only the UI. A
   self-service control is less work than handling requests by hand.
 
+### 5. Guest checkout, and its consent box, are web only (2026-10-30)
+- **Web:** `/kassa` takes an order without an account. The buyer's name, phone, address and
+  postcode live on the order itself, and a marketing-consent tick sits at the bottom of the
+  form — unticked, same wording as signup, written onto the order by `create-cart-payment`
+  because there is no `customers/{uid}` document to hold it.
+- **App:** there is no guest checkout at all. `RootNavigator` renders `AuthScreen` whenever
+  nobody is signed in, so every app order already has an account behind it and the consent
+  question is answered at signup instead.
+- **Customer hits:** nothing. This is not a missing feature so much as a different front door.
+- **If the app ever drops the login wall**, it must add the same tick to its checkout, send
+  `newsletter` in the `create-cart-payment` body and leave it off by default. An app guest
+  order without it would land in the client's export as N forever, with no way to ask.
+- **Also web only:** the guest opt-out path — `marketing_optouts`, and the `?e=`/`?t=` form of
+  the unsubscribe link. Nothing in the app reads or writes either.
+
 ---
 
 ## Recently closed
