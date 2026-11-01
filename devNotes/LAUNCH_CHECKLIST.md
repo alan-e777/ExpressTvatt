@@ -69,7 +69,13 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
 - [ ] **Turn the Google reviews strip on.** The landing page has one
       (`components/GoogleReviews.tsx` → `GET /api/reviews`) and it renders
       **nothing at all** until Google answers with reviews, which is the state
-      it shipped in. Two steps:
+      it shipped in. Three steps:
+      0. **Set `REVIEWS_ENABLED = true` in `lib/reviews-client.ts`** — the
+         feature was switched off there on 2026-11-01 because the listing being
+         resolved was **not the client's business** and the page was showing a
+         stranger's reviews. Do this one *last*, after 1 and 2 below are
+         verified, or the wrong reviews come straight back. Then delete the
+         "Temporarily disabled" section from `CLAUDE.md`.
       1. Put the business's Google place id in `GOOGLE_PLACE_ID` (env, local
          *and* Vercel). Without it the route falls back to a Text Search by
          name, which costs an extra billed call and may match the wrong listing.
@@ -83,7 +89,8 @@ wired, so JavaScript-only app changes ship in about a minute without a rebuild.
       place id and the exact Google error.
       **The nav's "Omdömen" tab is tied to this**: the header only shows it when
       the API returns reviews, so it is invisible today and appears by itself
-      the moment the key works. Nothing to deploy for it.
+      the moment the key works — and the flag in step 0 is let back on.
+      Nothing to deploy for it.
       *(Owner, 2026-10-28: this is part of a wider backlog of API-key work —
       Vercel will not display an already-saved value, so which keys are actually
       set where has to be re-established by hand.)*

@@ -369,7 +369,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Google reviews ─────────────────────────────────────────── */}
-      {/* Renders nothing until there are reviews to show — see the component. */}
+      {/* Renders nothing until there are reviews to show — see the component.
+          TEMPORARILY off: `REVIEWS_ENABLED` in `lib/reviews-client.ts`. */}
       <GoogleReviews />
 
       {/* ── Final CTA ──────────────────────────────────────────────── */}

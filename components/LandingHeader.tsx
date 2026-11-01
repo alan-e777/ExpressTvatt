@@ -17,7 +17,10 @@ const NAV_LINKS = [
 /* Added only when Google actually returns reviews. The section hides itself
    when there are none, so a permanent tab here would be a link that scrolls
    nowhere — which is the state the site is in until GOOGLE_PLACE_ID is set and
-   the Places reviews SKU is enabled. */
+   the Places reviews SKU is enabled.
+
+   TEMPORARILY that is forced: `REVIEWS_ENABLED` in `lib/reviews-client.ts` is
+   false, so this tab never appears. Flip it there, not here. */
 const REVIEWS_LINK = { id: 'reviews', href: '/#reviews', label: 'Omdömen' };
 
 export default function LandingHeader() {

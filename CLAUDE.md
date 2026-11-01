@@ -7,6 +7,29 @@
 
 Three things a new session gets wrong if it does not read the checklist first: the app's source is **not in git** (it lives in the working tree plus the local-only branch `local-only/app-work`, which must never be pushed); this repository is **public**, so nothing secret may ever be committed; and app changes normally ship by **OTA update**, not a rebuild.
 
+## Temporarily disabled — Google reviews on the landing page
+**Switched off 2026-11-01, meant to come back.** The Google listing the site
+resolves is not the client's business, so the landing page was showing a
+stranger's reviews.
+
+**To restore: set `REVIEWS_ENABLED = true` in `lib/reviews-client.ts`.** That is
+the whole revert — then delete this section. Both surfaces read that one
+`getReviews()` and both already treat an empty payload as "nothing to show", so
+the flag takes out the section *and* the header's "Omdömen" tab together:
+- `components/GoogleReviews.tsx` — the section (`id="reviews"`), already returns
+  `null` on an empty payload. Untouched.
+- `components/LandingHeader.tsx` — `REVIEWS_LINK` is appended only when reviews
+  came back, so the nav tab drops out on its own. Untouched.
+- `app/api/reviews/route.ts`, `lib/googleReviews.ts`, the `lp-rev-*` CSS — all
+  left in place and working. Nothing was deleted or commented out.
+
+The flag short-circuits before the fetch, so no billed Places request is made
+while it is off. Both consumer files carry a one-line pointer back to the flag.
+
+**Before flipping it back on**, check `GOOGLE_PLACE_ID` points at the client's
+own listing — that is the bug this hides, and turning the flag on without
+fixing the id just puts the wrong reviews back. See `devNotes/LAUNCH_CHECKLIST.md`.
+
 ## Never commit the owner's personal files
 Files the owner writes **for themselves** — notes, scratch prompts, working instructions, todo lists, personal reference — are not part of the codebase and must **never** be committed or pushed. If the owner creates `instructions.md`, `notes.md`, `todo.md`, `ideas.md`, a stray `.txt` dump or anything similar, leave it alone: do not `git add` it, do not include it in a commit, do not mention it in a commit message.
 

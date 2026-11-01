@@ -64,6 +64,10 @@ import across the Next app. They are now kept **byte-identical** rather than
   reviews strip (`components/GoogleReviews.tsx` + `GET /api/reviews` + `lib/googleReviews.ts`).
   The homepage's SEO tags moved into a server wrapper, `app/page.tsx`, so the canonical points at
   `/` and is not inherited by every route.
+  **The reviews strip is switched off as of 2026-11-01** (`REVIEWS_ENABLED` in
+  `lib/reviews-client.ts`) because the listing resolving was not the client's business — so the
+  two surfaces agree on reviews for now, and this gap is only the social links. No new divergence;
+  see CLAUDE.md, "Temporarily disabled".
 - **App:** none of it. The app has no landing page, no footer and no About surface, so there is
   nowhere for any of this to live yet.
 - **Customer hits:** nothing functional. A customer who only ever uses the app sees no social
