@@ -1,6 +1,12 @@
 import { db } from "@/lib/firebase-admin";
 import CustomersClient, { type CustomerRow } from "./CustomersClient";
 
+// Never prerender this page: the unbounded `customers` and `orders` reads
+// would otherwise run at build time, baking a snapshot into the deploy and
+// risking the 60s per-page build limit. See CLAUDE.md, "Admin pages are
+// never prerendered".
+export const dynamic = "force-dynamic";
+
 export default async function CustomersPage() {
   // Fetch all customers and all orders in parallel
   const [customerSnap, orderSnap] = await Promise.all([

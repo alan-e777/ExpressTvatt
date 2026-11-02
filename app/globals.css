@@ -2226,6 +2226,23 @@ input, textarea, select { font-family: inherit; }
   gap: 10px;
   margin-top: 26px;
 }
+/* Same-day pickup cutoff — a quiet pill under the hero CTAs. Inline-flex so it
+   hugs the sentence instead of ruling a line across the hero; the copy itself
+   lives in `lib/sameDay.ts`. */
+.lp-hero-cutoff {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 24px;
+  padding: 9px 15px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(255,255,255,0.88);
+}
+.lp-hero-cutoff svg { color: var(--gold); flex-shrink: 0; }
 .lp-hero-trust-stars { display: inline-flex; gap: 2px; color: var(--gold); }
 .lp-hero-trust-text { font-size: 14px; color: rgba(255,255,255,0.66); }
 .lp-hero-trust-text strong { color: #fff; font-weight: 600; }
@@ -4030,6 +4047,23 @@ input, textarea, select { font-family: inherit; }
   letter-spacing: -0.01em; margin-bottom: var(--sp-md);
 }
 .site-shell .of-dt-title svg { color: #083F41; flex-shrink: 0; }
+
+/* Same-day pickup cutoff — one look for both booking steps (/order and
+   /kassa), so the claim does not read as two different promises. Inline-flex
+   and margin-free: the call sites place it. Copy: `lib/sameDay.ts`. */
+.site-shell .of-cutoff {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  background: #F7F5F0;
+  border: 1px solid rgba(8,63,65,0.14);
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #083F41;
+}
+.site-shell .of-cutoff svg { color: #083F41; flex-shrink: 0; }
 
 /* ── 5. Success card — order number pill + confetti ───────────────────── */
 .site-shell .order-num-pill {

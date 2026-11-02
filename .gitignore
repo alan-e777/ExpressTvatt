@@ -16,6 +16,7 @@ PROMPT.md
 promptHomeScreen.md
 prompts/
 instructions.md
+kundmanual/
 
 # Documentation, internal notes and agent config — kept on disk, never
 # published. This repo is public, so the launch runbook, the security notes and

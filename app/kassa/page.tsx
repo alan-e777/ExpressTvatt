@@ -18,6 +18,7 @@ import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSet
 import { fetchTimeSlots, TIMESLOT_DEFAULTS, type TimeSlotSettings } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { NEWSLETTER_LABEL } from '@/lib/newsletter';
+import { SAME_DAY_NOTICE } from '@/lib/sameDay';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -673,6 +674,14 @@ function CheckoutForm() {
         {/* Upphämtning (pickup) */}
         <div className="of-dt-card">
           <div className="of-dt-title"><IconCalendar size={14} stroke={1.5} /> Upphämtning</div>
+          {/* The cutoff sits above the date picker, the moment it actually
+              matters. It states the rule; it does not enforce it — today stays
+              selectable until the last pickup window closes. See
+              `lib/sameDay.ts` for what enforcing it would take. */}
+          <p className="of-cutoff" style={{ marginBottom: 'var(--sp-md)' }}>
+            <IconClock size={14} stroke={1.6} aria-hidden />
+            <span>{SAME_DAY_NOTICE}</span>
+          </p>
           <div className="input-group" style={{ marginBottom: 'var(--sp-sm)' }}>
             <label className="field-label">Datum</label>
             <DatePicker value={pickupDate} onChange={setPickupDate} placeholder="Välj datum" minDate={minPickupDate} />

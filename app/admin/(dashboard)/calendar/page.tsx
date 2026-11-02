@@ -4,6 +4,11 @@ import { isActiveOrderStatus } from "@/lib/order-status";
 import { normalizeAvailability } from "@/lib/availability";
 import CalendarClient, { type CalendarOrder } from "./CalendarClient";
 
+// Never prerender this page: the unbounded `orders` read would otherwise run
+// at build time, baking a snapshot into the deploy and risking the 60s
+// per-page build limit. See CLAUDE.md, "Admin pages are never prerendered".
+export const dynamic = "force-dynamic";
+
 export default async function CalendarPage() {
   const snap = await db.collection("orders").get();
 

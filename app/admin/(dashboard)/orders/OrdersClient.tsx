@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, Fragment, useEffect } from "react";
+import { useState, useRef, useMemo, Fragment, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import * as XLSX from "xlsx";
 import { IconDeviceMobile, IconDeviceDesktop, IconCircleCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { queueStatusEmail } from "@/lib/order-email-bus";
+import { telHref } from "@/lib/phone";
 import { ACTIVE_ORDER_STATUSES } from "@/lib/order-status";
 
 /** `note` is the customer's instruction for this line ("korta 2 cm"), asked for
@@ -26,6 +27,9 @@ export type Order = {
   customerId: string;
   customerName: string;
   customerEmail: string | null;
+  /** Stamped on the order at checkout. Blank only on orders that predate the
+   *  field — the detail panel shows "—" rather than a dead `tel:` link. */
+  customerPhone: string;
   platform: 'mobile' | 'web';
   createdAt: string | null;
   notes: string;
@@ -225,6 +229,28 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [statusDropdownOpen]);
+  /**
+   * uid → the contact details the *server* resolved from `customers/{uid}`.
+   *
+   * The snapshot listener below rebuilds every row straight from the order
+   * document, which silently discards them: a phone or email that exists only
+   * on the customer's profile would render for one frame and then disappear.
+   * Seeded from the server-rendered rows and used to fill blanks, never to
+   * override something the order itself carries.
+   *
+   * Orders created after this page loaded are absent from it and do not need to
+   * be there — the payment routes stamp the contact details onto the order.
+   */
+  const serverContacts = useMemo(() => {
+    const map: Record<string, { email: string | null; phone: string }> = {};
+    for (const o of initialOrders) {
+      if (o.customerId && o.customerId !== "anonymous") {
+        map[o.customerId] = { email: o.customerEmail, phone: o.customerPhone };
+      }
+    }
+    return map;
+  }, [initialOrders]);
+
   // Real-time listener — keeps orders in sync with Firestore (handles deletes, edits)
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
@@ -240,7 +266,8 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
           status:          data.status ?? "paid",
           customerId:      uid,
           customerName:    data.customerName ?? "",
-          customerEmail:   data.customerEmail ?? null,
+          customerEmail:   data.customerEmail ?? serverContacts[uid]?.email ?? null,
+          customerPhone:   data.customerPhone || serverContacts[uid]?.phone || "",
           platform:        (data.platform === 'mobile' ? 'mobile' : 'web') as 'mobile' | 'web',
           createdAt:       data.createdAt?.toDate?.()?.toISOString() ?? null,
           notes:           data.notes ?? "",
@@ -268,7 +295,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
       }));
     });
     return unsub;
-  }, []);
+  }, [serverContacts]);
 
   const [deletingCompleted, setDeletingCompleted] = useState(false);
   const [deleteModalOpen,   setDeleteModalOpen]   = useState(false);
@@ -831,6 +858,7 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                 const hasAdminNotes  = !!order.adminNotes.trim();
                 const isSelected     = selected.has(order.id);
                 const customer       = customerLines(order);
+                const phoneHref      = telHref(order.customerPhone);
 
                 return (
                   <Fragment key={order.id}>
@@ -875,6 +903,22 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                               <span style={{ color: "#aaa", fontSize: "0.72rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {customer.secondary}
                               </span>
+                            )}
+                            {/* A third line rather than a column: the office
+                                rings the customer from this screen, and the
+                                table already scrolls sideways on a phone.
+                                Nothing is rendered when there is no number —
+                                the expanded panel is where a missing one reads
+                                as "—". `stopPropagation` because clicking the
+                                row itself toggles that panel. */}
+                            {phoneHref && (
+                              <a
+                                href={phoneHref}
+                                onClick={e => e.stopPropagation()}
+                                style={{ color: "#1d4ed8", fontSize: "0.72rem", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                              >
+                                {order.customerPhone}
+                              </a>
                             )}
                           </span>
                         </span>
@@ -935,6 +979,15 @@ export default function OrdersClient({ initialOrders }: { initialOrders: Order[]
                               {order.address && (
                                 <DetailRow label="Address" value={`${order.address}${order.postalCode ? ", " + order.postalCode : ""}`} />
                               )}
+                              {/* Next to the address, because the two are read
+                                  together when someone rings to confirm a
+                                  pickup. Always rendered, so a missing number
+                                  is visible as "—" rather than absent. */}
+                              <DetailRow
+                                label="Telefon"
+                                value={order.customerPhone || "—"}
+                                href={telHref(order.customerPhone)}
+                              />
                               {order.pickupDate && (
                                 <DetailRow
                                   label="Upphämtning"
@@ -1237,11 +1290,24 @@ const ghostBtn: React.CSSProperties = {
   fontSize: "0.8rem", fontWeight: 500, cursor: "pointer", color: "#555",
 };
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+/** `href` turns the value into a link — used for the customer's `tel:` number.
+ *  The click is stopped here: the row this panel hangs off toggles on click,
+ *  and a dialler opening *and* the panel collapsing is not what was tapped. */
+function DetailRow({ label, value, href }: { label: string; value: string; href?: string | null }) {
   return (
     <div style={{ display: "flex", gap: "0.5rem", fontSize: "0.825rem" }}>
       <span style={{ color: "#999", minWidth: "90px", flexShrink: 0, textTransform: "capitalize" }}>{label}</span>
-      <span style={{ color: "#1a1a1a", fontWeight: 500 }}>{value}</span>
+      {href ? (
+        <a
+          href={href}
+          onClick={e => e.stopPropagation()}
+          style={{ color: "#1d4ed8", fontWeight: 600, textDecoration: "none" }}
+        >
+          {value}
+        </a>
+      ) : (
+        <span style={{ color: "#1a1a1a", fontWeight: 500 }}>{value}</span>
+      )}
     </div>
   );
 }

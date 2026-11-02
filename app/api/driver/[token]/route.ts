@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
+import { resolveCustomerContact } from "@/lib/customer-contact";
 
 export async function GET(
   _req: NextRequest,
@@ -23,6 +24,22 @@ export async function GET(
       const snap = await db.collection("orders").doc(id).get();
       if (!snap.exists) return null;
       const data = snap.data()!;
+
+      // The driver has to be able to ring ahead and confirm a pickup, so the
+      // name and number go out with the run. `resolveCustomerContact` is the
+      // same helper the payment routes use, which fills a blank phone from
+      // `customers/{uid}` — it short-circuits when the order already carries
+      // all three, so a modern order costs no extra read.
+      const contact = await resolveCustomerContact(data.customerId as string, {
+        customerName:  data.customerName as string,
+        customerEmail: data.customerEmail as string,
+        customerPhone: data.customerPhone as string,
+      });
+
+      // This route is public: the run token is a bearer credential, handed to
+      // the driver over SMS, and anyone holding the link sees this payload.
+      // Name + phone is what the job needs and the payload stops there —
+      // no email, no order value, no notes, and never the RUT personnummer.
       return {
         id,
         serviceName: data.serviceName as string,
@@ -31,6 +48,8 @@ export async function GET(
         status: data.status as string,
         dropoffDate: (data.dropoffDate as string) ?? "",
         dropoffTime: (data.dropoffTime as string) ?? "",
+        customerName: contact.customerName,
+        customerPhone: contact.customerPhone,
       };
     })
   );

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   IconPlus, IconMinus, IconChevronUp, IconChevronRight, IconArrowLeft, IconX, IconCheck,
-  IconTag,
+  IconTag, IconClock,
 } from '@tabler/icons-react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase-client';
@@ -26,6 +26,7 @@ import {
   normalizePricing, unitDef, type ProductPricing,
 } from '@/lib/serviceUnits';
 import { NO_MIN_QTY, addStep, minQtyLabel, normalizeMinQty, qtyAfterRemove } from '@/lib/minOrderQty';
+import { SAME_DAY_NOTICE } from '@/lib/sameDay';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -646,6 +647,16 @@ export default function HomePage() {
             <span style={{ color: 'var(--forest-light)', opacity: 0.6 }}>Uppgifter &amp; datum</span>
           </li>
         </ol>
+      </div>
+
+      {/* ── Same-day pickup cutoff ───────────────────────────────────────
+           Shown here as well as in the kassa, because this is the step the
+           customer is on while deciding whether to book today at all. */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--sp-lg)' }}>
+        <p className="of-cutoff">
+          <IconClock size={15} stroke={1.6} aria-hidden />
+          <span>{SAME_DAY_NOTICE}</span>
+        </p>
       </div>
 
       {/* ── First-time discount banner — only logged-in users who haven't ordered yet ── */}

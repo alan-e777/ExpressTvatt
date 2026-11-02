@@ -2,6 +2,12 @@ import { db } from "@/lib/firebase-admin";
 import DashboardMapClient from "./DashboardMapClient";
 import DashboardOrdersClient from "./DashboardOrdersClient";
 
+// Never prerender this page: the unbounded `orders` and `services` reads
+// would otherwise run at build time, baking a snapshot into the deploy and
+// risking the 60s per-page build limit. See CLAUDE.md, "Admin pages are
+// never prerendered".
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const [ordersSnap, servicesSnap] = await Promise.all([
     db.collection("orders").get(),

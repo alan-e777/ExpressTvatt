@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
+import { telHref } from "@/lib/phone";
 
 export type DriverOrder = {
   id: string;
@@ -14,6 +15,8 @@ export type DriverOrder = {
   dropoffDate: string;
   dropoffTime: string;
   notes: string;
+  customerName: string;
+  customerPhone: string;
 };
 
 type Tab = "dropoff" | "pickup";
@@ -72,6 +75,11 @@ export default function DriverClient({ initialOrders }: { initialOrders: DriverO
           dropoffDate: data.dropoffDate ?? "",
           dropoffTime: data.dropoffTime ?? "",
           notes:       data.notes ?? "",
+          // Written onto every order by the payment routes. Old orders from
+          // before the checkout had a phone field come back blank and render
+          // as "—"; the driver's own run page falls back to the profile.
+          customerName:  data.customerName ?? "",
+          customerPhone: data.customerPhone ?? "",
         };
       }));
     });
@@ -620,6 +628,7 @@ function OrderRow({ order, isLast, routePos, actionLabel, actionDanger, onAction
   actionLabel: string; actionDanger?: boolean; onAction: () => void;
 }) {
   const addr = fullAddress(order);
+  const phoneHref = telHref(order.customerPhone);
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", padding: "0.85rem 1rem", borderBottom: isLast ? "none" : "1px solid #f0f0f0" }}>
       {routePos !== undefined && (
@@ -635,6 +644,35 @@ function OrderRow({ order, isLast, routePos, actionLabel, actionDanger, onAction
         {order.dropoffDate && (
           <p style={{ fontSize: "0.72rem", color: "#bbb" }}>{order.dropoffDate}{order.dropoffTime ? ` kl. ${order.dropoffTime}` : ""}</p>
         )}
+        {/* The office rings the customer from here. A real `tel:` anchor, so a
+            desk phone integration or a laptop dialler picks it up — and sized
+            like the action button beside it rather than as 0.72rem grey text,
+            which would read as a label and not as something to click. */}
+        <div style={{ marginTop: "0.3rem" }}>
+          {phoneHref ? (
+            <a
+              href={phoneHref}
+              onClick={e => e.stopPropagation()}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                padding: "0.3rem 0.55rem", marginLeft: "-0.55rem",
+                minHeight: 30, borderRadius: "6px",
+                fontSize: "0.8rem", fontWeight: 600,
+                color: "#1d4ed8", textDecoration: "none",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              {order.customerPhone}
+              {order.customerName && (
+                <span style={{ color: "#bbb", fontWeight: 400 }}>· {order.customerName}</span>
+              )}
+            </a>
+          ) : (
+            <p style={{ fontSize: "0.75rem", color: "#ccc" }}>Telefon —</p>
+          )}
+        </div>
       </div>
       <button
         onClick={onAction}

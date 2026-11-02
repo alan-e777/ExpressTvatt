@@ -10,13 +10,18 @@ import {
 import LandingHeader from '@/components/LandingHeader';
 import SocialLinks from '@/components/SocialLinks';
 import GoogleReviews from '@/components/GoogleReviews';
+import { SAME_DAY_NOTICE, SAME_DAY_SHORT } from '@/lib/sameDay';
 
 // ── Content ─────────────────────────────────────────────────────────────────
 
+// The clock chip used to read "Upphämtning inom 2h". It now carries the 14:00
+// cutoff instead (client, 2026-11-01): an unqualified 2h promise sitting one
+// section above a stated cutoff reads as two different claims, and the chip is
+// the copy most likely to be screenshotted on its own. See `lib/sameDay.ts`.
 const TRUST = [
   { Icon: IconShieldCheck, label: 'Försäkrade plagg' },
   { Icon: IconSparkles,    label: 'Professionell plaggvård' },
-  { Icon: IconClock,       label: 'Upphämtning inom 2h' },
+  { Icon: IconClock,       label: SAME_DAY_SHORT },
   { Icon: IconHome,        label: 'Hemleverans' },
 ];
 
@@ -231,7 +236,15 @@ export default function LandingPage() {
                 <a href="#how" className="lp-btn lp-btn--ghost">Så fungerar det</a>
               </div>
             </Reveal>
-            <Reveal delay={220}>
+            <Reveal delay={200}>
+              {/* The same-day cutoff, in the hero because that is where a
+                  first-time visitor decides whether to book now or later. */}
+              <p className="lp-hero-cutoff">
+                <IconClock size={16} stroke={1.6} aria-hidden />
+                <span>{SAME_DAY_NOTICE}</span>
+              </p>
+            </Reveal>
+            <Reveal delay={260}>
               <SocialLinks className="lp-social--hero" size={24} />
             </Reveal>
           </div>
