@@ -106,17 +106,36 @@ export function validateSameDayRule(rule: SameDayRule): string | null {
  * customer and the office.
  */
 export function nowInSweden(at: Date = new Date()): { ymd: string; hour: number } {
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: SAME_DAY_TIMEZONE,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", hour12: false,
-  }).formatToParts(at);
+  try {
+    const parts = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: SAME_DAY_TIMEZONE,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", hour12: false,
+    }).formatToParts(at);
 
-  const part = (type: string) => parts.find(p => p.type === type)?.value ?? "";
-  // Some engines render midnight as "24" under hour12: false.
-  const hour = Number(part("hour")) % 24;
+    const part = (type: string) => parts.find(p => p.type === type)?.value ?? "";
+    // Some engines render midnight as "24" under hour12: false.
+    const hour = Number(part("hour")) % 24;
+    const ymd = `${part("year")}-${part("month")}-${part("day")}`;
 
-  return { ymd: `${part("year")}-${part("month")}-${part("day")}`, hour };
+    // A reduced Intl can return a formatter that yields nothing useful rather
+    // than throwing, so the result is checked instead of trusted.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd) && Number.isInteger(hour)) return { ymd, hour };
+  } catch {
+    // Falls through to the device clock below.
+  }
+
+  // Hermes ships a reduced Intl and `formatToParts` with a `timeZone` is not
+  // guaranteed on a device. The device clock is the right answer for a customer
+  // who is actually in Sweden, which is all of them, and the server — which
+  // always has full ICU — is the authority on whether a booking is accepted.
+  // The cost of being wrong here is a customer abroad being offered a slot the
+  // server then refuses, not a bad booking being taken.
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    ymd: `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`,
+    hour: at.getHours(),
+  };
 }
 
 /**
@@ -152,9 +171,10 @@ export function isSameDayPickupOpen(
 // /api/timeslots, because `settings` is not client-readable per firestore.rules.
 // It is fetched separately from `fetchTimeSlots()` rather than being returned by
 // it: that function lives in `lib/timeslots.ts`, which is one of the byte-
-// identical mirrors `npm run check:mirrors` guards, and widening its return type
-// would drag the iOS app into a change it does not need yet. The cost is one
-// extra small GET of a route the page was already calling.
+// identical mirrors `npm run check:mirrors` guards, so widening its return type
+// means changing both copies of it; a module of its own keeps that blast radius
+// to this file. The cost is one extra small GET of a route both clients were
+// already calling. This file is itself mirrored — see `scripts/check-mirrors.sh`.
 
 let _cache: SameDayRule | null = null;
 let _inflight: Promise<SameDayRule> | null = null;
