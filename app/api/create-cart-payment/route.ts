@@ -9,7 +9,10 @@ import { formatPersonnummer, isValidPersonnummer, normalizeRutEligible, rutRefun
 import { DISCOUNT_DEFAULTS, clampPct, discountedUnitPrice, mattvattLinePct, type DiscountSettings } from '@/lib/discount';
 import { mattaLineName, mattaPriceKr, normalizeMattvattSettings, parseMattaLineId, type MattvattSettings } from '@/lib/mattvatt';
 import { isFirstTimeCustomer } from '@/lib/first-time';
-import { normalizeTimeSlotSettings, slotsToSpans } from '@/lib/timeslots';
+import { normalizeTimeSlotSettings, slotsToSpans, spanToSlot } from '@/lib/timeslots';
+import {
+  isSameDayPickupOpen, normalizeSameDayRule, nowInSweden, sameDayMinEndHour,
+} from '@/lib/sameDay';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { clampAmountToRange, isMeasured, measuredLineName, measuredPriceKr, normalizePricing } from '@/lib/serviceUnits';
 import { normalizeMinQty } from '@/lib/minOrderQty';
@@ -133,6 +136,27 @@ export async function POST(request: NextRequest) {
     }
     if (deliveryTime && !slotsToSpans(timeSlots.delivery).includes(deliveryTime)) {
       return NextResponse.json({ error: 'Den valda tiden för avlämning erbjuds inte längre. Välj en annan tid.' }, { status: 400 });
+    }
+
+    // ── Same-day cutoff ──────────────────────────────────────────────────────
+    // Today is bookable only before 14:00, and only while a window still closes
+    // later than the driver's lead time. The checkout greys those out, so a
+    // request arriving anyway either sat open across the cutoff or was not made
+    // by one of our clients.
+    //
+    // Judged on a Stockholm clock via `nowInSweden`, never `getHours()`: this
+    // runs in UTC on Vercel, which would keep same-day open until 15:00 in
+    // winter and 16:00 in summer — and disagree with the customer's own screen.
+    const sameDayRule = normalizeSameDayRule(slotSnap.exists ? slotSnap.data()?.sameDay : null);
+    const swedishNow = nowInSweden();
+    if (date === swedishNow.ymd) {
+      if (!isSameDayPickupOpen(swedishNow.hour, timeSlots.pickup, sameDayRule)) {
+        return NextResponse.json({ error: 'Upphämtning samma dag går inte längre att boka. Välj ett senare datum.' }, { status: 400 });
+      }
+      const chosen = time ? spanToSlot(time) : null;
+      if (chosen && chosen.end <= sameDayMinEndHour(swedishNow.hour, sameDayRule)) {
+        return NextResponse.json({ error: 'Den valda tiden hinner inte idag. Välj en senare tid eller ett senare datum.' }, { status: 400 });
+      }
     }
   }
 

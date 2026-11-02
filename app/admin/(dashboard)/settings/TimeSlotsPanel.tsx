@@ -6,6 +6,10 @@ import {
   MAX_SLOTS, TIMESLOT_DEFAULTS, formatSlot, overlappingIndices, sortSlots, validateSlots,
   type TimeSlot, type TimeSlotKind, type TimeSlotSettings,
 } from "@/lib/timeslots";
+import {
+  MAX_LEAD_HOURS, SAME_DAY_CUTOFF_HOUR, SAME_DAY_CUTOFF_TIME, SAME_DAY_DEFAULTS,
+  normalizeSameDayRule, nowInSweden, sameDayMinEndHour, type SameDayRule,
+} from "@/lib/sameDay";
 
 /**
  * Editor for the pickup and delivery windows the customer can book.
@@ -44,6 +48,10 @@ function nextFreeSlot(slots: TimeSlot[]): TimeSlot | null {
 
 export default function TimeSlotsPanel() {
   const [slots, setSlots] = useState<TimeSlotSettings>(TIMESLOT_DEFAULTS);
+  // Kept apart from `slots` rather than widened into it: `TimeSlotSettings` is
+  // declared in `lib/timeslots.ts`, one of the byte-identical mirrors, so the
+  // lead time cannot live inside that type without dragging the app along.
+  const [sameDay, setSameDay] = useState<SameDayRule>(SAME_DAY_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -53,7 +61,7 @@ export default function TimeSlotsPanel() {
   useEffect(() => {
     fetch("/api/admin/timeslots")
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d) setSlots(d); })
+      .then(d => { if (d) { setSlots(d); setSameDay(normalizeSameDayRule(d.sameDay)); } })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -92,7 +100,7 @@ export default function TimeSlotsPanel() {
     setSaving(true);
     setError(null);
     try {
-      const body: TimeSlotSettings = { pickup: sortSlots(slots.pickup), delivery: sortSlots(slots.delivery) };
+      const body = { pickup: sortSlots(slots.pickup), delivery: sortSlots(slots.delivery), sameDay };
       const res = await fetch("/api/admin/timeslots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,6 +112,7 @@ export default function TimeSlotsPanel() {
         return;
       }
       setSlots(data);
+      setSameDay(normalizeSameDayRule(data.sameDay));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -112,6 +121,14 @@ export default function TimeSlotsPanel() {
       setSaving(false);
     }
   }
+
+  // What the rule does *right now*, shown under the slider. The admin is
+  // setting an abstract number of hours; without this they cannot tell whether
+  // it has quietly closed same-day booking for the rest of today.
+  const nowHour = nowInSweden().hour;
+  const pastCutoff = nowHour >= SAME_DAY_CUTOFF_HOUR;
+  const bookableToday = sortSlots(slots.pickup)
+    .filter(slot => slot.end > sameDayMinEndHour(nowHour, sameDay));
 
   const errors: Record<TimeSlotKind, string | null> = {
     pickup:   validateSlots(slots.pickup),
@@ -246,6 +263,43 @@ export default function TimeSlotsPanel() {
             })}
           </div>
 
+          <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid #f0f0f0" }}>
+            <p style={fieldLabelStyle}>Framförhållning för upphämtning samma dag</p>
+            <p style={{ fontSize: "0.78rem", color: "#aaa", margin: "0.3rem 0 0.9rem", lineHeight: 1.5 }}>
+              Hur kort varsel föraren klarar. Ett tidsfönster går bara att boka samma dag så
+              länge det stänger senare än så här många timmar från nu — står det
+              <strong> 2 timmar</strong> försvinner fönstret 12–16 vid 14:00, inte vid 16:00.
+              Oavsett detta går upphämtning samma dag aldrig att boka efter {SAME_DAY_CUTOFF_TIME}.
+            </p>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <input
+                type="range"
+                min={0}
+                max={MAX_LEAD_HOURS}
+                step={1}
+                value={sameDay.leadHours}
+                onChange={e => setSameDay({ leadHours: Number(e.target.value) })}
+                aria-label="Framförhållning i timmar"
+                style={{ flex: "1 1 220px", accentColor: "#1a1a1a", cursor: "pointer" }}
+              />
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1a1a1a", minWidth: "5.5rem" }}>
+                {sameDay.leadHours === 0
+                  ? "Inget krav"
+                  : `${sameDay.leadHours} ${sameDay.leadHours === 1 ? "timme" : "timmar"}`}
+              </span>
+            </div>
+
+            <p style={{ fontSize: "0.72rem", color: pastCutoff || !bookableToday.length ? "#8a6d1b" : "#bbb", margin: "0.7rem 0 0", lineHeight: 1.5 }}>
+              Just nu, kl. {pad(nowHour)}:00 —{" "}
+              {pastCutoff
+                ? `efter ${SAME_DAY_CUTOFF_TIME}, så ingen upphämtning samma dag går att boka.`
+                : bookableToday.length
+                  ? `kunden kan boka ${bookableToday.map(formatSlot).join(" · ")} idag.`
+                  : "inget fönster hinner med idag, så kunden får tidigast imorgon."}
+            </p>
+          </div>
+
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginTop: "1rem" }}>
             <button
               onClick={save}
@@ -268,7 +322,8 @@ export default function TimeSlotsPanel() {
 
           <p style={{ fontSize: "0.7rem", color: "#bbb", margin: "0.75rem 0 0", lineHeight: 1.5 }}>
             Ändringarna gäller först när du sparar, och slår igenom direkt i både kassan och appen.
-            Redan lagda ordrar behåller den tid kunden valde.
+            Redan lagda ordrar behåller den tid kunden valde. Framförhållningen ovan gäller
+            webben — iOS-appen känner inte till regeln än.
           </p>
         </>
       )}

@@ -18,7 +18,11 @@ import { DISCOUNT_DEFAULTS, computeCartTotals, mattvattLinePct, type DiscountSet
 import { fetchTimeSlots, TIMESLOT_DEFAULTS, type TimeSlotSettings } from '@/lib/timeslots';
 import { MATTVATT_CATEGORY } from '@/lib/serviceCategories';
 import { NEWSLETTER_LABEL } from '@/lib/newsletter';
-import { SAME_DAY_NOTICE } from '@/lib/sameDay';
+import {
+  SAME_DAY_CLOSED_NOTICE, SAME_DAY_DEFAULTS, SAME_DAY_NOTICE,
+  fetchSameDayRule, isSameDayPickupOpen, nowInSweden, sameDayMinEndHour,
+  type SameDayRule,
+} from '@/lib/sameDay';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -181,6 +185,7 @@ function CheckoutForm() {
   const [savedAddresses,   setSavedAddresses]   = useState<SavedAddress[]>([]);
   const [savedPick,        setSavedPick]        = useState<SavedAddress | null>(null);
   const [timeSlots,        setTimeSlots]        = useState<TimeSlotSettings | null>(null);
+  const [sameDayRule,      setSameDayRule]      = useState<SameDayRule>(SAME_DAY_DEFAULTS);
   const [profileCard,      setProfileCard]      = useState<{ name: string; email: string; phone: string } | null>(null);
   const [editingContact,   setEditingContact]   = useState(false);
   const [sheetOpen,        setSheetOpen]        = useState(false);
@@ -244,6 +249,7 @@ function CheckoutForm() {
       .catch(() => {});
     // Bookable pickup/delivery windows — admin-editable, see lib/timeslots.ts.
     fetchTimeSlots().then(setTimeSlots).catch(() => {});
+    fetchSameDayRule().then(setSameDayRule).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -307,19 +313,33 @@ function CheckoutForm() {
   const rutDiscountKr = rutAvdrag ? rutRefundKr(rutEligibleTotalKr) : 0;
   const grandTotalKr = totalKr - rutDiscountKr + deliveryFeeKr;
 
-  // Pickup can still be booked today as long as one window has not closed yet.
-  const now = new Date();
+  // Whether pickup can still be booked today is the same-day rule: past the
+  // 14:00 cutoff, or no window left that still gives the driver the admin's
+  // lead time. `nowInSweden` rather than the browser clock, so a customer
+  // abroad is shown exactly what `create-cart-payment` will accept.
+  const swedishNow = nowInSweden();
   const pickupSlots = (timeSlots ?? TIMESLOT_DEFAULTS).pickup;
-  const lastPickupHour = pickupSlots.length ? pickupSlots[pickupSlots.length - 1].end : 0;
-  const minPickupDate = now.getHours() < lastPickupHour
-    ? toYMD(now)
-    : toYMD(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const sameDayOpen = isSameDayPickupOpen(swedishNow.hour, pickupSlots, sameDayRule);
+  const minPickupDate = sameDayOpen ? swedishNow.ymd : addDaysYMD(swedishNow.ymd, 1);
 
-  // On today's date, windows that have already closed are greyed out in the picker.
-  const pickupMinEndHour = pickupDate === toYMD(now) ? now.getHours() : undefined;
+  // On today's date, a window closing sooner than the lead time is greyed out.
+  const pickupMinEndHour = pickupDate === swedishNow.ymd
+    ? sameDayMinEndHour(swedishNow.hour, sameDayRule)
+    : undefined;
 
   // Delivery must be at least 3 calendar days after pickup.
   const earliestDeliveryDate = pickupDate ? addDaysYMD(pickupDate, 3) : addDaysYMD(minPickupDate, 3);
+
+  // A basket can sit open across the cutoff: a date picked at 13:55 is no
+  // longer bookable at 14:05. Guarded on `timeSlots` having loaded, because
+  // until then `minPickupDate` is derived from the default windows and could
+  // throw away a perfectly valid choice.
+  useEffect(() => {
+    if (!timeSlots || !pickupDate) return;
+    if (pickupDate >= minPickupDate) return;
+    setPickupDate(minPickupDate);
+    setPickupTime('');
+  }, [timeSlots, pickupDate, minPickupDate]);
 
   // When pickup date changes, bump delivery date forward if it's no longer valid.
   useEffect(() => {
@@ -675,12 +695,12 @@ function CheckoutForm() {
         <div className="of-dt-card">
           <div className="of-dt-title"><IconCalendar size={14} stroke={1.5} /> Upphämtning</div>
           {/* The cutoff sits above the date picker, the moment it actually
-              matters. It states the rule; it does not enforce it — today stays
-              selectable until the last pickup window closes. See
-              `lib/sameDay.ts` for what enforcing it would take. */}
+              matters — and it is now enforced, so once it has passed the line
+              says so rather than advertising a promise the picker has already
+              withdrawn. See `lib/sameDay.ts`. */}
           <p className="of-cutoff" style={{ marginBottom: 'var(--sp-md)' }}>
             <IconClock size={14} stroke={1.6} aria-hidden />
-            <span>{SAME_DAY_NOTICE}</span>
+            <span>{sameDayOpen ? SAME_DAY_NOTICE : SAME_DAY_CLOSED_NOTICE}</span>
           </p>
           <div className="input-group" style={{ marginBottom: 'var(--sp-sm)' }}>
             <label className="field-label">Datum</label>
