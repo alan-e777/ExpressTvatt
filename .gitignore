@@ -17,6 +17,21 @@ promptHomeScreen.md
 prompts/
 instructions.md
 
+# Documentation, internal notes and agent config — kept on disk, never
+# published. This repo is public, so the launch runbook, the security notes and
+# the iOS app's state are all deliberately local-only (owner's call, 2026-11-02).
+#
+# `*.md` is a blanket rule: every markdown file in the tree is ignored, at any
+# depth. If you ever genuinely want one published (a real README, say), force it
+# in with `git add -f README.md` — otherwise it will be silently skipped.
+#
+# `devNotes/` is listed as well as `*.md` because it also holds non-markdown
+# files (`google-keys.pdf` and its generator) that the blanket rule misses.
+*.md
+devNotes/
+.claude/
+.agents/
+
 # Expo dev logs (can contain env vars)
 .expo/dev/logs/
 
